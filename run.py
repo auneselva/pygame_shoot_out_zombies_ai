@@ -5,6 +5,7 @@ import sys
 import math
 
 # my modules
+from circle import Circle
 from player import Player
 from enemy import Enemy
 
@@ -21,13 +22,17 @@ class Game(object):
         self.tps_delta = 0.0
 
         self.n_obstacles = 20
+        self.blue = (63, 127, 191)
         self.n_enemies = 20
+        self.red = (255, 0, 0)
         self.n_spawns = 10
-        self.obstacles = self.create_obstacles(self.n_obstacles)
+        self.yellow = (255, 255, 0)
+        self.obstacles = self.create_objects(Circle, self.n_obstacles, 40, self.blue, [], 50)
         self.enemies = []
-        self.enemies = self.create_enemies(self.n_enemies)
+        self.enemies = self.create_objects(Enemy, self.n_enemies, 15, self.red, self.obstacles, 5)
         self.spawns = []
-        self.spawns = self.create_spawn(self.n_spawns)
+        self.spawns = self.create_objects(Circle, self.n_spawns, 8, self.yellow, self.obstacles + self.enemies, 5)
+
         self.player = Player(self)
         self.leader = self.enemies[0]
         self.counter_reset = 10000
@@ -73,12 +78,12 @@ class Game(object):
         if self.time_counter == self.counter_reset:
             self.time_counter = 0
         if self.time_counter % 100 == 0:
-            new_sp = self.create_spawn(1).pop(0)
+            new_sp = self.create_objects(Circle, 1, 8, self.yellow, self.obstacles + self.enemies, 5).pop(0)
             self.spawns.append(new_sp)
         if self.time_counter % 100 == 50:
             self.spawns.pop(0)
         if self.time_counter % 200 == 30:
-            new_en = self.create_enemies(1).pop(0)
+            new_en = self.create_objects(Enemy, 1, 15, self.red, self.obstacles, 5).pop(0)
             self.enemies.append(new_en)
 
         # tag those who are close enough to each other to perform a group attack
@@ -86,77 +91,43 @@ class Game(object):
 
     def draw(self):
 
-        # drawing the player
         self.player.draw()
-
-        # drawing obstacles (circles)
-        for v in self.obstacles:
-            pygame.draw.circle(self.screen,  (63, 127, 191), (v[1], v[2]), v[0], 3)
-
-        # drawing enemies
+        for obst in self.obstacles:
+            obst.draw()
         for enemy in self.enemies:
             enemy.draw()
-
         for spawn in self.spawns:
-            pygame.draw.circle(self.screen,  (255, 255, 0), (spawn[1], spawn[2]), spawn[0], 2)
+            spawn.draw()
 
-    def create_obstacles(self, n_obstacles):
-
-        # wall_dist is a minimum distance between an obstacle and the walls
-        # player_dist is a minimum distance between an obstacle and the starting position of the player
-
-        wall_dist = 50
-        player_dist = self.res[0]/20 + 10
-        obstacles = []
-        r = 40
-        dist_other = 70
-        empty = []
-
-        for i in range(n_obstacles):
-
-            # randomly setting the size and the position of an obstacle
-            pos_x = random.randint(r + wall_dist, self.res[0] - wall_dist - r)
-            pos_y = random.randint(r + wall_dist, self.res[1] - wall_dist - r)
-
-            while self.check_collisions(pos_x, pos_y, r + dist_other, obstacles, empty) is True or self.res[0]/2 - player_dist < pos_x < self.res[0]/2 + player_dist and self.res[1]/2 - player_dist < pos_y < self.res[1]/2 + player_dist:
-                    pos_x = random.randint(r + wall_dist, self.res[0] - wall_dist - r)
-                    pos_y = random.randint(r + wall_dist, self.res[1] - wall_dist - r)
-
-            obstacles.append([r, pos_x, pos_y])
-
-        return obstacles
-
-    def create_enemies(self, n_enemies):
+    def create_objects(self, obj_type, n_objects, r, color, objects_check_coll, dist):
 
         # wall_dist is a minimum distance between an obstacle and the walls
         # player_dist is a minimum distance between an obstacle and the starting position of the player
-
-        wall_dist = 7
-        r = 15
+        wall_dist = 20
         player_dist = self.res[0]/20 + 10
-        enemies = []
+        objects = []
 
-        for i in range(n_enemies):
-
+        for i in range(n_objects):
             pos_x = random.randint(r + wall_dist, self.res[0] - wall_dist - r)
             pos_y = random.randint(r + wall_dist, self.res[1] - wall_dist - r)
+            while self.check_collisions(pos_x, pos_y, r + dist, objects_check_coll + objects) is True or self.check_player_dist(player_dist, pos_x, pos_y, r) is True:
+                pos_x = random.randint(r + wall_dist, self.res[0] - wall_dist - r)
+                pos_y = random.randint(r + wall_dist, self.res[1] - wall_dist - r)
+            objects.append(obj_type(self, r, pos_x, pos_y, color))
 
-            while self.check_collisions(pos_x, pos_y, r, self.obstacles, enemies) is True or (self.res[0] / 2 - player_dist < pos_x < self.res[0] / 2 + player_dist and self.res[1] / 2 - player_dist < pos_y < self.res[1] / 2 + player_dist):
-                    pos_x = random.randint(r + wall_dist, self.res[0] - wall_dist - r)
-                    pos_y = random.randint(r + wall_dist, self.res[1] - wall_dist - r)
+        return objects
 
-            enemies.append(Enemy(self, r, pos_x, pos_y))
-
-        return enemies
-
-    def check_collisions(self, pos_x, pos_y, r, obstacles, enemies):
-        for v in obstacles:
-            distance = math.sqrt(((v[1] - pos_x) * (v[1] - pos_x)) + ((v[2] - pos_y) * (v[2] - pos_y)))
-            if distance < r + v[0]:
+    # the method below checks if the object is too close to player's starting position
+    def check_player_dist(self, player_dist, pos_x, pos_y, r):
+        if self.res[0] / 2 - player_dist < pos_x < self.res[0] / 2 + player_dist:
+            if self.res[1] / 2 - player_dist < pos_y < self.res[1] / 2 + player_dist:
                 return True
-        for enemy in enemies:
-            distance = math.sqrt(((enemy.pos.x - pos_x) * (enemy.pos.x - pos_x)) + ((enemy.pos.y - pos_y) * (enemy.pos.y - pos_y)))
-            if distance < r + enemy.r:
+        return False
+
+    def check_collisions(self, pos_x, pos_y, r, circles):
+        for circle in circles:
+            distance = math.sqrt(((circle.pos.x - pos_x) * (circle.pos.x - pos_x)) + ((circle.pos.y - pos_y) * (circle.pos.y - pos_y)))
+            if distance < r + circle.r:
                 return True
         return False
 
@@ -177,25 +148,6 @@ class Game(object):
                 self.leader = gathered[0]
             gathered = []
 
-    def create_spawn(self, n_spawns):
-
-        wall_dist = 7
-        r = 5
-        player_dist = self.res[0] / 20 + 10
-        spawns = []
-
-        for i in range(n_spawns):
-
-            pos_x = random.randint(r + wall_dist, self.res[0] - wall_dist - r)
-            pos_y = random.randint(r + wall_dist, self.res[1] - wall_dist - r)
-
-            while self.check_collisions(pos_x, pos_y, r, self.obstacles, self.enemies) is True:
-                pos_x = random.randint(r + wall_dist, self.res[0] - wall_dist - r)
-                pos_y = random.randint(r + wall_dist, self.res[1] - wall_dist - r)
-
-            spawns.append([r, pos_x, pos_y])
-
-        return spawns
 
 if __name__ == "__main__":
     Game()

@@ -2,6 +2,9 @@ import pygame
 from pygame.math import Vector2
 import math
 
+from enemy import Enemy
+
+
 class Player(object):
 
     def __init__(self, game):
@@ -9,7 +12,7 @@ class Player(object):
         self.speed = 0.1
         size = self.game.screen.get_size()
 
-        self.pos = Vector2(size[0]/2, size[1]/2)
+        self.pos = Vector2(size[0] / 2, size[1] / 2)
         self.vel = Vector2(0, 0)
         self.acc = Vector2(0, 0)
         self.heading = self.vel
@@ -49,7 +52,7 @@ class Player(object):
             self.add_force(Vector2(self.speed, 0))
 
         # handling shooting
-        self.shooter_handle()
+        # self.shooter_handle()
 
         # Physics
         # Air resistance
@@ -81,7 +84,7 @@ class Player(object):
         # Physical contact with an enemy causes player's health decrease
         if self.getting_physical(self.game.enemies) is True:
             self.hp -= 1
-        if self.getting_spawns(self.game.spawns) is True:
+        if self.getting_physical(self.game.spawns) is True:
             self.score += 1
 
     def draw(self):
@@ -94,7 +97,6 @@ class Player(object):
 
         # drawing shooting line
         m_btn = pygame.mouse.get_pressed()
-        mouse_pos = pygame.mouse.get_pos()
 
         if m_btn[0] == 0:
             self.btn_released = True
@@ -103,11 +105,13 @@ class Player(object):
             self.btn_released = False
             self.gun_counter = 0
         if m_btn[0] == 1 and self.btn_released is False:
-            if self.gun_counter != 25:
-                intersecting_pt = self.hindsight()
-                pygame.draw.line(self.game.screen, (0, 128, 0), self.pos, intersecting_pt, 2)
-                self.gun_counter += 1
+            if self.gun_counter != 50:
+                closest_obj_n_point = self.hindsight(self.game.obstacles + self.game.enemies)
+                if type(closest_obj_n_point[0]) is Enemy:
+                    self.game.enemies.remove(closest_obj_n_point[0])
 
+                pygame.draw.line(self.game.screen, (0, 128, 0), self.pos, closest_obj_n_point[1], 2)
+                self.gun_counter += 1
 
     def collisions(self):
 
@@ -131,40 +135,29 @@ class Player(object):
         # v[2] - y
         # p.x - x of the currently checked vertex of the player's triangle
         # p.y - y of the currently checked vertex of the player's triangle
-        for v in self.game.obstacles:
+        for obst in self.game.obstacles:
             for p in self.pos_points:
-                if abs(v[1] - p.x) < v[0]:
-                    y = math.sqrt(abs(v[0] * v[0] - (v[1] - p.x) * (v[1] - p.x)))
-                    if y > abs(p.y - v[2]):
+                if abs(obst.pos.x - p.x) < obst.r:
+                    y = math.sqrt(abs(obst.r * obst.r - (obst.pos.x - p.x) * (obst.pos.x - p.x)))
+                    if y > abs(p.y - obst.pos.y):
                         return True
 
         return False
 
-    def getting_physical(self, objects):
+    def getting_physical(self, circles):
 
         # if an enemy overlaps the player, the player's health gets lower
-        for v in objects:
+        for circle in circles:
             for p in self.pos_points:
-                if abs(v.pos.x - p.x) < v.r:
-                    y = math.sqrt(abs(v.r * v.r - (v.pos.x - p.x) * (v.pos.x - p.x)))
-                    if y > abs(p.y - v.pos.y):
+                if abs(circle.pos.x - p.x) < circle.r:
+                    y = math.sqrt(abs(circle.r * circle.r - (circle.pos.x - p.x) * (circle.pos.x - p.x)))
+                    if y > abs(p.y - circle.pos.y):
                         return True
         return False
 
-    def getting_spawns(self, spawns):
-
-        # if an enemy overlaps the player, the player's health gets lower
-        for v in spawns:
-            for p in self.pos_points:
-                if abs(v[1] - p.x) < v[0]:
-                    y = math.sqrt(abs(v[0] * v[0] - (v[1] - p.x) * (v[1] - p.x)))
-                    if y > abs(p.y - v[2]):
-                        self.game.spawns.remove(v)
-                        return True
-        return False
-
+    # this method was used to make shooter work but it's unused now because I solved in other way
     def shooter_handle(self):
-
+        check_other = False
         m_btn = pygame.mouse.get_pressed()
         if m_btn[0] == 0 and self.btn_was_released is False:
             self.btn_was_released = True
@@ -174,7 +167,7 @@ class Player(object):
                 # if we clicked the point within the circle of an enemy
                 if (click_pos - enemy.pos).length() < enemy.r:
                     # checking if the shooting line passes through any obstacle
-                    # dist = (Axr + Byr + C) / sqrt(A * A  + B * B) must > radius of every obstacle
+                    # dist = (Axr + Byr + C) / sqrt(A * A  + B * B) < radius of every obstacle
                     p1 = self.pos
                     p2 = click_pos
                     A = p2.y - p1.y
@@ -184,8 +177,8 @@ class Player(object):
                     if under != 0:
                         for obst in self.game.obstacles:
                             if self.in_range(obst, self.pos, click_pos) is True:
-                                dist = math.fabs(A * obst[1] + B * obst[2] + C) / under
-                                if dist < obst[0]:
+                                dist = math.fabs(A * obst.pos.x + B * obst.pos.x + C) / under
+                                if dist < obst.r:
                                     self.dont_remove = True
                                     break
                         if self.dont_remove is False:
@@ -200,22 +193,22 @@ class Player(object):
 
     def in_range(self, obst, my_pos, click_pos):
         if my_pos.y > click_pos.y:
-            if (obst[2] - obst[0] > my_pos.y) or (obst[2] + obst[0] < click_pos.y):
+            if (obst.pos.y - obst.r > my_pos.y) or (obst.pos.y + obst.r < click_pos.y):
                 return False
             if my_pos.x > click_pos.x:
-                if (obst[1] - obst[0] > my_pos.x) or (obst[1] + obst[0] < click_pos.x):
+                if (obst.pos.x - obst.r > my_pos.x) or (obst.pos.x + obst.r < click_pos.x):
                     return False
             else:
-                if (obst[1] + obst[0] < my_pos.x) or (obst[1] - obst[0] > click_pos.x):
+                if (obst.pos.x + obst.r < my_pos.x) or (obst.pos.x - obst.r > click_pos.x):
                     return False
         else:
-            if (obst[2] + obst[0] < my_pos.y) or (obst[2] - obst[0] > click_pos.y):
+            if (obst.pos.y + obst.r < my_pos.y) or (obst.pos.y - obst.r > click_pos.y):
                 return False
             if my_pos.x > click_pos.x:
-                if (obst[1] - obst[0] > my_pos.x) or (obst[1] + obst[0] < click_pos.x):
+                if (obst.pos.x - obst.r > my_pos.x) or (obst.pos.x + obst.r < click_pos.x):
                     return False
             else:
-                if (obst[1] + obst[0] < my_pos.x) or (obst[1] - obst[0] > click_pos.x):
+                if (obst.pos.x + obst.r < my_pos.x) or (obst.pos.x - obst.r > click_pos.x):
                     return False
         return True
 
@@ -298,23 +291,23 @@ class Player(object):
             else:
                 return p1 + t2 * line_vec
 
-    def hindsight(self):
+    def hindsight(self, circles):
         mouse_pos = Vector2(pygame.mouse.get_pos())
         p1 = self.pos
         p2 = mouse_pos
         closest_pt = mouse_pos
-
-        for obst in self.game.obstacles:
-            if self.in_range(obst, self.pos, mouse_pos) is True:
-                pt = self.closest_pt_vec(p1, p2, obst[0], obst[1], obst[2])
+        closest_obj = None
+        for circle in circles:
+            if self.in_range(circle, self.pos, mouse_pos) is True:
+                pt = self.closest_pt_vec(p1, p2, circle.r, circle.pos.x, circle.pos.y)
                 if pt is not None:
                     if (self.pos - pt).length() < (self.pos - closest_pt).length():
                         closest_pt = pt
-        return closest_pt
+                        closest_obj = circle
+        return closest_obj, closest_pt
 
     def find_y(self, p1, p2, x3):
-        a = (p2.y - p1.y)/(p2.x - p1.x)
+        a = (p2.y - p1.y) / (p2.x - p1.x)
         b = p1.y - a * p1.x
         y3 = a * x3 + b
         return y3
-

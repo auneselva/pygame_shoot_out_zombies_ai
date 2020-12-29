@@ -4,12 +4,12 @@ import math, random
 
 class Enemy(object):
 
-    def __init__(self, game, r, pos_x, pos_y):
+    def __init__(self, game, r, pos_x, pos_y, color):
         self.game = game
         self.speed = 0.1
         self.max_speed = 1
         size = self.game.screen.get_size()
-
+        self.color = color
         self.pos = Vector2(pos_x, pos_y)
         self.r = r
         self.hp = 100
@@ -96,7 +96,7 @@ class Enemy(object):
 
     def draw(self):
 
-        pygame.draw.circle(self.game.screen, (191, 0, 0), (int(self.pos.x), int(self.pos.y)), self.r, 3)
+        pygame.draw.circle(self.game.screen, self.color, (int(self.pos.x), int(self.pos.y)), self.r, 3)
 
     def collisions(self):
 
@@ -127,9 +127,9 @@ class Enemy(object):
         # p.x - x of the currently checked vertex of the player's triangle
         # p.y - y of the currently checked vertex of the player's triangle
 
-        for v in self.game.obstacles:
-            distance = math.sqrt(((v[1] - self.pos.x) * (v[1] - self.pos.x)) + ((v[2] - self.pos.y) * (v[2] - self.pos.y)))
-            if distance < self.r + v[0]:
+        for obst in self.game.obstacles:
+            distance = math.sqrt(((obst.pos.x - self.pos.x) * (obst.pos.x - self.pos.x)) + ((obst.pos.y - self.pos.y) * (obst.pos.y - self.pos.y)))
+            if distance < self.r + obst.r:
                 self.new_vel = -self.vel
                 return True
 
@@ -201,19 +201,19 @@ class Enemy(object):
         #p4 = self.pos + Vector2(self.vel.length() * 70, -ext_rad)
         colliding = []
 
-        for v in self.game.obstacles:
+        for obst in self.game.obstacles:
 
             # v[0] is radius of an obstacle
             # v[1] is pos_x
             # v[2] is pos_y
 
             # changing coordinates of the obstacle to local position in relation to our player
-            vec_to_obst = (v[1], v[2]) - self.pos
+            vec_to_obst = (obst.pos.x, obst.pos.y) - self.pos
             rel_pos_obst = self.pos + vec_to_obst.rotate(angle)
-            if rel_pos_obst.x + v[0] > p1.x:
-                if rel_pos_obst.x - v[0] < p3.x:
-                    if math.fabs(rel_pos_obst.y - self.pos.y) < v[0] + ext_rad:
-                        colliding.append((v[0], rel_pos_obst.x, rel_pos_obst.y))
+            if rel_pos_obst.x + obst.r > p1.x:
+                if rel_pos_obst.x - obst.r < p3.x:
+                    if math.fabs(rel_pos_obst.y - self.pos.y) < obst.r + ext_rad:
+                        colliding.append(obst)
             #elif (p3 - (rel_pos_obst.x, rel_pos_obst.y)).length() < v[0]:
             #    colliding.append((v[0], rel_pos_obst.x, rel_pos_obst.y))
             #elif (p4 - (rel_pos_obst.x, rel_pos_obst.y)).length() < v[0]:
@@ -226,17 +226,17 @@ class Enemy(object):
 
         inters_pt = p3.x
         go_down = False
-        for v in colliding:
-            z = v[0] + ext_rad
-            y = v[2] - self.pos.y
-            x = math.sqrt(z * z - y * y)
+        for obst in colliding:
+            z = obst.r + ext_rad
+            y = obst.pos.y - self.pos.y
+            x = math.sqrt(math.fabs(z * z - y * y))
 
             # if the closest point is to the rear of the vehicle we discard it
-            if v[1] - x > self.pos.x:
-                closest_x = v[1] - x
+            if obst.pos.x - x > self.pos.x:
+                closest_x = obst.pos.x - x
                 if closest_x < inters_pt:
                     inters_pt = closest_x
-                    if v[2] < self.pos.y:
+                    if obst.pos.y < self.pos.y:
                         go_down = True
 
         dist = inters_pt - self.pos.x
@@ -295,9 +295,9 @@ class Enemy(object):
         # getting hiding positions
         hiding_pos = []
         space_dist = 20
-        for v in self.game.obstacles:
-            vec_to_obst = (Vector2(v[1], v[2]) - self.pos).normalize()
-            hiding_pos.append(vec_to_obst * (space_dist + v[0]) + Vector2(v[1], v[2]))
+        for obst in self.game.obstacles:
+            vec_to_obst = (obst.pos - self.pos).normalize()
+            hiding_pos.append(vec_to_obst * (space_dist + obst.r) + obst.pos)
 
         if not hiding_pos:
             return self.evade(self)
@@ -306,8 +306,8 @@ class Enemy(object):
         best_hiding_spot = hiding_pos[0]
 
         for v in hiding_pos:
-            x_dist = self.pos.x - v[0]
-            y_dist = self.pos.y - v[1]
+            x_dist = self.pos.x - v.x
+            y_dist = self.pos.y - v.y
             dist = math.sqrt(x_dist * x_dist + y_dist * y_dist)
             if closest > dist:
                 closest = dist
