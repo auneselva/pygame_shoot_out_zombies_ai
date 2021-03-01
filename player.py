@@ -2,6 +2,7 @@ import pygame
 from pygame.math import Vector2
 import math
 
+from circle import Circle
 from enemy import Enemy
 
 
@@ -25,12 +26,14 @@ class Player(object):
 
         self.hp = 100
         self.score = 0
+        self.kills = 0
         self.flag = False
         self.counter = 0
         self.draw_counter = 0
         self.btn_released = True
         self.btn_was_released = True
         self.dont_remove = False
+        self.removed = False
         self.closest_shot_point = Vector2(0, 0)
         self.gun_counter = 0
 
@@ -68,7 +71,9 @@ class Player(object):
         # Handling collisions
 
         if self.flag is False:
-            self.flag = self.collisions()
+            self.flag = self.collisions_wall()
+            if self.flag is False:
+                self.flag = self.collisions_w_circles(self.game.obstacles)
             self.counter = 0
         else:
             if self.counter == 0:
@@ -82,10 +87,13 @@ class Player(object):
                 self.counter = 0
 
         # Physical contact with an enemy causes player's health decrease
-        if self.getting_physical(self.game.enemies) is True:
+        if self.collisions_w_circles(self.game.enemies) is True:
             self.hp -= 1
-        if self.getting_physical(self.game.spawns) is True:
+
+        coin_collected = self.getting_physical(self.game.spawns)
+        if type(coin_collected) is Circle:
             self.score += 1
+            self.game.spawns.remove(coin_collected)
 
     def draw(self):
 
@@ -101,19 +109,22 @@ class Player(object):
         if m_btn[0] == 0:
             self.btn_released = True
             self.gun_counter = 0
+            self.removed = False
         if m_btn[0] == 1 and self.btn_released is True:
             self.btn_released = False
             self.gun_counter = 0
+            self.removed = False
         if m_btn[0] == 1 and self.btn_released is False:
             if self.gun_counter != 50:
                 closest_obj_n_point = self.hindsight(self.game.obstacles + self.game.enemies)
-                if type(closest_obj_n_point[0]) is Enemy:
+                if type(closest_obj_n_point[0]) is Enemy and self.removed is False:
                     self.game.enemies.remove(closest_obj_n_point[0])
-
+                    self.kills += 1
+                    self.removed = True
                 pygame.draw.line(self.game.screen, (0, 128, 0), self.pos, closest_obj_n_point[1], 2)
                 self.gun_counter += 1
 
-    def collisions(self):
+    def collisions_wall(self):
 
         # Returns True if a collision is detected
         # Returns False otherwise
@@ -128,32 +139,27 @@ class Player(object):
                 return True
             elif p[1] > self.game.res[1]:
                 return True
-
-        # Collisions with objects [radius, x, y]
-        # v[0] - radius
-        # v[1] - x
-        # v[2] - y
-        # p.x - x of the currently checked vertex of the player's triangle
-        # p.y - y of the currently checked vertex of the player's triangle
-        for obst in self.game.obstacles:
-            for p in self.pos_points:
-                if abs(obst.pos.x - p.x) < obst.r:
-                    y = math.sqrt(abs(obst.r * obst.r - (obst.pos.x - p.x) * (obst.pos.x - p.x)))
-                    if y > abs(p.y - obst.pos.y):
-                        return True
-
         return False
 
-    def getting_physical(self, circles):
-
-        # if an enemy overlaps the player, the player's health gets lower
+    def collisions_w_circles(self, circles):
         for circle in circles:
             for p in self.pos_points:
-                if abs(circle.pos.x - p.x) < circle.r:
-                    y = math.sqrt(abs(circle.r * circle.r - (circle.pos.x - p.x) * (circle.pos.x - p.x)))
+                dx = circle.pos.x - p.x
+                if abs(dx) < circle.r:
+                    y = math.sqrt(abs(circle.r * circle.r - dx * dx))
                     if y > abs(p.y - circle.pos.y):
                         return True
         return False
+
+    def getting_physical(self, circles):
+        for circle in circles:
+            for p in self.pos_points:
+                dx = circle.pos.x - p.x
+                if abs(dx) < circle.r:
+                    y = math.sqrt(abs(circle.r * circle.r - dx * dx))
+                    if y > abs(p.y - circle.pos.y):
+                        return circle
+        return None
 
     # this method was used to make shooter work but it's unused now because I solved in other way
     def shooter_handle(self):

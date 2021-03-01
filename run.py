@@ -23,9 +23,9 @@ class Game(object):
 
         self.n_obstacles = 20
         self.blue = (63, 127, 191)
-        self.n_enemies = 20
+        self.n_enemies = 2
         self.red = (255, 0, 0)
-        self.n_spawns = 10
+        self.n_spawns = 3
         self.yellow = (255, 255, 0)
         self.obstacles = self.create_objects(Circle, self.n_obstacles, 40, self.blue, [], 50)
         self.enemies = []
@@ -64,9 +64,13 @@ class Game(object):
 
         if not self.enemies:
             print("You won!")
+            print("Coins collected: ", self.player.score)
+            print("Enemies shot: ", self.player.kills)
 
         if self.player.hp == 0:
             print("Game over")
+            print("Coins collected: ", self.player.score)
+            print("Enemies shot: ", self.player.kills)
 
         self.player.tick()
         for enemy in self.enemies:
@@ -80,11 +84,11 @@ class Game(object):
         if self.time_counter % 100 == 0:
             new_sp = self.create_objects(Circle, 1, 8, self.yellow, self.obstacles + self.enemies, 5).pop(0)
             self.spawns.append(new_sp)
-        if self.time_counter % 100 == 50:
+        if self.time_counter % 200 == 50:
             self.spawns.pop(0)
-        if self.time_counter % 200 == 30:
-            new_en = self.create_objects(Enemy, 1, 15, self.red, self.obstacles, 5).pop(0)
-            self.enemies.append(new_en)
+        if not self.enemies and self.player.kills < 100:
+            self.n_enemies *= 2
+            self.enemies = self.create_objects(Enemy, self.n_enemies, 15, self.red, self.obstacles, 5)
 
         # tag those who are close enough to each other to perform a group attack
         self.tag_enemies()
@@ -126,7 +130,9 @@ class Game(object):
 
     def check_collisions(self, pos_x, pos_y, r, circles):
         for circle in circles:
-            distance = math.sqrt(((circle.pos.x - pos_x) * (circle.pos.x - pos_x)) + ((circle.pos.y - pos_y) * (circle.pos.y - pos_y)))
+            dx = circle.pos.x - pos_x
+            dy = circle.pos.y - pos_y
+            distance = math.sqrt((dx * dx) + (dy * dy))
             if distance < r + circle.r:
                 return True
         return False

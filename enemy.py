@@ -13,7 +13,7 @@ class Enemy(object):
         self.pos = Vector2(pos_x, pos_y)
         self.r = r
         self.hp = 100
-        self.mass = 3.14 * r * r
+        self.mass = 3.1415 * r * r
         vel_x = random.randint(-2, 2)
         vel_y = random.randint(-2, 2)
         while vel_x == 0 and vel_y == 0:
@@ -38,12 +38,10 @@ class Enemy(object):
         self.new_vel = self.vel
 
     def add_force(self, force):
-
         # Changing acceleration in reaction to force
         self.pos += force
 
     def tick(self):
-
         if self.behavior_counter > self.n_ticks:
             self.behavior_counter = 0
         self.behavior_counter += 1
@@ -95,7 +93,6 @@ class Enemy(object):
         self.pos += self.vel
 
     def draw(self):
-
         pygame.draw.circle(self.game.screen, self.color, (int(self.pos.x), int(self.pos.y)), self.r, 3)
 
     def collisions(self):
@@ -128,14 +125,18 @@ class Enemy(object):
         # p.y - y of the currently checked vertex of the player's triangle
 
         for obst in self.game.obstacles:
-            distance = math.sqrt(((obst.pos.x - self.pos.x) * (obst.pos.x - self.pos.x)) + ((obst.pos.y - self.pos.y) * (obst.pos.y - self.pos.y)))
+            dx = obst.pos.x - self.pos.x
+            dy = obst.pos.y - self.pos.y
+            distance = math.sqrt((dx * dx) + (dy * dy))
             if distance < self.r + obst.r:
                 self.new_vel = -self.vel
                 return True
 
         # Collisions with other enemies
         for enemy in self.game.enemies:
-            distance = math.sqrt(((enemy.pos.x - self.pos.x) * (enemy.pos.x - self.pos.x)) + ((enemy.pos.y - self.pos.y) * (enemy.pos.y - self.pos.y)))
+            dx = enemy.pos.x - self.pos.x
+            dy = enemy.pos.y - self.pos.y
+            distance = math.sqrt((dx * dx) + (dy * dy))
             if distance < self.r + enemy.r and enemy != self:
                 self.new_vel = -self.vel
                 return True
@@ -143,12 +144,10 @@ class Enemy(object):
         return False
 
     def seek(self, target_pos):
-
         desired_vel = (target_pos - self.pos).normalize() * self.max_speed
         return desired_vel
 
     def flee(self, target_pos):
-
         dist = self.pos - target_pos
         panic_dist = self.game.res[0]/4
         if dist.length() > panic_dist:
@@ -158,7 +157,6 @@ class Enemy(object):
         return desired_vel
 
     def pursuit(self, evader):
-
         to_evader = evader.pos - self.pos
         relative_heading = self.heading.dot(evader.heading)
         if to_evader.dot(self.heading) > 0 and relative_heading < -0.95:
@@ -168,9 +166,7 @@ class Enemy(object):
         return self.seek(evader.pos + evader.vel * look_ahead_time)
 
     def wander(self):
-
         self.wander_target = Vector2(self.vel.x, self.vel.y).normalize()
-
         self.wander_target += Vector2(self.random_clamped() * self.wander_jitter, self.random_clamped() * self.wander_jitter)
         self.wander_target.normalize()
         self.wander_target *= self.wander_radius
@@ -181,11 +177,9 @@ class Enemy(object):
         return self.wander_target
 
     def random_clamped(self):
-
         return random.uniform(-1, 1)
 
     def evade(self, pursuer):
-
         to_pursuer = pursuer.pos - self.pos
         look_ahead_time = to_pursuer.length() / (self.max_speed + pursuer.vel.length())
         return self.flee(pursuer.pos + pursuer.vel * look_ahead_time)
@@ -306,9 +300,9 @@ class Enemy(object):
         best_hiding_spot = hiding_pos[0]
 
         for v in hiding_pos:
-            x_dist = self.pos.x - v.x
-            y_dist = self.pos.y - v.y
-            dist = math.sqrt(x_dist * x_dist + y_dist * y_dist)
+            xd = self.pos.x - v.x
+            yd = self.pos.y - v.y
+            dist = math.sqrt(xd * xd + yd * yd)
             if closest > dist:
                 closest = dist
                 best_hiding_spot = v
