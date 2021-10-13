@@ -11,7 +11,7 @@ class Player(object):
     def __init__(self, game):
         self.game = game
         self.speed = 0.1
-        size = self.game.screen.get_size()
+        size = self.game.res
 
         self.pos = Vector2(size[0] / 2, size[1] / 2)
         self.vel = Vector2(0, 0)
@@ -101,7 +101,7 @@ class Player(object):
         angle = Vector2(0, 1).angle_to(self.heading)
         self.pos_points = [p.rotate(angle) for p in self.starting_pos_points]
         self.pos_points = [self.pos + p for p in self.pos_points]
-        pygame.draw.polygon(self.game.screen, (191, 191, 0), self.pos_points)
+        pygame.draw.polygon(self.game.screen, (62, 216, 64), self.pos_points)
 
         # drawing shooting line
         m_btn = pygame.mouse.get_pressed()

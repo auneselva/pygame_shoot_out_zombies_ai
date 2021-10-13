@@ -1,9 +1,8 @@
 import pygame
-import thorpy
 import random
 import sys
 import math
-
+import tkinter as tk
 # my modules
 from circle import Circle
 from player import Player
@@ -15,13 +14,17 @@ class Game(object):
     def __init__(self):
 
         pygame.init()
+        self.start_time = pygame.time.get_ticks()
+
         self.res = (1280, 720)
-        self.screen = pygame.display.set_mode(self.res)
+        self.panel_width = 300
+        self.screen = pygame.display.set_mode((self.res[0] + self.panel_width, self.res[1]))
+        pygame.display.set_caption("SHOOT OUT ZOMBIES")
         self.tps_max = 100.0
         self.tps_clock = pygame.time.Clock()
         self.tps_delta = 0.0
 
-        self.n_obstacles = 20
+        self.n_obstacles = 10
         self.blue = (63, 127, 191)
         self.n_enemies = 2
         self.red = (255, 0, 0)
@@ -37,7 +40,13 @@ class Game(object):
         self.leader = self.enemies[0]
         self.counter_reset = 10000
         self.time_counter = 0
-
+        self.run = True
+        self.end_info_prepared = False
+        self.buttons = []
+        self.beh_texts = ["Seek", "Pursuit", "Flee", "Evade", "Wander", "Hide", "Avoid obstacles only", "Avoid walls only", "Example mix 1", "Example mix 2", "Example mix 3", "Example mix 4"]
+        self.current_behavior = 9
+        for i in range(12):
+            self.buttons.append(pygame.Rect(int(self.res[0]) + 50, 70 + 50 * i, 200, 40))
         while True:
 
         # Handle events
@@ -47,6 +56,14 @@ class Game(object):
                     sys.exit(0)
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     sys.exit(0)
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    mouse_pos = event.pos
+                    # checks if mouse position is over the button
+                    for i in range(len(self.buttons)):
+                        if self.buttons[i].left < mouse_pos[0] < self.buttons[i].left + self.buttons[i].width:
+                            if self.buttons[i].top < mouse_pos[1] < self.buttons[i].top + self.buttons[i].height:
+                                self.current_behavior = i
+                                print(self.current_behavior)
 
             # Ticking
 
@@ -86,15 +103,54 @@ class Game(object):
             self.spawns.append(new_sp)
         if self.time_counter % 200 == 50:
             self.spawns.pop(0)
-        if not self.enemies and self.player.kills < 100:
+
+        if not self.enemies and self.player.kills < 60:
             self.n_enemies *= 2
             self.enemies = self.create_objects(Enemy, self.n_enemies, 15, self.red, self.obstacles, 5)
-
+        if not self.enemies and self.player.kills >= 60:
+            self.run = False
         # tag those who are close enough to each other to perform a group attack
         self.tag_enemies()
 
-    def draw(self):
+    def screen_UI_draw(self):
+        global text_time, text_coins, text_enemies
+        font = pygame.font.SysFont('Gill Sans', 18)
+        yellow_text = (255, 255, 94)
+        pygame.draw.rect(self.screen, (192, 192, 245),
+                         (int(self.res[0]), 0, self.panel_width, self.res[1]))
+        for i in range(12):
+            pygame.draw.rect(self.screen, (55, 26, 54), self.buttons[i])
+            self.screen.blit(font.render(self.beh_texts[i], True, yellow_text), (int(self.res[0]) + 60, 80 + 50 * i))
 
+        if self.run is False:
+            if self.end_info_prepared is False:
+                self.time_counter = pygame.time.get_ticks() - self.start_time
+                counting_minutes = str(int(self.time_counter / 60000))
+                counting_seconds = int((self.time_counter / 1000) % 60)
+                if counting_seconds == 0:
+                    text_seconds = "00"
+                elif 10 > counting_seconds > 1:
+                    text_seconds = "0" + str(counting_seconds)
+                else:
+                    text_seconds = str(counting_seconds)
+                text_time = font.render(str("Time elapsed: " + str(counting_minutes + ":" + text_seconds)), True,
+                                        yellow_text)
+                text_coins = font.render(str("Coins collected: " + str(self.player.score)), True, yellow_text)
+                text_enemies = font.render(str("Enemies shot: " + str(self.player.kills)), True, yellow_text)
+                self.end_info_prepared = True
+            else:
+                width = 300
+                height = 200
+                pygame.draw.rect(self.screen, (0, 0, 70),
+                                 (int(self.res[0] / 2 - width / 2), int(self.res[1] / 2 - height / 2), width, height))
+                self.screen.blit(text_time,
+                                 (int(self.res[0] / 2 - width / 2) + 20, int(self.res[1] / 2 - height / 2) + 50))
+                self.screen.blit(text_coins,
+                                 (int(self.res[0] / 2 - width / 2) + 20, int(self.res[1] / 2 - height / 2) + 100))
+                self.screen.blit(text_enemies,
+                                 (int(self.res[0] / 2 - width / 2) + 20, int(self.res[1] / 2 - height / 2) + 150))
+
+    def draw(self):
         self.player.draw()
         for obst in self.obstacles:
             obst.draw()
@@ -102,6 +158,7 @@ class Game(object):
             enemy.draw()
         for spawn in self.spawns:
             spawn.draw()
+        self.screen_UI_draw()
 
     def create_objects(self, obj_type, n_objects, r, color, objects_check_coll, dist):
 
@@ -121,7 +178,7 @@ class Game(object):
 
         return objects
 
-    # the method below checks if the object is too close to player's starting position
+    # the method below checks if the object is not too close to the player's starting position
     def check_player_dist(self, player_dist, pos_x, pos_y, r):
         if self.res[0] / 2 - player_dist < pos_x < self.res[0] / 2 + player_dist:
             if self.res[1] / 2 - player_dist < pos_y < self.res[1] / 2 + player_dist:

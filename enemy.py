@@ -1,6 +1,7 @@
 import pygame
 from pygame.math import Vector2
-import math, random
+import math
+import random
 
 class Enemy(object):
 
@@ -49,27 +50,12 @@ class Enemy(object):
         # Position, velocity, and acceleration
         if self.vel.x > 0.01 or self.vel.y > 0.01:
             self.heading = self.vel.normalize()
-        if self.group_attack is False:
-            if self.behavior_counter < self.n_ticks / 3:
-                self.vel = (self.hide() + self.flee(self.game.player.pos) + 7 * self.avoid_obstacles() + 7 * self.avoid_walls()).normalize()
-            elif self.behavior_counter < self.n_ticks * 2 / 3:
-                self.vel = (self.flee(self.game.player.pos) + 3 * self.avoid_obstacles() + 3 * self.avoid_walls()).normalize()
-            else:
-                self.vel = (self.wander() + 3 * self.avoid_obstacles() + 3 * self.avoid_walls()).normalize()
-        else:
-            self.vel = (self.seek(self.game.player.pos + (self.game.leader.pos - self.pos)) + 3 * self.avoid_obstacles() + 3 * self.avoid_walls()).normalize()
+
         self.collided = self.collisions()
         # Handling collisions
         if self.collided is False:
-
-            #self.vel = self.seek(self.game.player.pos)
-            #self.vel = self.wander()
-            #self.vel = self.flee(self.game.player.pos)
-            #self.vel = self.pursuit(self.game.player)
-            #self.vel = self.evade(self.game.player)
-            #self.vel = (self.hide() + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
-            #self.vel = self.avoid_obstacles()
-            #self.vel = self.avoid_walls()
+            # if there is no collision update velocity according to current behavior set
+            self.vel = self.get_vel(self.game.current_behavior)
             self.counter = 0
         else:
             if self.counter == 0:
@@ -83,17 +69,52 @@ class Enemy(object):
                 self.collided = False
                 self.counter = 0
 
-        # wandering
         self.vel = self.vel.normalize()
-
-        #self.wander()
-        #self.vel = self.seek(self.game.player.pos)
 
     def change_pos(self):
         self.pos += self.vel
 
     def draw(self):
         pygame.draw.circle(self.game.screen, self.color, (int(self.pos.x), int(self.pos.y)), self.r, 3)
+
+    def get_vel(self, behavior):
+        if behavior == 0:
+            return (self.seek(self.game.player.pos) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+        elif behavior == 1:
+            return (self.pursuit(self.game.player) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+        elif behavior == 2:
+            return (self.flee(self.game.player.pos) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+        elif behavior == 3:
+            return (self.evade(self.game.player) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+        elif behavior == 4:
+            return (self.wander() + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+        elif behavior == 5:
+            return (self.hide() + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+        elif behavior == 6:
+            return self.avoid_obstacles()
+        elif behavior == 7:
+            return self.avoid_walls()
+        elif behavior == 8:
+            if self.group_attack is False:
+                if self.behavior_counter < self.n_ticks / 3:
+                    return (self.hide() + self.flee(
+                        self.game.player.pos) + 7 * self.avoid_obstacles() + 7 * self.avoid_walls()).normalize()
+                elif self.behavior_counter < self.n_ticks * 2 / 3:
+                    return (self.flee(
+                        self.game.player.pos) + 3 * self.avoid_obstacles() + 3 * self.avoid_walls()).normalize()
+                else:
+                    return (self.wander() + 3 * self.avoid_obstacles() + 3 * self.avoid_walls()).normalize()
+            else:
+                return (self.seek(self.game.player.pos + (
+                            self.game.leader.pos - self.pos)) + 3 * self.avoid_obstacles() + 3 * self.avoid_walls()).normalize()
+        elif behavior == 9:
+            return self.evade(self.game.player)
+        elif behavior == 10:
+            return self.wander()
+        elif behavior == 11:
+            return self.hide()
+        else:
+            return self.vel
 
     def collisions(self):
 
@@ -144,8 +165,9 @@ class Enemy(object):
         return False
 
     def seek(self, target_pos):
-        desired_vel = (target_pos - self.pos).normalize() * self.max_speed
-        return desired_vel
+        dist = self.pos - target_pos
+        desired_vel = dist.normalize() * self.max_speed
+        return -desired_vel
 
     def flee(self, target_pos):
         dist = self.pos - target_pos
@@ -173,7 +195,6 @@ class Enemy(object):
         if self.wander_target.length() == 0:
             self.wander_target = self.vel
         self.wander_target.normalize()
-
         return self.wander_target
 
     def random_clamped(self):
@@ -202,7 +223,7 @@ class Enemy(object):
             # v[2] is pos_y
 
             # changing coordinates of the obstacle to local position in relation to our player
-            vec_to_obst = (obst.pos.x, obst.pos.y) - self.pos
+            vec_to_obst = Vector2(obst.pos.x, obst.pos.y) - self.pos
             rel_pos_obst = self.pos + vec_to_obst.rotate(angle)
             if rel_pos_obst.x + obst.r > p1.x:
                 if rel_pos_obst.x - obst.r < p3.x:
