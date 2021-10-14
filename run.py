@@ -24,7 +24,7 @@ class Game(object):
         self.tps_clock = pygame.time.Clock()
         self.tps_delta = 0.0
 
-        self.n_obstacles = 10
+        self.n_obstacles = 14
         self.blue = (63, 127, 191)
         self.n_enemies = 2
         self.red = (255, 0, 0)
@@ -63,7 +63,6 @@ class Game(object):
                         if self.buttons[i].left < mouse_pos[0] < self.buttons[i].left + self.buttons[i].width:
                             if self.buttons[i].top < mouse_pos[1] < self.buttons[i].top + self.buttons[i].height:
                                 self.current_behavior = i
-                                print(self.current_behavior)
 
             # Ticking
 
@@ -101,13 +100,13 @@ class Game(object):
         if self.time_counter % 100 == 0:
             new_sp = self.create_objects(Circle, 1, 8, self.yellow, self.obstacles + self.enemies, 5).pop(0)
             self.spawns.append(new_sp)
-        if self.time_counter % 200 == 50:
+        if self.time_counter % 150 == 50:
             self.spawns.pop(0)
 
-        if not self.enemies and self.player.kills < 60:
+        if not self.enemies and self.player.kills < 120:
             self.n_enemies *= 2
             self.enemies = self.create_objects(Enemy, self.n_enemies, 15, self.red, self.obstacles, 5)
-        if not self.enemies and self.player.kills >= 60:
+        if not self.enemies and self.player.kills >= 120:
             self.run = False
         # tag those who are close enough to each other to perform a group attack
         self.tag_enemies()
@@ -116,11 +115,13 @@ class Game(object):
         global text_time, text_coins, text_enemies
         font = pygame.font.SysFont('Gill Sans', 18)
         yellow_text = (255, 255, 94)
-        pygame.draw.rect(self.screen, (192, 192, 245),
+        pygame.draw.rect(self.screen, (94, 118, 189),
                          (int(self.res[0]), 0, self.panel_width, self.res[1]))
         for i in range(12):
-            pygame.draw.rect(self.screen, (55, 26, 54), self.buttons[i])
+            pygame.draw.rect(self.screen, (30, 41, 71), self.buttons[i])
             self.screen.blit(font.render(self.beh_texts[i], True, yellow_text), (int(self.res[0]) + 60, 80 + 50 * i))
+        self.screen.blit(font.render(str("Current enemies' behavior:"), True, yellow_text), (int(self.res[0]) + 60, 10))
+        self.screen.blit(font.render(str(self.beh_texts[self.current_behavior]), True, yellow_text), (int(self.res[0]) + 60, 30))
 
         if self.run is False:
             if self.end_info_prepared is False:
@@ -141,7 +142,7 @@ class Game(object):
             else:
                 width = 300
                 height = 200
-                pygame.draw.rect(self.screen, (0, 0, 70),
+                pygame.draw.rect(self.screen, (30, 41, 71),
                                  (int(self.res[0] / 2 - width / 2), int(self.res[1] / 2 - height / 2), width, height))
                 self.screen.blit(text_time,
                                  (int(self.res[0] / 2 - width / 2) + 20, int(self.res[1] / 2 - height / 2) + 50))

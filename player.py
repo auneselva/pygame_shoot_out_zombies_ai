@@ -59,8 +59,8 @@ class Player(object):
 
         # Physics
         # Air resistance
-        self.acc *= 0.8
-        self.vel *= 0.965
+        self.acc *= 0.2
+        self.vel *= 0.99
         mouse_pos = pygame.mouse.get_pos()
         self.heading = (mouse_pos - self.pos).normalize()
         # Position, velocity, and acceleration

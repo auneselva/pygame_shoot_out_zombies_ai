@@ -91,9 +91,9 @@ class Enemy(object):
         elif behavior == 5:
             return (self.hide() + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
         elif behavior == 6:
-            return self.avoid_obstacles()
+            return (self.wander() + 6 * self.avoid_obstacles()).normalize()
         elif behavior == 7:
-            return self.avoid_walls()
+            return (self.wander() + 6 * self.avoid_walls()).normalize()
         elif behavior == 8:
             if self.group_attack is False:
                 if self.behavior_counter < self.n_ticks / 3:
@@ -108,7 +108,17 @@ class Enemy(object):
                 return (self.seek(self.game.player.pos + (
                             self.game.leader.pos - self.pos)) + 3 * self.avoid_obstacles() + 3 * self.avoid_walls()).normalize()
         elif behavior == 9:
-            return self.evade(self.game.player)
+            if self.group_attack is False:
+                if self.behavior_counter < self.n_ticks / 3:
+                    return (self.evade(
+                        self.game.player) + 7 * self.avoid_obstacles() + 7 * self.avoid_walls()).normalize()
+                elif self.behavior_counter < self.n_ticks * 2 / 3:
+                    return (self.wander() + 3 * self.avoid_obstacles() + 3 * self.avoid_walls()).normalize()
+                else:
+                    return (self.pursuit(self.game.player) + 3 * self.avoid_obstacles() + 3 * self.avoid_walls()).normalize()
+            else:
+                return (self.seek(self.game.player.pos + (
+                            self.game.leader.pos - self.pos)) + 3 * self.avoid_obstacles() + 3 * self.avoid_walls()).normalize()
         elif behavior == 10:
             return self.wander()
         elif behavior == 11:
@@ -269,41 +279,41 @@ class Enemy(object):
         space = self.r + 10
         x_predict = self.vel.x * dist
         y_predict = self.vel.y * dist
-        net_force = self.vel
+        net_force = Vector2(0.0, 0.0)
         angle = 30
         # left wall
         if self.pos.x + x_predict < space:
             # going down
             if self.vel.y > 0:
-                net_force = self.vel + self.vel.rotate(-angle)
+                net_force = (self.vel + self.vel.rotate(-angle)).normalize()
             # going up
             else:
-                net_force = self.vel + self.vel.rotate(angle)
+                net_force = (self.vel + self.vel.rotate(angle)).normalize()
         # right wall
         elif self.pos.x + x_predict > self.game.res[0] - space:
             # going down
             if self.vel.y > 0:
-                net_force = self.vel + self.vel.rotate(angle)
+                net_force = (self.vel + self.vel.rotate(angle)).normalize()
             # going up
             else:
-                net_force = self.vel + self.vel.rotate(-angle)
+                net_force = (self.vel + self.vel.rotate(-angle)).normalize()
         # upper wall
         if self.pos.y + y_predict < space:
             # going right
             if self.vel.x > 0:
-                net_force = self.vel + self.vel.rotate(angle)
+                net_force = (self.vel + self.vel.rotate(angle)).normalize()
             # going left
             else:
-                net_force = self.vel + self.vel.rotate(-angle)
+                net_force = (self.vel + self.vel.rotate(-angle)).normalize()
         # bottom wall
         if self.pos.y + y_predict > self.game.res[1] - space:
             # going right
             if self.vel.x > 0:
-                net_force = self.vel + self.vel.rotate(-angle)
+                net_force = (self.vel + self.vel.rotate(-angle)).normalize()
             # going left
             else:
-                net_force = self.vel + self.vel.rotate(angle)
-        return net_force.normalize()
+                net_force = (self.vel + self.vel.rotate(angle)).normalize()
+        return net_force
 
     def hide(self):
 
