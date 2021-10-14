@@ -32,9 +32,11 @@ class Game(object):
         self.yellow = (255, 255, 0)
         self.obstacles = self.create_objects(Circle, self.n_obstacles, 40, self.blue, [], 50)
         self.enemies = []
-        self.enemies = self.create_objects(Enemy, self.n_enemies, 15, self.red, self.obstacles, 5)
+        self.r_enemy = 10
+        self.enemies = self.create_objects(Enemy, self.n_enemies, self.r_enemy, self.red, self.obstacles, 5)
         self.spawns = []
-        self.spawns = self.create_objects(Circle, self.n_spawns, 8, self.yellow, self.obstacles + self.enemies, 5)
+        self.r_spawn = 8
+        self.spawns = self.create_objects(Circle, self.n_spawns, self.r_spawn, self.yellow, self.obstacles + self.enemies, 5)
 
         self.player = Player(self)
         self.leader = self.enemies[0]
@@ -98,14 +100,14 @@ class Game(object):
         if self.time_counter == self.counter_reset:
             self.time_counter = 0
         if self.time_counter % 100 == 0:
-            new_sp = self.create_objects(Circle, 1, 8, self.yellow, self.obstacles + self.enemies, 5).pop(0)
+            new_sp = self.create_objects(Circle, 1, self.r_spawn, self.yellow, self.obstacles + self.enemies, 5).pop(0)
             self.spawns.append(new_sp)
         if self.time_counter % 150 == 50:
             self.spawns.pop(0)
 
         if not self.enemies and self.player.kills < 120:
             self.n_enemies *= 2
-            self.enemies = self.create_objects(Enemy, self.n_enemies, 15, self.red, self.obstacles, 5)
+            self.enemies = self.create_objects(Enemy, self.n_enemies, self.r_enemy, self.red, self.obstacles, 5)
         if not self.enemies and self.player.kills >= 120:
             self.run = False
         # tag those who are close enough to each other to perform a group attack
@@ -115,8 +117,7 @@ class Game(object):
         global text_time, text_coins, text_enemies
         font = pygame.font.SysFont('Gill Sans', 18)
         yellow_text = (255, 255, 94)
-        pygame.draw.rect(self.screen, (94, 118, 189),
-                         (int(self.res[0]), 0, self.panel_width, self.res[1]))
+        pygame.draw.rect(self.screen, (94, 118, 189), (int(self.res[0]), 0, self.panel_width, self.res[1]))
         for i in range(12):
             pygame.draw.rect(self.screen, (30, 41, 71), self.buttons[i])
             self.screen.blit(font.render(self.beh_texts[i], True, yellow_text), (int(self.res[0]) + 60, 80 + 50 * i))
