@@ -3,6 +3,8 @@ from pygame.math import Vector2
 import math
 import random
 
+from circle import Circle
+
 class Enemy(object):
 
     def __init__(self, game, r, pos_x, pos_y, color):
@@ -225,7 +227,7 @@ class Enemy(object):
         return self.flee(pursuer.pos + pursuer.vel * look_ahead_time)
 
     def avoid_obstacles(self):
-        space = 10
+        space = 20
         ext_rad = self.r + space
         # Detection box
         angle = self.vel.angle_to(Vector2(1, 0))
@@ -247,11 +249,27 @@ class Enemy(object):
             if rel_pos_obst.x + obst.r > p1.x:
                 if rel_pos_obst.x - obst.r < p3.x:
                     if math.fabs(rel_pos_obst.y - self.pos.y) < obst.r + ext_rad:
-                        colliding.append(obst)
+                        colliding.append((obst.r, obst.pos.x, obst.pos.y))
             #elif (p3 - (rel_pos_obst.x, rel_pos_obst.y)).length() < v[0]:
             #    colliding.append((v[0], rel_pos_obst.x, rel_pos_obst.y))
             #elif (p4 - (rel_pos_obst.x, rel_pos_obst.y)).length() < v[0]:
             #    colliding.append((v[0], rel_pos_obst.x, rel_pos_obst.y))
+
+        # avoiding collision with other enemies
+        for enemy in self.game.enemies:
+
+            # v[0] is radius of an obstacle
+            # v[1] is pos_x
+            # v[2] is pos_y
+
+            # changing coordinates of the obstacle to local position in relation to our player
+            if enemy != self:
+                vec_to_obst = Vector2(enemy.pos.x, enemy.pos.y) - self.pos
+                rel_pos_obst = self.pos + vec_to_obst.rotate(angle)
+                if rel_pos_obst.x + enemy.r > p1.x:
+                    if rel_pos_obst.x - enemy.r < p3.x:
+                        if math.fabs(rel_pos_obst.y - self.pos.y) < enemy.r + ext_rad:
+                            colliding.append((enemy.r, enemy.pos.x, enemy.pos.y))
 
         if not colliding:
             return self.vel
@@ -261,20 +279,20 @@ class Enemy(object):
         inters_pt = p3.x
         go_down = False
         for obst in colliding:
-            z = obst.r + ext_rad
-            y = obst.pos.y - self.pos.y
+            z = obst[0] + ext_rad
+            y = obst[2] - self.pos.y
             x = math.sqrt(math.fabs(z * z - y * y))
 
             # if the closest point is to the rear of the vehicle we discard it
-            if obst.pos.x - x > self.pos.x:
-                closest_x = obst.pos.x - x
+            if obst[1] - x > self.pos.x:
+                closest_x = obst[1] - x
                 if closest_x < inters_pt:
                     inters_pt = closest_x
-                    if obst.pos.y < self.pos.y:
+                    if obst[2] < self.pos.y:
                         go_down = True
 
         dist = inters_pt - self.pos.x
-        coeff = 1
+        coeff = 0.8
         if go_down is True:
             lateral_force = Vector2(0, 1/dist * coeff)
         else:
@@ -327,6 +345,7 @@ class Enemy(object):
             # going left
             else:
                 net_force += (self.vel + self.vel.rotate(angle))
+        # if an enemy approaches a corner
         if walls > 1:
             net_force = -net_force
         if net_force.length() > 0.001:
