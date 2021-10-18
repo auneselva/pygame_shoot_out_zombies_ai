@@ -3,7 +3,6 @@ from pygame.math import Vector2
 import math
 import random
 
-from circle import Circle
 
 class Enemy(object):
 
@@ -11,7 +10,6 @@ class Enemy(object):
         self.game = game
         self.speed = 0.1
         self.max_speed = 1
-        size = self.game.screen.get_size()
         self.color = color
         self.pos = Vector2(pos_x, pos_y)
         self.r = r
@@ -39,8 +37,8 @@ class Enemy(object):
         self.another_counter = 0
         self.group_attack = False
         self.n_ticks = 1800
-        self.new_vel = self.vel
         self.speed = 1.3
+        self.coll_normal = Vector2(1, 0)
 
     def add_force(self, force):
         self.pos += force
@@ -64,16 +62,9 @@ class Enemy(object):
             self.vel = self.get_vel(self.game.current_behavior)
             self.counter = 0
         else:
-            if self.counter == 0:
-                # bouncing off the obstacles
-                self.vel = self.new_vel
-                if self.vel.length() != 0:
-                    self.pos = self.pos + 3 * self.vel.normalize()
-
-            self.counter += 1
-            if self.counter == 12:
-                self.collided = False
-                self.counter = 0
+            normal = self.coll_normal
+            self.vel = self.vel.reflect(normal)
+            self.collided = False
 
         self.vel = self.vel.normalize() * self.speed
 
@@ -145,16 +136,16 @@ class Enemy(object):
         # Collisions with walls
         #new_vel = self.vel.angle_to()
         if self.pos.x - self.r < 0:
-            self.new_vel = -self.vel
+            self.coll_normal = Vector2(1, 0)
             return True
         elif self.pos.x + self.r > self.game.res[0]:
-            self.new_vel = -self.vel
+            self.coll_normal = Vector2(-1, 0)
             return True
         elif self.pos.y - self.r < 0:
-            self.new_vel = -self.vel
+            self.coll_normal = Vector2(0, 1)
             return True
         elif self.pos.y + self.r > self.game.res[1]:
-            self.new_vel = -self.vel
+            self.coll_normal = Vector2(0, -1)
             return True
 
         # Collisions with circles [radius, x, y]
@@ -171,7 +162,7 @@ class Enemy(object):
             dy = obst.pos.y - self.pos.y
             distance = math.sqrt((dx * dx) + (dy * dy))
             if distance < self.r + obst.r:
-                self.new_vel = -self.vel
+                self.coll_normal = (self.pos - obst.pos).normalize()
                 return True
 
         # Collisions with other enemies
@@ -180,7 +171,7 @@ class Enemy(object):
             dy = enemy.pos.y - self.pos.y
             distance = math.sqrt((dx * dx) + (dy * dy))
             if distance < self.r + enemy.r and enemy != self:
-                self.new_vel = -self.vel
+                self.coll_normal = (self.pos - enemy.pos).normalize()
                 return True
 
         return False
@@ -188,7 +179,7 @@ class Enemy(object):
     def seek(self, target_pos):
         dist = self.pos - target_pos
         desired_vel = dist.normalize() * self.max_speed
-        return -desired_vel
+        return desired_vel.rotate(180)
 
     def flee(self, target_pos):
         dist = self.pos - target_pos
@@ -347,7 +338,7 @@ class Enemy(object):
                 net_force += (self.vel + self.vel.rotate(angle))
         # if an enemy approaches a corner
         if walls > 1:
-            net_force = -net_force
+            net_force = net_force.rotate(180)
         if net_force.length() > 0.001:
             net_force.normalize()
         return net_force

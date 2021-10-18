@@ -36,6 +36,7 @@ class Player(object):
         self.removed = False
         self.closest_shot_point = Vector2(0, 0)
         self.gun_counter = 0
+        self.collided_wall_normal = Vector2(1, 0)
 
     def add_force(self, force):
 
@@ -62,7 +63,7 @@ class Player(object):
         self.acc *= 0.2
         self.vel *= 0.99
         mouse_pos = pygame.mouse.get_pos()
-        self.heading = (mouse_pos - self.pos).normalize()
+        self.heading = (Vector2(mouse_pos[0], mouse_pos[1]) - self.pos).normalize()
         # Position, velocity, and acceleration
         self.vel += self.acc
         self.pos += self.vel
@@ -78,9 +79,14 @@ class Player(object):
         else:
             if self.counter == 0:
                 # bouncing off the obstacles
-                if self.vel.length() != 0:
-                    self.pos = self.pos - 3 * self.vel.normalize()
-                self.vel = -self.vel
+                collided = (self.getting_physical(self.game.obstacles))
+                if collided is None:
+                    if self.collisions_wall() is True:
+                        normal = self.collided_wall_normal
+                else:
+                    normal = (self.pos - collided.pos).normalize()
+                self.vel = self.vel.reflect(normal)
+                #self.vel = -self.vel
             self.counter += 1
             if self.counter == 12:
                 self.flag = False
@@ -104,7 +110,7 @@ class Player(object):
         pygame.draw.polygon(self.game.screen, (62, 216, 64), self.pos_points)
 
         # drawing shooting line
-        m_btn = pygame.mouse.get_pressed()
+        m_btn = pygame.mouse.get_pressed(3)
 
         if m_btn[0] == 0:
             self.btn_released = True
@@ -132,12 +138,16 @@ class Player(object):
         # Collisions with walls
         for p in self.pos_points:
             if p[0] < 0:
+                self.collided_wall_normal = Vector2(1, 0)
                 return True
             elif p[0] > self.game.res[0]:
+                self.collided_wall_normal = Vector2(-1, 0)
                 return True
             elif p[1] < 0:
+                self.collided_wall_normal = Vector2(0, 1)
                 return True
             elif p[1] > self.game.res[1]:
+                self.collided_wall_normal = Vector2(0, -1)
                 return True
         return False
 
@@ -163,8 +173,7 @@ class Player(object):
 
     # this method was used to make shooter work but it's unused now because I solved in other way
     def shooter_handle(self):
-        check_other = False
-        m_btn = pygame.mouse.get_pressed()
+        m_btn = pygame.mouse.get_pressed(3)
         if m_btn[0] == 0 and self.btn_was_released is False:
             self.btn_was_released = True
         if m_btn[0] == 1 and self.btn_was_released is True:

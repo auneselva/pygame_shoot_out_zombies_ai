@@ -177,7 +177,7 @@ class Game(object):
         for i in range(n_objects):
             pos_x = random.randint(r + wall_dist, self.res[0] - wall_dist - r)
             pos_y = random.randint(r + wall_dist, self.res[1] - wall_dist - r)
-            while self.check_collisions(pos_x, pos_y, r + dist, objects_check_coll + objects) is True or self.check_player_dist(player_dist, pos_x, pos_y, r) is True:
+            while self.check_collisions(pos_x, pos_y, r + dist, objects_check_coll + objects) is True or self.check_player_dist(player_dist, pos_x, pos_y) is True:
                 pos_x = random.randint(r + wall_dist, self.res[0] - wall_dist - r)
                 pos_y = random.randint(r + wall_dist, self.res[1] - wall_dist - r)
             objects.append(obj_type(self, r, pos_x, pos_y, color))
@@ -185,7 +185,7 @@ class Game(object):
         return objects
 
     # the method below checks if the object is not too close to the player's starting position
-    def check_player_dist(self, player_dist, pos_x, pos_y, r):
+    def check_player_dist(self, player_dist, pos_x, pos_y):
         if self.res[0] / 2 - player_dist < pos_x < self.res[0] / 2 + player_dist:
             if self.res[1] / 2 - player_dist < pos_y < self.res[1] / 2 + player_dist:
                 return True
