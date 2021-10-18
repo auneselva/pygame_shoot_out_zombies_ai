@@ -1,0 +1,180 @@
+<html>
+<head>
+<title>physics.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+physics.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;for 2-dimensional physics&quot;&quot;&quot;</span>
+<span class="s2">import </span><span class="s1">math</span><span class="s2">, </span><span class="s1">pygame</span>
+<span class="s2">from </span><span class="s1">pygame.math </span><span class="s2">import </span><span class="s1">Vector2 </span><span class="s2">as </span><span class="s1">V</span>
+
+<span class="s2">def </span><span class="s1">projection_length(v1</span><span class="s2">, </span><span class="s1">v2):</span>
+    <span class="s0">&quot;&quot;&quot;Norm of the projection of v1 on v2.&quot;&quot;&quot;</span>
+    <span class="s1">angle = v1.angle_to(v2)</span>
+    <span class="s2">return </span><span class="s1">cos(angle)*v1.length()</span>
+
+<span class="s2">def </span><span class="s1">projection(v1</span><span class="s2">, </span><span class="s1">v2):</span>
+    <span class="s0">&quot;&quot;&quot;Projection of v1 on v2.&quot;&quot;&quot;</span>
+    <span class="s2">return </span><span class="s1">projection_length(v1</span><span class="s2">,</span><span class="s1">v2)*v2.normalize()</span>
+
+<span class="s3">#dv' * n = -e*dv*n</span>
+<span class="s3">#impulse p1 = j*n (for A) and p2 = -j*n (for B) (newton's 3rd law)</span>
+<span class="s3">#definition : rPoi = rPi.rotate(90) (rPoi = vect from an object's cm to point P)</span>
+<span class="s3">#v1' = v1 + p1/m1; v2' = v2 + p2/m2 (translation only)</span>
+<span class="s3">#w1' = w1 + L1/I1 = w1 + rPo1*|j|n / I1 (rotations only)</span>
+<span class="s3">#v1P' = v1' + w1'*rPo1</span>
+<span class="s3"># ==&gt; j = -(1+e)*dv*n / K,</span>
+<span class="s3"># K = n*n(1/m1 + 1/m2) + (rPo1*n)^2/I1 + (rPo2*n)^2/I2</span>
+
+<span class="s2">def </span><span class="s1">point_collision(ves1</span><span class="s2">, </span><span class="s1">ves2</span><span class="s2">, </span><span class="s1">point</span><span class="s2">, </span><span class="s1">e=</span><span class="s4">1.</span><span class="s1">):</span>
+    <span class="s3">#1. get some variables</span>
+    <span class="s1">v1</span><span class="s2">, </span><span class="s1">v2 = ves1.physics.v</span><span class="s2">, </span><span class="s1">ves2.physics.v</span>
+    <span class="s1">dv = v1-v2</span>
+    <span class="s1">rP1 = point - ves1.physics.q+ves1.physics.cm</span>
+    <span class="s1">rP2 = point - ves2.physics.q+ves2.physics.cm</span>
+    <span class="s1">n = (rP2-rP1).normalize()</span>
+    <span class="s2">if </span><span class="s1">dv*n &gt;= </span><span class="s4">0</span><span class="s1">: </span><span class="s3">#then this is not a collision</span>
+        <span class="s2">return</span>
+    <span class="s1">rP1o = rP1.rotate(</span><span class="s4">90</span><span class="s1">)</span>
+    <span class="s1">rP2o = rP2.rotate(</span><span class="s4">90</span><span class="s1">)</span>
+    <span class="s1">I1</span><span class="s2">, </span><span class="s1">I2 = ves1.physics.I</span><span class="s2">, </span><span class="s1">ves2.physics.I</span>
+    <span class="s1">m1</span><span class="s2">, </span><span class="s1">m2 = ves1.physics.m</span><span class="s2">, </span><span class="s1">ves2.physics.m</span>
+    <span class="s1">w1</span><span class="s2">, </span><span class="s1">w2 = ves1.physics.w</span><span class="s2">, </span><span class="s1">ves2.physics.w</span>
+    <span class="s3">#2. compute impulse</span>
+    <span class="s1">K = n*n*(</span><span class="s4">1.</span><span class="s1">/m1 + </span><span class="s4">1.</span><span class="s1">/m2) + (rP1o*n)**</span><span class="s4">2</span><span class="s1">/I1 + (rP2o*n)**</span><span class="s4">2</span><span class="s1">/I2</span>
+    <span class="s1">j = -(</span><span class="s4">1.</span><span class="s1">+e)*dv*n / K</span>
+    <span class="s1">jn = j*n</span>
+    <span class="s3">#3. get quantiteis after collision</span>
+    <span class="s1">v1new = v1 + jn/m1</span>
+    <span class="s1">v2new = v2 - jn/m2</span>
+    <span class="s1">w1new = w1 + rP1o*jn / I1</span>
+    <span class="s1">w2new = w2 - rP2o*jn / I2</span>
+    <span class="s3">#4. attribute new quantities</span>
+    <span class="s1">ves1.physics.v = v1new</span>
+    <span class="s1">ves2.physics.v = v2new</span>
+    <span class="s1">ves1.physics.w = w1new</span>
+    <span class="s1">ves2.physics.w = w2new</span>
+
+<span class="s3">#functions for discrete bodies (not continuum)</span>
+<span class="s2">def </span><span class="s1">discrete_compute_center_mass(m</span><span class="s2">, </span><span class="s1">q):</span>
+    <span class="s0">&quot;&quot;&quot;m : list of masses 
+    q : list of corresponding positions. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">M = sum(m)</span>
+    <span class="s1">Rx = sum([m[i]*q[i][</span><span class="s4">0</span><span class="s1">] </span><span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(len(m))]) / M</span>
+    <span class="s1">Ry = sum([m[i]*q[i][</span><span class="s4">1</span><span class="s1">] </span><span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(len(m))]) / M</span>
+    <span class="s1">R = V(Rx</span><span class="s2">,</span><span class="s1">Ry)</span>
+    <span class="s2">return </span><span class="s1">R</span>
+
+<span class="s2">def </span><span class="s1">discrete_compute_I(m</span><span class="s2">, </span><span class="s1">q):</span>
+    <span class="s0">&quot;&quot;&quot;m : list of masses 
+    q : list of corresponding positions. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">return </span><span class="s1">sum([m[i]*q[i].length()**</span><span class="s4">2 </span><span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(len(m))])</span>
+
+<span class="s2">def </span><span class="s1">I_box(m</span><span class="s2">,</span><span class="s1">w</span><span class="s2">,</span><span class="s1">l):</span>
+    <span class="s0">&quot;&quot;&quot;Moment of a box with mass m, width w and length l.&quot;&quot;&quot;</span>
+    <span class="s2">return </span><span class="s1">m * (w**</span><span class="s4">2 </span><span class="s1">+ l**</span><span class="s4">2</span><span class="s1">) / </span><span class="s4">12</span>
+
+<span class="s2">class </span><span class="s1">RigidBody(object):</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">m=</span><span class="s4">1</span><span class="s2">, </span><span class="s1">cm=(</span><span class="s4">0</span><span class="s2">,</span><span class="s4">0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">I=</span><span class="s4">1</span><span class="s2">, </span><span class="s1">t=</span><span class="s4">0</span><span class="s2">, </span><span class="s1">q=(</span><span class="s4">0</span><span class="s2">,</span><span class="s4">0</span><span class="s1">)):</span>
+        <span class="s3">#translations:</span>
+        <span class="s1">self.m = m </span><span class="s3">#mass</span>
+        <span class="s1">self.q = V(q) </span><span class="s3">#position</span>
+        <span class="s1">self.v = V(</span><span class="s4">0</span><span class="s2">,</span><span class="s4">0</span><span class="s1">) </span><span class="s3">#velocity</span>
+        <span class="s1">self.f = V(</span><span class="s4">0</span><span class="s2">,</span><span class="s4">0</span><span class="s1">) </span><span class="s3">#external force</span>
+        <span class="s3">#rotations (z-axis only):</span>
+        <span class="s1">self.cm = V(cm) </span><span class="s3">#to be updated!</span>
+        <span class="s1">self.I = I </span><span class="s3"># ~rotational mass</span>
+        <span class="s1">self.t = t </span><span class="s3"># ~rotational position</span>
+        <span class="s1">self.w = </span><span class="s4">0 </span><span class="s3"># ~rotational velocity (dteta/dt)</span>
+        <span class="s1">self.tau = </span><span class="s4">0.</span><span class="s3"># torque~rotational external force</span>
+
+    <span class="s2">def </span><span class="s1">get_copy(self):</span>
+        <span class="s1">x = RigidBody(self.m</span><span class="s2">, </span><span class="s1">self.cm</span><span class="s2">, </span><span class="s1">self.I</span><span class="s2">, </span><span class="s1">self.t</span><span class="s2">, </span><span class="s1">self.q)</span>
+        <span class="s1">x.v = V(self.v)</span>
+        <span class="s1">x.f = V(self.f)</span>
+        <span class="s1">x.w = self.w</span>
+        <span class="s1">x.tau = self.tau</span>
+        <span class="s2">return </span><span class="s1">x</span>
+
+    <span class="s2">def </span><span class="s1">kinetic_translation_energy(self):</span>
+        <span class="s2">return </span><span class="s4">0.5 </span><span class="s1">* self.m * self.vnorm()**</span><span class="s4">2</span>
+
+    <span class="s2">def </span><span class="s1">kinetic_rotation_energy(self):</span>
+        <span class="s2">return </span><span class="s4">0.5 </span><span class="s1">* self.I * self.w**</span><span class="s4">2</span>
+
+    <span class="s2">def </span><span class="s1">decompose(self</span><span class="s2">, </span><span class="s1">vect</span><span class="s2">, </span><span class="s1">point):</span>
+        <span class="s0">&quot;&quot;&quot;Returns: 
+            a) A vector that is the the projection of &lt;vect&gt; along the line from 
+                &lt;point&gt; to the center of self; 
+            b) A scalar that is the torque. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">cm_to_point = self.cm - point</span>
+        <span class="s2">if </span><span class="s1">cm_to_point: </span><span class="s3">#rotation + translation</span>
+            <span class="s1">cm_unit = cm_to_point.normalize()</span>
+            <span class="s1">angle = cm_to_point.angle_to(vect)</span>
+            <span class="s1">angle_rad = math.radians(angle)</span>
+            <span class="s1">sin</span><span class="s2">, </span><span class="s1">cos = math.sin(angle_rad)</span><span class="s2">, </span><span class="s1">math.cos(angle_rad)</span>
+            <span class="s1">norm = vect.length()</span>
+            <span class="s2">return </span><span class="s1">cos*norm*cm_unit</span><span class="s2">, </span><span class="s1">sin*norm*cm_unit</span>
+        <span class="s2">else</span><span class="s1">: </span><span class="s3">#translation only</span>
+            <span class="s2">return </span><span class="s1">vect</span><span class="s2">, </span><span class="s4">0.</span>
+
+    <span class="s2">def </span><span class="s1">apply_force(self</span><span class="s2">, </span><span class="s1">force</span><span class="s2">, </span><span class="s1">point):</span>
+        <span class="s0">&quot;&quot;&quot;Returns: 
+            a) A vector that is the force for translations; 
+            b) A scalar that is the torque. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">cm_to_point = self.cm - point</span>
+        <span class="s2">if </span><span class="s1">cm_to_point: </span><span class="s3">#rotation + translation</span>
+            <span class="s1">cm_unit = cm_to_point.normalize()</span>
+            <span class="s1">angle = cm_to_point.angle_to(force)</span>
+            <span class="s1">angle_rad = math.radians(angle)</span>
+            <span class="s1">sin</span><span class="s2">, </span><span class="s1">cos = math.sin(angle_rad)</span><span class="s2">, </span><span class="s1">math.cos(angle_rad)</span>
+            <span class="s1">norm = force.length()</span>
+            <span class="s2">return </span><span class="s1">cos*norm*cm_unit</span><span class="s2">, </span><span class="s1">sin*norm*cm_to_point.length()</span>
+        <span class="s2">else</span><span class="s1">: </span><span class="s3">#translation only</span>
+            <span class="s2">return </span><span class="s1">force</span><span class="s2">, </span><span class="s4">0.</span>
+
+
+    <span class="s2">def </span><span class="s1">iterate(self</span><span class="s2">, </span><span class="s1">dt):</span>
+        <span class="s3">#translation</span>
+<span class="s3">##        print(self.f.length())</span>
+        <span class="s1">a = self.f / self.m</span>
+        <span class="s1">self.v += a*dt</span>
+        <span class="s1">self.q += self.v*dt</span>
+        <span class="s3">#rotation</span>
+        <span class="s1">a = self.tau / self.I</span>
+        <span class="s1">self.w += a*dt</span>
+        <span class="s1">self.t += self.w*dt</span>
+
+    <span class="s2">def </span><span class="s1">vnorm(self):</span>
+        <span class="s2">return </span><span class="s1">self.v.length()</span>
+
+    <span class="s2">def </span><span class="s1">get_cm_to_point(self</span><span class="s2">, </span><span class="s1">q):</span>
+        <span class="s2">return </span><span class="s1">self.cm - q</span>
+
+    <span class="s2">def </span><span class="s1">get_point(self</span><span class="s2">, </span><span class="s1">q0):</span>
+        <span class="s0">&quot;&quot;&quot;Returns the location of q0, taking into account the fact that the 
+        body rotate. q0 here is the location of the point for teta = 0. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">cm_to_point = self.get_cm_to_point(q0)</span>
+        <span class="s2">return </span><span class="s1">q0 + cm_to_point - cm_to_point.rotate(self.t)</span>
+
+</pre>
+</body>
+</html>

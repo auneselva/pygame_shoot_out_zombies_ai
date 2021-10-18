@@ -1,0 +1,873 @@
+<html>
+<head>
+<title>ui_element.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6897bb;}
+.s3 { color: #6a8759;}
+.s4 { color: #629755; font-style: italic;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+ui_element.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">sys </span><span class="s0">import </span><span class="s1">version_info</span>
+<span class="s0">import </span><span class="s1">warnings</span>
+<span class="s0">from </span><span class="s1">collections </span><span class="s0">import </span><span class="s1">namedtuple</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">List</span><span class="s0">, </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Tuple</span><span class="s0">, </span><span class="s1">Dict</span><span class="s0">, </span><span class="s1">Any</span><span class="s0">, </span><span class="s1">Callable</span><span class="s0">, </span><span class="s1">Set</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IUIElementInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IContainerLikeInterface</span><span class="s0">, </span><span class="s1">IUIManagerInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">render_white_text_alpha_black_bg</span><span class="s0">, </span><span class="s1">USE_PREMULTIPLIED_ALPHA</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">basic_blit</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.layered_gui_group </span><span class="s0">import </span><span class="s1">GUISprite</span>
+
+<span class="s0">if </span><span class="s1">version_info.minor &gt;= </span><span class="s2">7</span><span class="s1">:</span>
+    <span class="s1">ObjectID = namedtuple(</span><span class="s3">'ObjectID'</span><span class="s0">,</span>
+                          <span class="s1">field_names=(</span><span class="s3">'object_id'</span><span class="s0">, </span><span class="s3">'class_id'</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s1">defaults=(</span><span class="s0">None, None</span><span class="s1">))</span>
+<span class="s0">else</span><span class="s1">:</span>
+    <span class="s1">ObjectID = namedtuple(</span><span class="s3">'ObjectID'</span><span class="s0">, </span><span class="s1">field_names=(</span><span class="s3">'object_id'</span><span class="s0">, </span><span class="s3">'class_id'</span><span class="s1">))</span>
+
+
+<span class="s0">class </span><span class="s1">UIElement(GUISprite</span><span class="s0">, </span><span class="s1">IUIElementInterface):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    A base class for UI elements. You shouldn't create UI Element objects, instead all UI Element 
+    classes should derive from this class. Inherits from pygame.sprite.Sprite. 
+ 
+    :param relative_rect: A rectangle shape of the UI element, the position is relative to the 
+                          element's container. 
+    :param manager: The UIManager that manages this UIElement. 
+    :param container: A container that this element is contained in. 
+    :param starting_height: Used to record how many layers above it's container this element 
+                            should be. Normally 1. 
+    :param layer_thickness: Used to record how 'thick' this element is in layers. Normally 1. 
+    :param anchors: A dictionary describing what this element's relative_rect is relative to. 
+    :param visible: Whether the element is visible by default. Warning - container visibility may 
+                    override this. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">relative_rect: pygame.Rect</span><span class="s0">,</span>
+                 <span class="s1">manager: IUIManagerInterface</span><span class="s0">,</span>
+                 <span class="s1">container: Union[IContainerLikeInterface</span><span class="s0">, None</span><span class="s1">]</span><span class="s0">,</span>
+                 <span class="s1">*</span><span class="s0">,</span>
+                 <span class="s1">starting_height: int</span><span class="s0">,</span>
+                 <span class="s1">layer_thickness: int</span><span class="s0">,</span>
+                 <span class="s1">anchors: Dict[str</span><span class="s0">, </span><span class="s1">str] = </span><span class="s0">None,</span>
+                 <span class="s1">visible: int = </span><span class="s2">1</span><span class="s1">):</span>
+
+        <span class="s1">self._layer = </span><span class="s2">0</span>
+        <span class="s1">self.ui_manager = manager</span>
+
+        <span class="s1">super().__init__(self.ui_manager.get_sprite_group())</span>
+        <span class="s1">self.relative_rect = relative_rect.copy()</span>
+        <span class="s1">self.rect = self.relative_rect.copy()</span>
+        <span class="s1">self.ui_group = self.ui_manager.get_sprite_group()</span>
+        <span class="s1">self.ui_theme = self.ui_manager.get_theme()</span>
+
+        <span class="s1">self.object_ids = </span><span class="s0">None</span>
+        <span class="s1">self.class_ids = </span><span class="s0">None</span>
+        <span class="s1">self.element_ids = </span><span class="s0">None</span>
+        <span class="s1">self.combined_element_ids = </span><span class="s0">None</span>
+        <span class="s1">self.most_specific_combined_id = </span><span class="s3">'no_id'</span>
+
+        <span class="s1">self.anchors = anchors</span>
+        <span class="s0">if </span><span class="s1">self.anchors </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">self.anchors = {</span><span class="s3">'left'</span><span class="s1">: </span><span class="s3">'left'</span><span class="s0">,</span>
+                            <span class="s3">'top'</span><span class="s1">: </span><span class="s3">'top'</span><span class="s0">,</span>
+                            <span class="s3">'right'</span><span class="s1">: </span><span class="s3">'left'</span><span class="s0">,</span>
+                            <span class="s3">'bottom'</span><span class="s1">: </span><span class="s3">'top'</span><span class="s1">}</span>
+        <span class="s1">self.drawable_shape = </span><span class="s0">None  </span><span class="s5"># type: Union['DrawableShape', None]</span>
+        <span class="s1">self.image = </span><span class="s0">None</span>
+
+        <span class="s0">if </span><span class="s1">visible:</span>
+            <span class="s1">self.visible = </span><span class="s2">1</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.visible = </span><span class="s2">0</span>
+
+        <span class="s1">self.blendmode = pygame.BLEND_PREMULTIPLIED </span><span class="s0">if </span><span class="s1">USE_PREMULTIPLIED_ALPHA </span><span class="s0">else </span><span class="s2">0</span>
+        <span class="s5"># self.source_rect = None</span>
+
+        <span class="s1">self.relative_bottom_margin = </span><span class="s0">None</span>
+        <span class="s1">self.relative_right_margin = </span><span class="s0">None</span>
+
+        <span class="s1">self.layer_thickness = layer_thickness</span>
+        <span class="s1">self.starting_height = starting_height</span>
+
+        <span class="s1">self.is_enabled = </span><span class="s0">True</span>
+        <span class="s1">self.hovered = </span><span class="s0">False</span>
+        <span class="s1">self.is_focused = </span><span class="s0">False</span>
+        <span class="s1">self.hover_time = </span><span class="s2">0.0</span>
+
+        <span class="s1">self.pre_debug_image = </span><span class="s0">None</span>
+        <span class="s1">self._pre_clipped_image = </span><span class="s0">None</span>
+
+        <span class="s1">self._image_clip = </span><span class="s0">None</span>
+
+        <span class="s1">self._visual_debug_mode = </span><span class="s0">False</span>
+
+        <span class="s5"># Themed parameters</span>
+        <span class="s1">self.shadow_width = </span><span class="s0">None  </span><span class="s5"># type: Union[None, int]</span>
+        <span class="s1">self.border_width = </span><span class="s0">None  </span><span class="s5"># type: Union[None, int]</span>
+        <span class="s1">self.shape_corner_radius = </span><span class="s0">None  </span><span class="s5"># type: Union[None, int]</span>
+
+        <span class="s1">self._setup_container(container)</span>
+
+        <span class="s1">self.dirty = </span><span class="s2">1</span>
+        <span class="s1">self.visible = </span><span class="s2">0</span>
+        <span class="s1">self._setup_visibility(visible)</span>
+
+        <span class="s1">self._update_absolute_rect_position_from_anchors()</span>
+
+        <span class="s1">self._update_container_clip()</span>
+
+        <span class="s1">self._focus_set = {self}</span>
+
+    <span class="s0">def </span><span class="s1">_setup_visibility(self</span><span class="s0">, </span><span class="s1">visible):</span>
+        <span class="s0">if </span><span class="s1">visible:</span>
+            <span class="s1">self.visible = </span><span class="s2">1</span>
+
+        <span class="s0">if </span><span class="s1">self.ui_container </span><span class="s0">is not None and not </span><span class="s1">self.ui_container.visible:</span>
+            <span class="s1">self.visible = </span><span class="s2">0</span>
+
+    <span class="s0">def </span><span class="s1">_setup_container(self</span><span class="s0">, </span><span class="s1">container):</span>
+        <span class="s0">if </span><span class="s1">container </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.ui_manager.get_root_container() </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">container = self.ui_manager.get_root_container()</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">container = self</span>
+        <span class="s0">if </span><span class="s1">isinstance(container</span><span class="s0">, </span><span class="s1">IContainerLikeInterface):</span>
+            <span class="s1">self.ui_container = container.get_container()</span>
+        <span class="s0">if </span><span class="s1">self.ui_container </span><span class="s0">is not None and </span><span class="s1">self.ui_container </span><span class="s0">is not </span><span class="s1">self:</span>
+            <span class="s1">self.ui_container.add_element(self)</span>
+
+    <span class="s0">def </span><span class="s1">get_focus_set(self) -&gt; Set[</span><span class="s3">'UIElement'</span><span class="s1">]:</span>
+        <span class="s0">return </span><span class="s1">self._focus_set</span>
+
+    <span class="s0">def </span><span class="s1">set_focus_set(self</span><span class="s0">, </span><span class="s1">focus_set: Set[</span><span class="s3">'UIElement'</span><span class="s1">]):</span>
+        <span class="s0">if </span><span class="s1">self.ui_manager.get_focus_set() </span><span class="s0">is </span><span class="s1">self._focus_set:</span>
+            <span class="s1">self.ui_manager.set_focus_set(focus_set)</span>
+        <span class="s1">self._focus_set = focus_set</span>
+
+    <span class="s0">def </span><span class="s1">join_focus_sets(self</span><span class="s0">, </span><span class="s1">element: </span><span class="s3">'UIElement'</span><span class="s1">):</span>
+        <span class="s1">union_of_sets = set(self._focus_set | element.get_focus_set())</span>
+        <span class="s0">for </span><span class="s1">item </span><span class="s0">in </span><span class="s1">union_of_sets:</span>
+            <span class="s1">item.set_focus_set(union_of_sets)</span>
+
+    <span class="s0">def </span><span class="s1">remove_element_from_focus_set(self</span><span class="s0">, </span><span class="s1">element):</span>
+        <span class="s1">self._focus_set.discard(element)</span>
+
+    <span class="s0">def </span><span class="s1">get_relative_rect(self) -&gt; pygame.Rect:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        The relative positioning rect. 
+ 
+        :return: A pygame rect. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.relative_rect</span>
+
+    <span class="s0">def </span><span class="s1">get_abs_rect(self) -&gt; pygame.Rect:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        The absolute positioning rect. 
+ 
+        :return: A pygame rect. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.rect</span>
+
+    <span class="s0">def </span><span class="s1">get_element_ids(self) -&gt; List[str]:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        A list of all the element IDs in this element's theming/event hierarchy. 
+ 
+        :return: a list of strings, one ofr each element in the hierarchy. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.element_ids</span>
+
+    <span class="s0">def </span><span class="s1">_create_valid_ids(self</span><span class="s0">,</span>
+                          <span class="s1">container: Union[IContainerLikeInterface</span><span class="s0">, None</span><span class="s1">]</span><span class="s0">,</span>
+                          <span class="s1">parent_element: Union[</span><span class="s0">None, </span><span class="s3">'UIElement'</span><span class="s1">]</span><span class="s0">,</span>
+                          <span class="s1">object_id: Union[ObjectID</span><span class="s0">, </span><span class="s1">str</span><span class="s0">, None</span><span class="s1">]</span><span class="s0">,</span>
+                          <span class="s1">element_id: str):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Creates valid id lists for an element. It will assert if users supply object IDs that 
+        won't work such as those containing full stops. These ID lists are used by the theming 
+        system to identify what theming parameters to apply to which element. 
+ 
+        :param container: The container for this element. If parent is None the container will be 
+                          used as the parent. 
+        :param parent_element: Element that this element 'belongs to' in theming. Elements inherit 
+                               colours from parents. 
+        :param object_id: An optional set of IDs to help distinguish this element 
+                         from other elements. 
+        :param element_id: A string ID representing this element's class. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">parent_element </span><span class="s0">is None and </span><span class="s1">container </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">id_parent = container</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">id_parent = parent_element</span>
+
+        <span class="s0">if </span><span class="s1">isinstance(object_id</span><span class="s0">, </span><span class="s1">str):</span>
+            <span class="s0">if </span><span class="s1">object_id </span><span class="s0">is not None and </span><span class="s1">(</span><span class="s3">'.' </span><span class="s0">in </span><span class="s1">object_id </span><span class="s0">or </span><span class="s3">' ' </span><span class="s0">in </span><span class="s1">object_id):</span>
+                <span class="s0">raise </span><span class="s1">ValueError(</span><span class="s3">'Object ID cannot contain fullstops or spaces: ' </span><span class="s1">+ str(object_id))</span>
+            <span class="s1">obj_id = object_id</span>
+            <span class="s1">class_id = </span><span class="s0">None</span>
+        <span class="s0">elif </span><span class="s1">isinstance(object_id</span><span class="s0">, </span><span class="s1">ObjectID):</span>
+            <span class="s1">obj_id = object_id.object_id</span>
+            <span class="s1">class_id = object_id.class_id</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">obj_id = </span><span class="s0">None</span>
+            <span class="s1">class_id = </span><span class="s0">None</span>
+
+        <span class="s0">if </span><span class="s1">id_parent </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.element_ids = id_parent.element_ids.copy()</span>
+            <span class="s1">self.element_ids.append(element_id)</span>
+
+            <span class="s1">self.class_ids = id_parent.class_ids.copy()</span>
+            <span class="s1">self.class_ids.append(class_id)</span>
+
+            <span class="s1">self.object_ids = id_parent.object_ids.copy()</span>
+            <span class="s1">self.object_ids.append(obj_id)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.element_ids = [element_id]</span>
+            <span class="s1">self.class_ids = [class_id]</span>
+            <span class="s1">self.object_ids = [obj_id]</span>
+
+        <span class="s1">self.combined_element_ids = self.ui_manager.get_theme().build_all_combined_ids(</span>
+            <span class="s1">self.element_ids</span><span class="s0">,</span>
+            <span class="s1">self.class_ids</span><span class="s0">,</span>
+            <span class="s1">self.object_ids)</span>
+        <span class="s0">if </span><span class="s1">self.combined_element_ids </span><span class="s0">is not None and </span><span class="s1">len(self.combined_element_ids) &gt; </span><span class="s2">0</span><span class="s1">:</span>
+            <span class="s1">self.most_specific_combined_id = self.combined_element_ids[</span><span class="s2">0</span><span class="s1">]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.most_specific_combined_id = </span><span class="s3">'no_id'</span>
+
+    <span class="s0">def </span><span class="s1">_update_absolute_rect_position_from_anchors(self</span><span class="s0">, </span><span class="s1">recalculate_margins=</span><span class="s0">False</span><span class="s1">):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Called when our element's relative position has changed. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">new_top = </span><span class="s2">0</span>
+        <span class="s0">if </span><span class="s1">self.anchors[</span><span class="s3">'top'</span><span class="s1">] == </span><span class="s3">'top'</span><span class="s1">:</span>
+            <span class="s1">new_top = self.relative_rect.top + self.ui_container.get_rect().top</span>
+        <span class="s0">elif </span><span class="s1">self.anchors[</span><span class="s3">'top'</span><span class="s1">] == </span><span class="s3">'bottom'</span><span class="s1">:</span>
+            <span class="s1">new_top = self.relative_rect.top + self.ui_container.get_rect().bottom</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">warnings.warn(</span><span class="s3">'Unsupported anchor top target: ' </span><span class="s1">+ self.anchors[</span><span class="s3">'top'</span><span class="s1">])</span>
+
+        <span class="s1">new_bottom = </span><span class="s2">0</span>
+        <span class="s0">if </span><span class="s1">self.anchors[</span><span class="s3">'bottom'</span><span class="s1">] == </span><span class="s3">'top'</span><span class="s1">:</span>
+            <span class="s1">new_bottom = self.relative_rect.bottom + self.ui_container.get_rect().top</span>
+        <span class="s0">elif </span><span class="s1">self.anchors[</span><span class="s3">'bottom'</span><span class="s1">] == </span><span class="s3">'bottom'</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.relative_bottom_margin </span><span class="s0">is None or </span><span class="s1">recalculate_margins:</span>
+                <span class="s1">self.relative_bottom_margin = (self.ui_container.get_rect().bottom -</span>
+                                               <span class="s1">(new_top + self.relative_rect.height))</span>
+            <span class="s1">new_bottom = self.ui_container.get_rect().bottom - self.relative_bottom_margin</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">warnings.warn(</span><span class="s3">'Unsupported anchor bottom target: ' </span><span class="s1">+ self.anchors[</span><span class="s3">'bottom'</span><span class="s1">])</span>
+
+        <span class="s1">new_left = </span><span class="s2">0</span>
+        <span class="s0">if </span><span class="s1">self.anchors[</span><span class="s3">'left'</span><span class="s1">] == </span><span class="s3">'left'</span><span class="s1">:</span>
+            <span class="s1">new_left = self.relative_rect.left + self.ui_container.get_rect().left</span>
+        <span class="s0">elif </span><span class="s1">self.anchors[</span><span class="s3">'left'</span><span class="s1">] == </span><span class="s3">'right'</span><span class="s1">:</span>
+            <span class="s1">new_left = self.relative_rect.left + self.ui_container.get_rect().right</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">warnings.warn(</span><span class="s3">'Unsupported anchor top target: ' </span><span class="s1">+ self.anchors[</span><span class="s3">'left'</span><span class="s1">])</span>
+
+        <span class="s1">new_right = </span><span class="s2">0</span>
+        <span class="s0">if </span><span class="s1">self.anchors[</span><span class="s3">'right'</span><span class="s1">] == </span><span class="s3">'left'</span><span class="s1">:</span>
+            <span class="s1">new_right = self.relative_rect.right + self.ui_container.get_rect().left</span>
+        <span class="s0">elif </span><span class="s1">self.anchors[</span><span class="s3">'right'</span><span class="s1">] == </span><span class="s3">'right'</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.relative_right_margin </span><span class="s0">is None or </span><span class="s1">recalculate_margins:</span>
+                <span class="s1">self.relative_right_margin = (self.ui_container.get_rect().right -</span>
+                                              <span class="s1">(new_left + self.relative_rect.width))</span>
+            <span class="s1">new_right = self.ui_container.get_rect().right - self.relative_right_margin</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">warnings.warn(</span><span class="s3">'Unsupported anchor bottom target: ' </span><span class="s1">+ self.anchors[</span><span class="s3">'right'</span><span class="s1">])</span>
+
+        <span class="s1">self.rect.left = new_left</span>
+        <span class="s1">self.rect.top = new_top</span>
+        <span class="s1">new_height = new_bottom - new_top</span>
+        <span class="s1">new_width = new_right - new_left</span>
+        <span class="s0">if </span><span class="s1">(new_height != self.relative_rect.height) </span><span class="s0">or </span><span class="s1">(new_width != self.relative_rect.width):</span>
+            <span class="s1">self.set_dimensions((new_width</span><span class="s0">, </span><span class="s1">new_height))</span>
+
+    <span class="s0">def </span><span class="s1">_update_relative_rect_position_from_anchors(self</span><span class="s0">, </span><span class="s1">recalculate_margins=</span><span class="s0">False</span><span class="s1">):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Called when our element's absolute position has been forcibly changed. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s5"># This is a bit easier to calculate than getting the absolute position from the</span>
+        <span class="s5"># relative one, because the absolute position rectangle is always relative to the top</span>
+        <span class="s5"># left of the screen.</span>
+
+        <span class="s5"># Setting these to None means we are always recalculating the margins in here.</span>
+        <span class="s1">self.relative_bottom_margin = </span><span class="s0">None</span>
+        <span class="s1">self.relative_right_margin = </span><span class="s0">None</span>
+
+        <span class="s1">new_top = </span><span class="s2">0</span>
+        <span class="s0">if </span><span class="s1">self.anchors[</span><span class="s3">'top'</span><span class="s1">] == </span><span class="s3">'top'</span><span class="s1">:</span>
+            <span class="s1">new_top = self.rect.top - self.ui_container.get_rect().top</span>
+        <span class="s0">elif </span><span class="s1">self.anchors[</span><span class="s3">'top'</span><span class="s1">] == </span><span class="s3">'bottom'</span><span class="s1">:</span>
+            <span class="s1">new_top = self.rect.top - self.ui_container.get_rect().bottom</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">warnings.warn(</span><span class="s3">'Unsupported anchor top target: ' </span><span class="s1">+ self.anchors[</span><span class="s3">'top'</span><span class="s1">])</span>
+
+        <span class="s1">new_bottom = </span><span class="s2">0</span>
+        <span class="s0">if </span><span class="s1">self.anchors[</span><span class="s3">'bottom'</span><span class="s1">] == </span><span class="s3">'top'</span><span class="s1">:</span>
+            <span class="s1">new_bottom = self.rect.bottom - self.ui_container.get_rect().top</span>
+        <span class="s0">elif </span><span class="s1">self.anchors[</span><span class="s3">'bottom'</span><span class="s1">] == </span><span class="s3">'bottom'</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.relative_bottom_margin </span><span class="s0">is None or </span><span class="s1">recalculate_margins:</span>
+                <span class="s1">self.relative_bottom_margin = self.ui_container.get_rect().bottom - self.rect.bottom</span>
+            <span class="s1">new_bottom = self.rect.bottom - self.ui_container.get_rect().bottom</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">warnings.warn(</span><span class="s3">'Unsupported anchor bottom target: ' </span><span class="s1">+ self.anchors[</span><span class="s3">'bottom'</span><span class="s1">])</span>
+
+        <span class="s1">new_left = </span><span class="s2">0</span>
+        <span class="s0">if </span><span class="s1">self.anchors[</span><span class="s3">'left'</span><span class="s1">] == </span><span class="s3">'left'</span><span class="s1">:</span>
+            <span class="s1">new_left = self.rect.left - self.ui_container.get_rect().left</span>
+        <span class="s0">elif </span><span class="s1">self.anchors[</span><span class="s3">'left'</span><span class="s1">] == </span><span class="s3">'right'</span><span class="s1">:</span>
+            <span class="s1">new_left = self.rect.left - self.ui_container.get_rect().right</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">warnings.warn(</span><span class="s3">'Unsupported anchor top target: ' </span><span class="s1">+ self.anchors[</span><span class="s3">'left'</span><span class="s1">])</span>
+
+        <span class="s1">new_right = </span><span class="s2">0</span>
+        <span class="s0">if </span><span class="s1">self.anchors[</span><span class="s3">'right'</span><span class="s1">] == </span><span class="s3">'left'</span><span class="s1">:</span>
+            <span class="s1">new_right = self.rect.right - self.ui_container.get_rect().left</span>
+        <span class="s0">elif </span><span class="s1">self.anchors[</span><span class="s3">'right'</span><span class="s1">] == </span><span class="s3">'right'</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.relative_right_margin </span><span class="s0">is None or </span><span class="s1">recalculate_margins:</span>
+                <span class="s1">self.relative_right_margin = self.ui_container.get_rect().right - self.rect.right</span>
+            <span class="s1">new_right = self.rect.right - self.ui_container.get_rect().right</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">warnings.warn(</span><span class="s3">'Unsupported anchor bottom target: ' </span><span class="s1">+ self.anchors[</span><span class="s3">'right'</span><span class="s1">])</span>
+
+        <span class="s5"># set bottom and right first in case these are only anchors available</span>
+        <span class="s1">self.relative_rect.bottom = new_bottom</span>
+        <span class="s1">self.relative_rect.right = new_right</span>
+
+        <span class="s5"># set top and left last to give these priority, in most cases where all anchors are set</span>
+        <span class="s5"># we want relative_rect parameters to be correct for whatever the top &amp; left sides are</span>
+        <span class="s5"># anchored to. The data for the bottom and right in cases where left is anchored</span>
+        <span class="s5"># differently to right and/or top is anchored differently to bottom should be captured by</span>
+        <span class="s5"># the bottom and right margins.</span>
+        <span class="s1">self.relative_rect.left = new_left</span>
+        <span class="s1">self.relative_rect.top = new_top</span>
+
+    <span class="s0">def </span><span class="s1">_update_container_clip(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Creates a clipping rectangle for the element's image surface based on whether this 
+        element is inside its container, part-way in it, or all the way out of it. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.ui_container.get_image_clipping_rect() </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">container_clip_rect = self.ui_container.get_image_clipping_rect().copy()</span>
+            <span class="s1">container_clip_rect.left += self.ui_container.get_rect().left</span>
+            <span class="s1">container_clip_rect.top += self.ui_container.get_rect().top</span>
+            <span class="s0">if not </span><span class="s1">container_clip_rect.contains(self.rect):</span>
+                <span class="s1">left = max(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">container_clip_rect.left - self.rect.left)</span>
+                <span class="s1">right = max(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">self.rect.width - max(</span><span class="s2">0</span><span class="s0">,</span>
+                                                     <span class="s1">self.rect.right -</span>
+                                                     <span class="s1">container_clip_rect.right))</span>
+                <span class="s1">top = max(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">container_clip_rect.top - self.rect.top)</span>
+                <span class="s1">bottom = max(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">self.rect.height - max(</span><span class="s2">0</span><span class="s0">,</span>
+                                                       <span class="s1">self.rect.bottom -</span>
+                                                       <span class="s1">container_clip_rect.bottom))</span>
+                <span class="s1">clip_rect = pygame.Rect(left</span><span class="s0">, </span><span class="s1">top</span><span class="s0">,</span>
+                                        <span class="s1">max(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">right - left)</span><span class="s0">,</span>
+                                        <span class="s1">max(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">bottom - top))</span>
+                <span class="s1">self._clip_images_for_container(clip_rect)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self._restore_container_clipped_images()</span>
+
+        <span class="s0">elif not </span><span class="s1">self.ui_container.get_rect().contains(self.rect):</span>
+            <span class="s1">left = max(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">self.ui_container.get_rect().left - self.rect.left)</span>
+            <span class="s1">right = max(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">self.rect.width - max(</span><span class="s2">0</span><span class="s0">,</span>
+                                                 <span class="s1">self.rect.right -</span>
+                                                 <span class="s1">self.ui_container.get_rect().right))</span>
+            <span class="s1">top = max(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">self.ui_container.get_rect().top - self.rect.top)</span>
+            <span class="s1">bottom = max(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">self.rect.height - max(</span><span class="s2">0</span><span class="s0">,</span>
+                                                   <span class="s1">self.rect.bottom -</span>
+                                                   <span class="s1">self.ui_container.get_rect().bottom))</span>
+            <span class="s1">clip_rect = pygame.Rect(left</span><span class="s0">, </span><span class="s1">top</span><span class="s0">,</span>
+                                    <span class="s1">max(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">right - left)</span><span class="s0">,</span>
+                                    <span class="s1">max(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">bottom - top))</span>
+            <span class="s1">self._clip_images_for_container(clip_rect)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self._restore_container_clipped_images()</span>
+
+    <span class="s0">def </span><span class="s1">update_containing_rect_position(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Updates the position of this element based on the position of it's container. Usually 
+        called when the container has moved. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self._update_absolute_rect_position_from_anchors()</span>
+
+        <span class="s0">if </span><span class="s1">self.drawable_shape </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape.set_position(self.rect.topleft)</span>
+
+        <span class="s1">self._update_container_clip()</span>
+
+    <span class="s0">def </span><span class="s1">set_relative_position(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                                    <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                                    <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Method to directly set the relative rect position of an element. 
+ 
+        :param position: The new position to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.relative_rect.x = int(position[</span><span class="s2">0</span><span class="s1">])</span>
+        <span class="s1">self.relative_rect.y = int(position[</span><span class="s2">1</span><span class="s1">])</span>
+
+        <span class="s1">self._update_absolute_rect_position_from_anchors(recalculate_margins=</span><span class="s0">True</span><span class="s1">)</span>
+
+        <span class="s0">if </span><span class="s1">self.drawable_shape </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape.set_position(self.rect.topleft)</span>
+
+        <span class="s1">self._update_container_clip()</span>
+
+    <span class="s0">def </span><span class="s1">set_position(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                           <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                           <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Method to directly set the absolute screen rect position of an element. 
+ 
+        :param position: The new position to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.rect.x = int(position[</span><span class="s2">0</span><span class="s1">])</span>
+        <span class="s1">self.rect.y = int(position[</span><span class="s2">1</span><span class="s1">])</span>
+        <span class="s1">self._update_relative_rect_position_from_anchors(recalculate_margins=</span><span class="s0">True</span><span class="s1">)</span>
+
+        <span class="s0">if </span><span class="s1">self.drawable_shape </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape.set_position(self.rect.topleft)</span>
+        <span class="s1">self._update_container_clip()</span>
+
+    <span class="s0">def </span><span class="s1">set_dimensions(self</span><span class="s0">, </span><span class="s1">dimensions: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Method to directly set the dimensions of an element. 
+ 
+        NOTE: Using this on elements inside containers with non-default anchoring arrangements 
+        may make a mess of them. 
+ 
+        :param dimensions: The new dimensions to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.relative_rect.width = int(dimensions[</span><span class="s2">0</span><span class="s1">])</span>
+        <span class="s1">self.relative_rect.height = int(dimensions[</span><span class="s2">1</span><span class="s1">])</span>
+        <span class="s1">self.rect.size = self.relative_rect.size</span>
+
+        <span class="s0">if </span><span class="s1">dimensions[</span><span class="s2">0</span><span class="s1">] &gt;= </span><span class="s2">0 </span><span class="s0">and </span><span class="s1">dimensions[</span><span class="s2">1</span><span class="s1">] &gt;= </span><span class="s2">0</span><span class="s1">:</span>
+            <span class="s1">self._update_absolute_rect_position_from_anchors(recalculate_margins=</span><span class="s0">True</span><span class="s1">)</span>
+
+            <span class="s0">if </span><span class="s1">self.drawable_shape </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">self.drawable_shape.set_dimensions(self.relative_rect.size)</span>
+                <span class="s5"># needed to stop resizing 'lag'</span>
+                <span class="s1">self.set_image(self.drawable_shape.get_fresh_surface())</span>
+
+            <span class="s1">self._update_container_clip()</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Updates this element's drawable shape, if it has one. 
+ 
+        :param time_delta: The time passed between frames, measured in seconds. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.alive() </span><span class="s0">and </span><span class="s1">self.drawable_shape </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape.update(time_delta)</span>
+            <span class="s0">if </span><span class="s1">self.drawable_shape.has_fresh_surface():</span>
+                <span class="s1">self.on_fresh_drawable_shape_ready()</span>
+
+    <span class="s0">def </span><span class="s1">change_layer(self</span><span class="s0">, </span><span class="s1">new_layer: int):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Changes the layer this element is on. 
+ 
+        :param new_layer: The layer to change this element to. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">new_layer != self._layer:</span>
+            <span class="s1">self.ui_group.change_layer(self</span><span class="s0">, </span><span class="s1">new_layer)</span>
+            <span class="s1">self._layer = new_layer</span>
+
+    <span class="s0">def </span><span class="s1">kill(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Overriding regular sprite kill() method to remove the element from it's container. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.ui_container.remove_element(self)</span>
+        <span class="s1">self.remove_element_from_focus_set(self)</span>
+        <span class="s1">super().kill()</span>
+
+    <span class="s0">def </span><span class="s1">check_hover(self</span><span class="s0">, </span><span class="s1">time_delta: float</span><span class="s0">, </span><span class="s1">hovered_higher_element: bool) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        A method that helps us to determine which, if any, UI Element is currently being hovered 
+        by the mouse. 
+ 
+        :param time_delta: A float, the time in seconds between the last call to this function 
+                           and now (roughly). 
+        :param hovered_higher_element: A boolean, representing whether we have already hovered a 
+                                       'higher' element. 
+ 
+        :return bool: A boolean that is true if we have hovered a UI element, either just now or 
+                      before this method. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.alive() </span><span class="s0">and </span><span class="s1">self.can_hover():</span>
+            <span class="s1">mouse_x</span><span class="s0">, </span><span class="s1">mouse_y = self.ui_manager.get_mouse_position()</span>
+            <span class="s1">mouse_pos = pygame.math.Vector2(mouse_x</span><span class="s0">, </span><span class="s1">mouse_y)</span>
+
+            <span class="s0">if </span><span class="s1">(self.is_enabled </span><span class="s0">and</span>
+                    <span class="s1">self.hover_point(mouse_x</span><span class="s0">, </span><span class="s1">mouse_y) </span><span class="s0">and</span>
+                    <span class="s0">not </span><span class="s1">hovered_higher_element):</span>
+                <span class="s0">if not </span><span class="s1">self.hovered:</span>
+                    <span class="s1">self.hovered = </span><span class="s0">True</span>
+                    <span class="s1">self.on_hovered()</span>
+
+                <span class="s1">hovered_higher_element = </span><span class="s0">True</span>
+                <span class="s1">self.while_hovering(time_delta</span><span class="s0">, </span><span class="s1">mouse_pos)</span>
+
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s0">if </span><span class="s1">self.hovered:</span>
+                    <span class="s1">self.hovered = </span><span class="s0">False</span>
+                    <span class="s1">self.on_unhovered()</span>
+        <span class="s0">elif </span><span class="s1">self.hovered:</span>
+            <span class="s1">self.hovered = </span><span class="s0">False</span>
+        <span class="s0">return </span><span class="s1">hovered_higher_element</span>
+
+    <span class="s0">def </span><span class="s1">on_fresh_drawable_shape_ready(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Called when our drawable shape has finished rebuilding the active surface. This is needed 
+        because sometimes we defer rebuilding until a more advantageous (read quieter) moment. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.set_image(self.drawable_shape.get_fresh_surface())</span>
+
+    <span class="s0">def </span><span class="s1">on_hovered(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        A stub to override. Called when this UI element first enters the 'hovered' state. 
+        &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">on_unhovered(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        A stub to override. Called when this UI element leaves the 'hovered' state. 
+        &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">while_hovering(self</span><span class="s0">, </span><span class="s1">time_delta: float</span><span class="s0">, </span><span class="s1">mouse_pos: pygame.math.Vector2):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        A stub method to override. Called when this UI element is currently hovered. 
+ 
+        :param time_delta: A float, the time in seconds between the last call to this function 
+                           and now (roughly). 
+        :param mouse_pos: The current position of the mouse as 2D Vector. 
+ 
+        &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">can_hover(self) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        A stub method to override. Called to test if this method can be hovered. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.alive()</span>
+
+    <span class="s0">def </span><span class="s1">hover_point(self</span><span class="s0">, </span><span class="s1">hover_x: float</span><span class="s0">, </span><span class="s1">hover_y: float) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Test if a given point counts as 'hovering' this UI element. Normally that is a 
+        straightforward matter of seeing if a point is inside the rectangle. Occasionally it 
+        will also check if we are in a wider zone around a UI element once it is already active, 
+        this makes it easier to move scroll bars and the like. 
+ 
+        :param hover_x: The x (horizontal) position of the point. 
+        :param hover_y: The y (vertical) position of the point. 
+ 
+        :return: Returns True if we are hovering this element. 
+ 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">container_clip_rect = self.ui_container.get_rect().copy()</span>
+        <span class="s0">if </span><span class="s1">self.ui_container.get_image_clipping_rect() </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">container_clip_rect.size = self.ui_container.get_image_clipping_rect().size</span>
+            <span class="s1">container_clip_rect.left += self.ui_container.get_image_clipping_rect().left</span>
+            <span class="s1">container_clip_rect.top += self.ui_container.get_image_clipping_rect().top</span>
+
+        <span class="s0">if </span><span class="s1">self.drawable_shape </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">(self.drawable_shape.collide_point((hover_x</span><span class="s0">, </span><span class="s1">hover_y)) </span><span class="s0">and</span>
+                    <span class="s1">bool(container_clip_rect.collidepoint(hover_x</span><span class="s0">, </span><span class="s1">hover_y)))</span>
+
+        <span class="s0">return </span><span class="s1">(bool(self.rect.collidepoint(hover_x</span><span class="s0">, </span><span class="s1">hover_y)) </span><span class="s0">and</span>
+                <span class="s1">bool(container_clip_rect.collidepoint(hover_x</span><span class="s0">, </span><span class="s1">hover_y)))</span>
+
+    <span class="s5"># pylint: disable=unused-argument,no-self-use</span>
+    <span class="s0">def </span><span class="s1">process_event(self</span><span class="s0">, </span><span class="s1">event: pygame.event.Event) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        A stub to override. Gives UI Elements access to pygame events. 
+ 
+        :param event: The event to process. 
+ 
+        :return: Should return True if this element makes use of this event. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">focus(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        A stub to override. Called when we focus this UI element. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.is_focused = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">unfocus(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        A stub to override. Called when we stop focusing this UI element. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.is_focused = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">rebuild_from_changed_theme_data(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        A stub to override when we want to rebuild from theme data. 
+        &quot;&quot;&quot;</span>
+        <span class="s5"># self.combined_element_ids = self.ui_theme.build_all_combined_ids(self.element_ids,</span>
+        <span class="s5">#                                                                  self.object_ids)</span>
+
+    <span class="s0">def </span><span class="s1">rebuild(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Takes care of rebuilding this element. Most derived elements are going to override this, 
+        and hopefully call the super() class method. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self._visual_debug_mode:</span>
+            <span class="s1">self.set_image(self.pre_debug_image)</span>
+            <span class="s1">self.pre_debug_image = </span><span class="s0">None</span>
+
+    <span class="s0">def </span><span class="s1">set_visual_debug_mode(self</span><span class="s0">, </span><span class="s1">activate_mode: bool):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Enables a debug mode for the element which displays layer information on top of it in 
+        a tiny font. 
+ 
+        :param activate_mode: True or False to enable or disable the mode. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">activate_mode:</span>
+            <span class="s1">default_font = self.ui_manager.get_theme().get_font_dictionary().get_default_font()</span>
+            <span class="s1">layer_text_render = render_white_text_alpha_black_bg(default_font</span><span class="s0">,</span>
+                                                                 <span class="s3">&quot;UI Layer: &quot; </span><span class="s1">+ str(self._layer))</span>
+
+            <span class="s0">if </span><span class="s1">self.image </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">self.pre_debug_image = self.image.copy()</span>
+                <span class="s5"># check if our surface is big enough to hold the debug info,</span>
+                <span class="s5"># if not make a new, bigger copy</span>
+                <span class="s1">make_new_larger_surface = </span><span class="s0">False</span>
+                <span class="s1">surf_width = self.image.get_width()</span>
+                <span class="s1">surf_height = self.image.get_height()</span>
+                <span class="s0">if </span><span class="s1">self.image.get_width() &lt; layer_text_render.get_width():</span>
+                    <span class="s1">make_new_larger_surface = </span><span class="s0">True</span>
+                    <span class="s1">surf_width = layer_text_render.get_width()</span>
+                <span class="s0">if </span><span class="s1">self.image.get_height() &lt; layer_text_render.get_height():</span>
+                    <span class="s1">make_new_larger_surface = </span><span class="s0">True</span>
+                    <span class="s1">surf_height = layer_text_render.get_height()</span>
+
+                <span class="s0">if </span><span class="s1">make_new_larger_surface:</span>
+                    <span class="s1">new_surface = pygame.surface.Surface((surf_width</span><span class="s0">, </span><span class="s1">surf_height)</span><span class="s0">,</span>
+                                                         <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                         <span class="s1">depth=</span><span class="s2">32</span><span class="s1">)</span>
+                    <span class="s1">basic_blit(new_surface</span><span class="s0">, </span><span class="s1">self.image</span><span class="s0">, </span><span class="s1">(</span><span class="s2">0</span><span class="s0">, </span><span class="s2">0</span><span class="s1">))</span>
+                    <span class="s1">self.set_image(new_surface)</span>
+                <span class="s1">basic_blit(self.image</span><span class="s0">, </span><span class="s1">layer_text_render</span><span class="s0">, </span><span class="s1">(</span><span class="s2">0</span><span class="s0">, </span><span class="s2">0</span><span class="s1">))</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.set_image(layer_text_render)</span>
+            <span class="s1">self._visual_debug_mode = </span><span class="s0">True</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.rebuild()</span>
+            <span class="s1">self._visual_debug_mode = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">_clip_images_for_container(self</span><span class="s0">, </span><span class="s1">clip_rect: Union[pygame.Rect</span><span class="s0">, None</span><span class="s1">]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Set the current image clip based on the container. 
+ 
+        :param clip_rect: The clipping rectangle. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.set_image_clip(clip_rect)</span>
+
+    <span class="s0">def </span><span class="s1">_restore_container_clipped_images(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Clear the image clip. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.set_image_clip(</span><span class="s0">None</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">set_image_clip(self</span><span class="s0">, </span><span class="s1">rect: Union[pygame.Rect</span><span class="s0">, None</span><span class="s1">]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Sets a clipping rectangle on this element's image determining what portion of it will 
+        actually be displayed when this element is blitted to the screen. 
+ 
+        :param rect: A clipping rectangle, or None to clear the clip. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">rect </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">rect.width &lt; </span><span class="s2">0</span><span class="s1">:</span>
+                <span class="s1">rect.width = </span><span class="s2">0</span>
+            <span class="s0">if </span><span class="s1">rect.height &lt; </span><span class="s2">0</span><span class="s1">:</span>
+                <span class="s1">rect.height = </span><span class="s2">0</span>
+
+            <span class="s0">if </span><span class="s1">self._pre_clipped_image </span><span class="s0">is None and </span><span class="s1">self.image </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">self._pre_clipped_image = self.image.copy()</span>
+
+            <span class="s1">self._image_clip = rect</span>
+            <span class="s0">if </span><span class="s1">self.image </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">self.image.fill(pygame.Color(</span><span class="s3">'#00000000'</span><span class="s1">))</span>
+                <span class="s1">basic_blit(self.image</span><span class="s0">, </span><span class="s1">self._pre_clipped_image</span><span class="s0">, </span><span class="s1">self._image_clip</span><span class="s0">, </span><span class="s1">self._image_clip)</span>
+
+        <span class="s0">elif </span><span class="s1">self._image_clip </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self._image_clip = </span><span class="s0">None</span>
+            <span class="s1">self.set_image(self._pre_clipped_image)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self._image_clip = </span><span class="s0">None</span>
+
+    <span class="s0">def </span><span class="s1">get_image_clipping_rect(self) -&gt; Union[pygame.Rect</span><span class="s0">, None</span><span class="s1">]:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Obtain the current image clipping rect. 
+ 
+        :return: The current clipping rect. May be None. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self._image_clip</span>
+
+    <span class="s0">def </span><span class="s1">set_image(self</span><span class="s0">, </span><span class="s1">new_image: Union[pygame.surface.Surface</span><span class="s0">, None</span><span class="s1">]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Wraps setting the image variable of this element so that we also set the current image 
+        clip on the image at the same time. 
+ 
+        :param new_image: The new image to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.get_image_clipping_rect() </span><span class="s0">is not None and </span><span class="s1">new_image </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self._pre_clipped_image = new_image</span>
+            <span class="s0">if </span><span class="s1">(self.get_image_clipping_rect().width == </span><span class="s2">0 </span><span class="s0">and</span>
+                    <span class="s1">self.get_image_clipping_rect().height == </span><span class="s2">0</span><span class="s1">):</span>
+                <span class="s1">self.image = self.ui_manager.get_universal_empty_surface()</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.image = pygame.surface.Surface(self._pre_clipped_image.get_size()</span><span class="s0">,</span>
+                                                    <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                    <span class="s1">depth=</span><span class="s2">32</span><span class="s1">)</span>
+                <span class="s1">self.image.fill(pygame.Color(</span><span class="s3">'#00000000'</span><span class="s1">))</span>
+                <span class="s1">basic_blit(self.image</span><span class="s0">,</span>
+                           <span class="s1">self._pre_clipped_image</span><span class="s0">,</span>
+                           <span class="s1">self.get_image_clipping_rect()</span><span class="s0">,</span>
+                           <span class="s1">self.get_image_clipping_rect())</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.image = new_image.copy() </span><span class="s0">if </span><span class="s1">new_image </span><span class="s0">is not None else None</span>
+            <span class="s1">self._pre_clipped_image = </span><span class="s0">None</span>
+
+    <span class="s0">def </span><span class="s1">get_top_layer(self) -&gt; int:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Assuming we have correctly calculated the 'thickness' of it, this method will 
+        return the top of this element. 
+ 
+        :return int: An integer representing the current highest layer being used by this element. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self._layer + self.layer_thickness</span>
+
+    <span class="s0">def </span><span class="s1">get_starting_height(self) -&gt; int:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Get the starting layer height of this element. (i.e. the layer we start placing it on 
+        *above* it's container, it may use more layers above this layer) 
+ 
+        :return: an integer representing the starting layer height. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.starting_height</span>
+
+    <span class="s0">def </span><span class="s1">_check_shape_theming_changed(self</span><span class="s0">, </span><span class="s1">defaults: Dict[str</span><span class="s0">, </span><span class="s1">Any]) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Checks all the standard miscellaneous shape theming parameters. 
+ 
+        :param defaults: A dictionary of default values 
+        :return: True if any have changed. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">has_any_changed = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(</span><span class="s3">'border_width'</span><span class="s0">, </span><span class="s1">defaults[</span><span class="s3">'border_width'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">int):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(</span><span class="s3">'shadow_width'</span><span class="s0">, </span><span class="s1">defaults[</span><span class="s3">'shadow_width'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">int):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(</span><span class="s3">'shape_corner_radius'</span><span class="s0">,</span>
+                                               <span class="s1">defaults[</span><span class="s3">'shape_corner_radius'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">int):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">return </span><span class="s1">has_any_changed</span>
+
+    <span class="s0">def </span><span class="s1">_check_misc_theme_data_changed(self</span><span class="s0">,</span>
+                                       <span class="s1">attribute_name: str</span><span class="s0">,</span>
+                                       <span class="s1">default_value: Any</span><span class="s0">,</span>
+                                       <span class="s1">casting_func: Callable[[Any]</span><span class="s0">, </span><span class="s1">Any]</span><span class="s0">,</span>
+                                       <span class="s1">allowed_values: Union[List</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None</span><span class="s1">) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Checks if the value of a pieces of miscellaneous theming data has changed, and if it has, 
+        updates the corresponding attribute on the element and returns True. 
+ 
+        :param attribute_name: The name of the attribute. 
+        :param default_value: The default value for the attribute. 
+        :param casting_func: The function to cast to the type of the data. 
+ 
+        :return: True if the attribute has changed. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">has_changed = </span><span class="s0">False</span>
+        <span class="s1">attribute_value = default_value</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">attribute_value = casting_func(</span>
+                <span class="s1">self.ui_theme.get_misc_data(attribute_name</span><span class="s0">, </span><span class="s1">self.combined_element_ids))</span>
+        <span class="s0">except </span><span class="s1">(LookupError</span><span class="s0">, </span><span class="s1">ValueError):</span>
+            <span class="s1">attribute_value = default_value</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">allowed_values </span><span class="s0">and </span><span class="s1">attribute_value </span><span class="s0">not in </span><span class="s1">allowed_values:</span>
+                <span class="s1">attribute_value = default_value</span>
+
+            <span class="s0">if </span><span class="s1">attribute_value != getattr(self</span><span class="s0">, </span><span class="s1">attribute_name</span><span class="s0">, </span><span class="s1">default_value):</span>
+                <span class="s1">setattr(self</span><span class="s0">, </span><span class="s1">attribute_name</span><span class="s0">, </span><span class="s1">attribute_value)</span>
+                <span class="s1">has_changed = </span><span class="s0">True</span>
+        <span class="s0">return </span><span class="s1">has_changed</span>
+
+    <span class="s0">def </span><span class="s1">disable(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Disables elements so they are no longer interactive. 
+        This is just a default fallback implementation for elements that don't define their own. 
+ 
+        Elements should handle their own enabling and disabling. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.is_enabled = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">enable(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Enables elements so they are interactive again. 
+        This is just a default fallback implementation for elements that don't define their own. 
+ 
+        Elements should handle their own enabling and disabling. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.is_enabled = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">show(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Shows the widget, which means the widget will get drawn and will process events. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.visible = </span><span class="s2">1</span>
+
+    <span class="s0">def </span><span class="s1">hide(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Hides the widget, which means the widget will not get drawn and will not process events. 
+        Clear hovered state. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.visible = </span><span class="s2">0</span>
+
+        <span class="s1">self.hovered = </span><span class="s0">False</span>
+        <span class="s1">self.hover_time = </span><span class="s2">0.0</span>
+</pre>
+</body>
+</html>

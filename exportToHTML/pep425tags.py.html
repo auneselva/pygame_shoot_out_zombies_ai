@@ -1,0 +1,403 @@
+<html>
+<head>
+<title>pep425tags.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #808080;}
+.s4 { color: #6a8759;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+pep425tags.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Generate and work with PEP 425 Compatibility Tags.&quot;&quot;&quot;</span>
+<span class="s2">from </span><span class="s1">__future__ </span><span class="s2">import </span><span class="s1">absolute_import</span>
+
+<span class="s2">import </span><span class="s1">distutils.util</span>
+<span class="s2">import </span><span class="s1">logging</span>
+<span class="s2">import </span><span class="s1">platform</span>
+<span class="s2">import </span><span class="s1">re</span>
+<span class="s2">import </span><span class="s1">sys</span>
+<span class="s2">import </span><span class="s1">sysconfig</span>
+<span class="s2">import </span><span class="s1">warnings</span>
+<span class="s2">from </span><span class="s1">collections </span><span class="s2">import </span><span class="s1">OrderedDict</span>
+
+<span class="s2">import </span><span class="s1">pip._internal.utils.glibc</span>
+<span class="s2">from </span><span class="s1">pip._internal.utils.compat </span><span class="s2">import </span><span class="s1">get_extension_suffixes</span>
+<span class="s2">from </span><span class="s1">pip._internal.utils.typing </span><span class="s2">import </span><span class="s1">MYPY_CHECK_RUNNING</span>
+
+<span class="s2">if </span><span class="s1">MYPY_CHECK_RUNNING:</span>
+    <span class="s2">from </span><span class="s1">typing </span><span class="s2">import </span><span class="s1">(  </span><span class="s3"># noqa: F401</span>
+        <span class="s1">Tuple</span><span class="s2">, </span><span class="s1">Callable</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Union</span><span class="s2">, </span><span class="s1">Dict</span>
+    <span class="s1">)</span>
+
+    <span class="s1">Pep425Tag = Tuple[str</span><span class="s2">, </span><span class="s1">str</span><span class="s2">, </span><span class="s1">str]</span>
+
+<span class="s1">logger = logging.getLogger(__name__)</span>
+
+<span class="s1">_osx_arch_pat = re.compile(</span><span class="s4">r'(.+)_(\d+)_(\d+)_(.+)'</span><span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">get_config_var(var):</span>
+    <span class="s3"># type: (str) -&gt; Optional[str]</span>
+    <span class="s2">try</span><span class="s1">:</span>
+        <span class="s2">return </span><span class="s1">sysconfig.get_config_var(var)</span>
+    <span class="s2">except </span><span class="s1">IOError </span><span class="s2">as </span><span class="s1">e:  </span><span class="s3"># Issue #1074</span>
+        <span class="s1">warnings.warn(</span><span class="s4">&quot;{}&quot;</span><span class="s1">.format(e)</span><span class="s2">, </span><span class="s1">RuntimeWarning)</span>
+        <span class="s2">return None</span>
+
+
+<span class="s2">def </span><span class="s1">get_abbr_impl():</span>
+    <span class="s3"># type: () -&gt; str</span>
+    <span class="s0">&quot;&quot;&quot;Return abbreviated implementation name.&quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">hasattr(sys</span><span class="s2">, </span><span class="s4">'pypy_version_info'</span><span class="s1">):</span>
+        <span class="s1">pyimpl = </span><span class="s4">'pp'</span>
+    <span class="s2">elif </span><span class="s1">sys.platform.startswith(</span><span class="s4">'java'</span><span class="s1">):</span>
+        <span class="s1">pyimpl = </span><span class="s4">'jy'</span>
+    <span class="s2">elif </span><span class="s1">sys.platform == </span><span class="s4">'cli'</span><span class="s1">:</span>
+        <span class="s1">pyimpl = </span><span class="s4">'ip'</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s1">pyimpl = </span><span class="s4">'cp'</span>
+    <span class="s2">return </span><span class="s1">pyimpl</span>
+
+
+<span class="s2">def </span><span class="s1">get_impl_ver():</span>
+    <span class="s3"># type: () -&gt; str</span>
+    <span class="s0">&quot;&quot;&quot;Return implementation version.&quot;&quot;&quot;</span>
+    <span class="s1">impl_ver = get_config_var(</span><span class="s4">&quot;py_version_nodot&quot;</span><span class="s1">)</span>
+    <span class="s2">if not </span><span class="s1">impl_ver </span><span class="s2">or </span><span class="s1">get_abbr_impl() == </span><span class="s4">'pp'</span><span class="s1">:</span>
+        <span class="s1">impl_ver = </span><span class="s4">''</span><span class="s1">.join(map(str</span><span class="s2">, </span><span class="s1">get_impl_version_info()))</span>
+    <span class="s2">return </span><span class="s1">impl_ver</span>
+
+
+<span class="s2">def </span><span class="s1">get_impl_version_info():</span>
+    <span class="s3"># type: () -&gt; Tuple[int, ...]</span>
+    <span class="s0">&quot;&quot;&quot;Return sys.version_info-like tuple for use in decrementing the minor 
+    version.&quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">get_abbr_impl() == </span><span class="s4">'pp'</span><span class="s1">:</span>
+        <span class="s3"># as per https://github.com/pypa/pip/issues/2882</span>
+        <span class="s3"># attrs exist only on pypy</span>
+        <span class="s2">return </span><span class="s1">(sys.version_info[</span><span class="s5">0</span><span class="s1">]</span><span class="s2">,</span>
+                <span class="s1">sys.pypy_version_info.major</span><span class="s2">,  </span><span class="s3"># type: ignore</span>
+                <span class="s1">sys.pypy_version_info.minor)  </span><span class="s3"># type: ignore</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s2">return </span><span class="s1">sys.version_info[</span><span class="s5">0</span><span class="s1">]</span><span class="s2">, </span><span class="s1">sys.version_info[</span><span class="s5">1</span><span class="s1">]</span>
+
+
+<span class="s2">def </span><span class="s1">get_impl_tag():</span>
+    <span class="s3"># type: () -&gt; str</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Returns the Tag for this specific implementation. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">return </span><span class="s4">&quot;{}{}&quot;</span><span class="s1">.format(get_abbr_impl()</span><span class="s2">, </span><span class="s1">get_impl_ver())</span>
+
+
+<span class="s2">def </span><span class="s1">get_flag(var</span><span class="s2">, </span><span class="s1">fallback</span><span class="s2">, </span><span class="s1">expected=</span><span class="s2">True, </span><span class="s1">warn=</span><span class="s2">True</span><span class="s1">):</span>
+    <span class="s3"># type: (str, Callable[..., bool], Union[bool, int], bool) -&gt; bool</span>
+    <span class="s0">&quot;&quot;&quot;Use a fallback method for determining SOABI flags if the needed config 
+    var is unset or unavailable.&quot;&quot;&quot;</span>
+    <span class="s1">val = get_config_var(var)</span>
+    <span class="s2">if </span><span class="s1">val </span><span class="s2">is None</span><span class="s1">:</span>
+        <span class="s2">if </span><span class="s1">warn:</span>
+            <span class="s1">logger.debug(</span><span class="s4">&quot;Config variable '%s' is unset, Python ABI tag may &quot;</span>
+                         <span class="s4">&quot;be incorrect&quot;</span><span class="s2">, </span><span class="s1">var)</span>
+        <span class="s2">return </span><span class="s1">fallback()</span>
+    <span class="s2">return </span><span class="s1">val == expected</span>
+
+
+<span class="s2">def </span><span class="s1">get_abi_tag():</span>
+    <span class="s3"># type: () -&gt; Optional[str]</span>
+    <span class="s0">&quot;&quot;&quot;Return the ABI tag based on SOABI (if available) or emulate SOABI 
+    (CPython 2, PyPy).&quot;&quot;&quot;</span>
+    <span class="s1">soabi = get_config_var(</span><span class="s4">'SOABI'</span><span class="s1">)</span>
+    <span class="s1">impl = get_abbr_impl()</span>
+    <span class="s2">if not </span><span class="s1">soabi </span><span class="s2">and </span><span class="s1">impl </span><span class="s2">in </span><span class="s1">{</span><span class="s4">'cp'</span><span class="s2">, </span><span class="s4">'pp'</span><span class="s1">} </span><span class="s2">and </span><span class="s1">hasattr(sys</span><span class="s2">, </span><span class="s4">'maxunicode'</span><span class="s1">):</span>
+        <span class="s1">d = </span><span class="s4">''</span>
+        <span class="s1">m = </span><span class="s4">''</span>
+        <span class="s1">u = </span><span class="s4">''</span>
+        <span class="s2">if </span><span class="s1">get_flag(</span><span class="s4">'Py_DEBUG'</span><span class="s2">,</span>
+                    <span class="s2">lambda</span><span class="s1">: hasattr(sys</span><span class="s2">, </span><span class="s4">'gettotalrefcount'</span><span class="s1">)</span><span class="s2">,</span>
+                    <span class="s1">warn=(impl == </span><span class="s4">'cp'</span><span class="s1">)):</span>
+            <span class="s1">d = </span><span class="s4">'d'</span>
+        <span class="s2">if </span><span class="s1">get_flag(</span><span class="s4">'WITH_PYMALLOC'</span><span class="s2">,</span>
+                    <span class="s2">lambda</span><span class="s1">: impl == </span><span class="s4">'cp'</span><span class="s2">,</span>
+                    <span class="s1">warn=(impl == </span><span class="s4">'cp'</span><span class="s1">)):</span>
+            <span class="s1">m = </span><span class="s4">'m'</span>
+        <span class="s2">if </span><span class="s1">get_flag(</span><span class="s4">'Py_UNICODE_SIZE'</span><span class="s2">,</span>
+                    <span class="s2">lambda</span><span class="s1">: sys.maxunicode == </span><span class="s5">0x10ffff</span><span class="s2">,</span>
+                    <span class="s1">expected=</span><span class="s5">4</span><span class="s2">,</span>
+                    <span class="s1">warn=(impl == </span><span class="s4">'cp' </span><span class="s2">and</span>
+                          <span class="s1">sys.version_info &lt; (</span><span class="s5">3</span><span class="s2">, </span><span class="s5">3</span><span class="s1">))) \</span>
+                <span class="s2">and </span><span class="s1">sys.version_info &lt; (</span><span class="s5">3</span><span class="s2">, </span><span class="s5">3</span><span class="s1">):</span>
+            <span class="s1">u = </span><span class="s4">'u'</span>
+        <span class="s1">abi = </span><span class="s4">'%s%s%s%s%s' </span><span class="s1">% (impl</span><span class="s2">, </span><span class="s1">get_impl_ver()</span><span class="s2">, </span><span class="s1">d</span><span class="s2">, </span><span class="s1">m</span><span class="s2">, </span><span class="s1">u)</span>
+    <span class="s2">elif </span><span class="s1">soabi </span><span class="s2">and </span><span class="s1">soabi.startswith(</span><span class="s4">'cpython-'</span><span class="s1">):</span>
+        <span class="s1">abi = </span><span class="s4">'cp' </span><span class="s1">+ soabi.split(</span><span class="s4">'-'</span><span class="s1">)[</span><span class="s5">1</span><span class="s1">]</span>
+    <span class="s2">elif </span><span class="s1">soabi:</span>
+        <span class="s1">abi = soabi.replace(</span><span class="s4">'.'</span><span class="s2">, </span><span class="s4">'_'</span><span class="s1">).replace(</span><span class="s4">'-'</span><span class="s2">, </span><span class="s4">'_'</span><span class="s1">)</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s1">abi = </span><span class="s2">None</span>
+    <span class="s2">return </span><span class="s1">abi</span>
+
+
+<span class="s2">def </span><span class="s1">_is_running_32bit():</span>
+    <span class="s3"># type: () -&gt; bool</span>
+    <span class="s2">return </span><span class="s1">sys.maxsize == </span><span class="s5">2147483647</span>
+
+
+<span class="s2">def </span><span class="s1">get_platform():</span>
+    <span class="s3"># type: () -&gt; str</span>
+    <span class="s0">&quot;&quot;&quot;Return our platform name 'win32', 'linux_x86_64'&quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">sys.platform == </span><span class="s4">'darwin'</span><span class="s1">:</span>
+        <span class="s3"># distutils.util.get_platform() returns the release based on the value</span>
+        <span class="s3"># of MACOSX_DEPLOYMENT_TARGET on which Python was built, which may</span>
+        <span class="s3"># be significantly older than the user's current machine.</span>
+        <span class="s1">release</span><span class="s2">, </span><span class="s1">_</span><span class="s2">, </span><span class="s1">machine = platform.mac_ver()</span>
+        <span class="s1">split_ver = release.split(</span><span class="s4">'.'</span><span class="s1">)</span>
+
+        <span class="s2">if </span><span class="s1">machine == </span><span class="s4">&quot;x86_64&quot; </span><span class="s2">and </span><span class="s1">_is_running_32bit():</span>
+            <span class="s1">machine = </span><span class="s4">&quot;i386&quot;</span>
+        <span class="s2">elif </span><span class="s1">machine == </span><span class="s4">&quot;ppc64&quot; </span><span class="s2">and </span><span class="s1">_is_running_32bit():</span>
+            <span class="s1">machine = </span><span class="s4">&quot;ppc&quot;</span>
+
+        <span class="s2">return </span><span class="s4">'macosx_{}_{}_{}'</span><span class="s1">.format(split_ver[</span><span class="s5">0</span><span class="s1">]</span><span class="s2">, </span><span class="s1">split_ver[</span><span class="s5">1</span><span class="s1">]</span><span class="s2">, </span><span class="s1">machine)</span>
+
+    <span class="s3"># XXX remove distutils dependency</span>
+    <span class="s1">result = distutils.util.get_platform().replace(</span><span class="s4">'.'</span><span class="s2">, </span><span class="s4">'_'</span><span class="s1">).replace(</span><span class="s4">'-'</span><span class="s2">, </span><span class="s4">'_'</span><span class="s1">)</span>
+    <span class="s2">if </span><span class="s1">result == </span><span class="s4">&quot;linux_x86_64&quot; </span><span class="s2">and </span><span class="s1">_is_running_32bit():</span>
+        <span class="s3"># 32 bit Python program (running on a 64 bit Linux): pip should only</span>
+        <span class="s3"># install and run 32 bit compiled extensions in that case.</span>
+        <span class="s1">result = </span><span class="s4">&quot;linux_i686&quot;</span>
+
+    <span class="s2">return </span><span class="s1">result</span>
+
+
+<span class="s2">def </span><span class="s1">is_manylinux1_compatible():</span>
+    <span class="s3"># type: () -&gt; bool</span>
+    <span class="s3"># Only Linux, and only x86-64 / i686</span>
+    <span class="s2">if </span><span class="s1">get_platform() </span><span class="s2">not in </span><span class="s1">{</span><span class="s4">&quot;linux_x86_64&quot;</span><span class="s2">, </span><span class="s4">&quot;linux_i686&quot;</span><span class="s1">}:</span>
+        <span class="s2">return False</span>
+
+    <span class="s3"># Check for presence of _manylinux module</span>
+    <span class="s2">try</span><span class="s1">:</span>
+        <span class="s2">import </span><span class="s1">_manylinux</span>
+        <span class="s2">return </span><span class="s1">bool(_manylinux.manylinux1_compatible)</span>
+    <span class="s2">except </span><span class="s1">(ImportError</span><span class="s2">, </span><span class="s1">AttributeError):</span>
+        <span class="s3"># Fall through to heuristic check below</span>
+        <span class="s2">pass</span>
+
+    <span class="s3"># Check glibc version. CentOS 5 uses glibc 2.5.</span>
+    <span class="s2">return </span><span class="s1">pip._internal.utils.glibc.have_compatible_glibc(</span><span class="s5">2</span><span class="s2">, </span><span class="s5">5</span><span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">is_manylinux2010_compatible():</span>
+    <span class="s3"># type: () -&gt; bool</span>
+    <span class="s3"># Only Linux, and only x86-64 / i686</span>
+    <span class="s2">if </span><span class="s1">get_platform() </span><span class="s2">not in </span><span class="s1">{</span><span class="s4">&quot;linux_x86_64&quot;</span><span class="s2">, </span><span class="s4">&quot;linux_i686&quot;</span><span class="s1">}:</span>
+        <span class="s2">return False</span>
+
+    <span class="s3"># Check for presence of _manylinux module</span>
+    <span class="s2">try</span><span class="s1">:</span>
+        <span class="s2">import </span><span class="s1">_manylinux</span>
+        <span class="s2">return </span><span class="s1">bool(_manylinux.manylinux2010_compatible)</span>
+    <span class="s2">except </span><span class="s1">(ImportError</span><span class="s2">, </span><span class="s1">AttributeError):</span>
+        <span class="s3"># Fall through to heuristic check below</span>
+        <span class="s2">pass</span>
+
+    <span class="s3"># Check glibc version. CentOS 6 uses glibc 2.12.</span>
+    <span class="s2">return </span><span class="s1">pip._internal.utils.glibc.have_compatible_glibc(</span><span class="s5">2</span><span class="s2">, </span><span class="s5">12</span><span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">get_darwin_arches(major</span><span class="s2">, </span><span class="s1">minor</span><span class="s2">, </span><span class="s1">machine):</span>
+    <span class="s3"># type: (int, int, str) -&gt; List[str]</span>
+    <span class="s0">&quot;&quot;&quot;Return a list of supported arches (including group arches) for 
+    the given major, minor and machine architecture of an macOS machine. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">arches = []</span>
+
+    <span class="s2">def </span><span class="s1">_supports_arch(major</span><span class="s2">, </span><span class="s1">minor</span><span class="s2">, </span><span class="s1">arch):</span>
+        <span class="s3"># type: (int, int, str) -&gt; bool</span>
+        <span class="s3"># Looking at the application support for macOS versions in the chart</span>
+        <span class="s3"># provided by https://en.wikipedia.org/wiki/OS_X#Versions it appears</span>
+        <span class="s3"># our timeline looks roughly like:</span>
+        <span class="s3">#</span>
+        <span class="s3"># 10.0 - Introduces ppc support.</span>
+        <span class="s3"># 10.4 - Introduces ppc64, i386, and x86_64 support, however the ppc64</span>
+        <span class="s3">#        and x86_64 support is CLI only, and cannot be used for GUI</span>
+        <span class="s3">#        applications.</span>
+        <span class="s3"># 10.5 - Extends ppc64 and x86_64 support to cover GUI applications.</span>
+        <span class="s3"># 10.6 - Drops support for ppc64</span>
+        <span class="s3"># 10.7 - Drops support for ppc</span>
+        <span class="s3">#</span>
+        <span class="s3"># Given that we do not know if we're installing a CLI or a GUI</span>
+        <span class="s3"># application, we must be conservative and assume it might be a GUI</span>
+        <span class="s3"># application and behave as if ppc64 and x86_64 support did not occur</span>
+        <span class="s3"># until 10.5.</span>
+        <span class="s3">#</span>
+        <span class="s3"># Note: The above information is taken from the &quot;Application support&quot;</span>
+        <span class="s3">#       column in the chart not the &quot;Processor support&quot; since I believe</span>
+        <span class="s3">#       that we care about what instruction sets an application can use</span>
+        <span class="s3">#       not which processors the OS supports.</span>
+        <span class="s2">if </span><span class="s1">arch == </span><span class="s4">'ppc'</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s1">(major</span><span class="s2">, </span><span class="s1">minor) &lt;= (</span><span class="s5">10</span><span class="s2">, </span><span class="s5">5</span><span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">arch == </span><span class="s4">'ppc64'</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s1">(major</span><span class="s2">, </span><span class="s1">minor) == (</span><span class="s5">10</span><span class="s2">, </span><span class="s5">5</span><span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">arch == </span><span class="s4">'i386'</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s1">(major</span><span class="s2">, </span><span class="s1">minor) &gt;= (</span><span class="s5">10</span><span class="s2">, </span><span class="s5">4</span><span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">arch == </span><span class="s4">'x86_64'</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s1">(major</span><span class="s2">, </span><span class="s1">minor) &gt;= (</span><span class="s5">10</span><span class="s2">, </span><span class="s5">5</span><span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">arch </span><span class="s2">in </span><span class="s1">groups:</span>
+            <span class="s2">for </span><span class="s1">garch </span><span class="s2">in </span><span class="s1">groups[arch]:</span>
+                <span class="s2">if </span><span class="s1">_supports_arch(major</span><span class="s2">, </span><span class="s1">minor</span><span class="s2">, </span><span class="s1">garch):</span>
+                    <span class="s2">return True</span>
+        <span class="s2">return False</span>
+
+    <span class="s1">groups = OrderedDict([</span>
+        <span class="s1">(</span><span class="s4">&quot;fat&quot;</span><span class="s2">, </span><span class="s1">(</span><span class="s4">&quot;i386&quot;</span><span class="s2">, </span><span class="s4">&quot;ppc&quot;</span><span class="s1">))</span><span class="s2">,</span>
+        <span class="s1">(</span><span class="s4">&quot;intel&quot;</span><span class="s2">, </span><span class="s1">(</span><span class="s4">&quot;x86_64&quot;</span><span class="s2">, </span><span class="s4">&quot;i386&quot;</span><span class="s1">))</span><span class="s2">,</span>
+        <span class="s1">(</span><span class="s4">&quot;fat64&quot;</span><span class="s2">, </span><span class="s1">(</span><span class="s4">&quot;x86_64&quot;</span><span class="s2">, </span><span class="s4">&quot;ppc64&quot;</span><span class="s1">))</span><span class="s2">,</span>
+        <span class="s1">(</span><span class="s4">&quot;fat32&quot;</span><span class="s2">, </span><span class="s1">(</span><span class="s4">&quot;x86_64&quot;</span><span class="s2">, </span><span class="s4">&quot;i386&quot;</span><span class="s2">, </span><span class="s4">&quot;ppc&quot;</span><span class="s1">))</span><span class="s2">,</span>
+    <span class="s1">])  </span><span class="s3"># type: Dict[str, Tuple[str, ...]]</span>
+
+    <span class="s2">if </span><span class="s1">_supports_arch(major</span><span class="s2">, </span><span class="s1">minor</span><span class="s2">, </span><span class="s1">machine):</span>
+        <span class="s1">arches.append(machine)</span>
+
+    <span class="s2">for </span><span class="s1">garch </span><span class="s2">in </span><span class="s1">groups:</span>
+        <span class="s2">if </span><span class="s1">machine </span><span class="s2">in </span><span class="s1">groups[garch] </span><span class="s2">and </span><span class="s1">_supports_arch(major</span><span class="s2">, </span><span class="s1">minor</span><span class="s2">, </span><span class="s1">garch):</span>
+            <span class="s1">arches.append(garch)</span>
+
+    <span class="s1">arches.append(</span><span class="s4">'universal'</span><span class="s1">)</span>
+
+    <span class="s2">return </span><span class="s1">arches</span>
+
+
+<span class="s2">def </span><span class="s1">get_all_minor_versions_as_strings(version_info):</span>
+    <span class="s3"># type: (Tuple[int, ...]) -&gt; List[str]</span>
+    <span class="s1">versions = []</span>
+    <span class="s1">major = version_info[:-</span><span class="s5">1</span><span class="s1">]</span>
+    <span class="s3"># Support all previous minor Python versions.</span>
+    <span class="s2">for </span><span class="s1">minor </span><span class="s2">in </span><span class="s1">range(version_info[-</span><span class="s5">1</span><span class="s1">]</span><span class="s2">, </span><span class="s1">-</span><span class="s5">1</span><span class="s2">, </span><span class="s1">-</span><span class="s5">1</span><span class="s1">):</span>
+        <span class="s1">versions.append(</span><span class="s4">''</span><span class="s1">.join(map(str</span><span class="s2">, </span><span class="s1">major + (minor</span><span class="s2">,</span><span class="s1">))))</span>
+    <span class="s2">return </span><span class="s1">versions</span>
+
+
+<span class="s2">def </span><span class="s1">get_supported(</span>
+    <span class="s1">versions=</span><span class="s2">None,  </span><span class="s3"># type: Optional[List[str]]</span>
+    <span class="s1">noarch=</span><span class="s2">False,  </span><span class="s3"># type: bool</span>
+    <span class="s1">platform=</span><span class="s2">None,  </span><span class="s3"># type: Optional[str]</span>
+    <span class="s1">impl=</span><span class="s2">None,  </span><span class="s3"># type: Optional[str]</span>
+    <span class="s1">abi=</span><span class="s2">None  </span><span class="s3"># type: Optional[str]</span>
+<span class="s1">):</span>
+    <span class="s3"># type: (...) -&gt; List[Pep425Tag]</span>
+    <span class="s0">&quot;&quot;&quot;Return a list of supported tags for each version specified in 
+    `versions`. 
+ 
+    :param versions: a list of string versions, of the form [&quot;33&quot;, &quot;32&quot;], 
+        or None. The first version will be assumed to support our ABI. 
+    :param platform: specify the exact platform you want valid 
+        tags for, or None. If None, use the local system platform. 
+    :param impl: specify the exact implementation you want valid 
+        tags for, or None. If None, use the local interpreter impl. 
+    :param abi: specify the exact abi you want valid 
+        tags for, or None. If None, use the local interpreter abi. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">supported = []</span>
+
+    <span class="s3"># Versions must be given with respect to the preference</span>
+    <span class="s2">if </span><span class="s1">versions </span><span class="s2">is None</span><span class="s1">:</span>
+        <span class="s1">version_info = get_impl_version_info()</span>
+        <span class="s1">versions = get_all_minor_versions_as_strings(version_info)</span>
+
+    <span class="s1">impl = impl </span><span class="s2">or </span><span class="s1">get_abbr_impl()</span>
+
+    <span class="s1">abis = []  </span><span class="s3"># type: List[str]</span>
+
+    <span class="s1">abi = abi </span><span class="s2">or </span><span class="s1">get_abi_tag()</span>
+    <span class="s2">if </span><span class="s1">abi:</span>
+        <span class="s1">abis[</span><span class="s5">0</span><span class="s1">:</span><span class="s5">0</span><span class="s1">] = [abi]</span>
+
+    <span class="s1">abi3s = set()</span>
+    <span class="s2">for </span><span class="s1">suffix </span><span class="s2">in </span><span class="s1">get_extension_suffixes():</span>
+        <span class="s2">if </span><span class="s1">suffix.startswith(</span><span class="s4">'.abi'</span><span class="s1">):</span>
+            <span class="s1">abi3s.add(suffix.split(</span><span class="s4">'.'</span><span class="s2">, </span><span class="s5">2</span><span class="s1">)[</span><span class="s5">1</span><span class="s1">])</span>
+
+    <span class="s1">abis.extend(sorted(list(abi3s)))</span>
+
+    <span class="s1">abis.append(</span><span class="s4">'none'</span><span class="s1">)</span>
+
+    <span class="s2">if not </span><span class="s1">noarch:</span>
+        <span class="s1">arch = platform </span><span class="s2">or </span><span class="s1">get_platform()</span>
+        <span class="s1">arch_prefix</span><span class="s2">, </span><span class="s1">arch_sep</span><span class="s2">, </span><span class="s1">arch_suffix = arch.partition(</span><span class="s4">'_'</span><span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">arch.startswith(</span><span class="s4">'macosx'</span><span class="s1">):</span>
+            <span class="s3"># support macosx-10.6-intel on macosx-10.9-x86_64</span>
+            <span class="s1">match = _osx_arch_pat.match(arch)</span>
+            <span class="s2">if </span><span class="s1">match:</span>
+                <span class="s1">name</span><span class="s2">, </span><span class="s1">major</span><span class="s2">, </span><span class="s1">minor</span><span class="s2">, </span><span class="s1">actual_arch = match.groups()</span>
+                <span class="s1">tpl = </span><span class="s4">'{}_{}_%i_%s'</span><span class="s1">.format(name</span><span class="s2">, </span><span class="s1">major)</span>
+                <span class="s1">arches = []</span>
+                <span class="s2">for </span><span class="s1">m </span><span class="s2">in </span><span class="s1">reversed(range(int(minor) + </span><span class="s5">1</span><span class="s1">)):</span>
+                    <span class="s2">for </span><span class="s1">a </span><span class="s2">in </span><span class="s1">get_darwin_arches(int(major)</span><span class="s2">, </span><span class="s1">m</span><span class="s2">, </span><span class="s1">actual_arch):</span>
+                        <span class="s1">arches.append(tpl % (m</span><span class="s2">, </span><span class="s1">a))</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s3"># arch pattern didn't match (?!)</span>
+                <span class="s1">arches = [arch]</span>
+        <span class="s2">elif </span><span class="s1">arch_prefix == </span><span class="s4">'manylinux2010'</span><span class="s1">:</span>
+            <span class="s3"># manylinux1 wheels run on most manylinux2010 systems with the</span>
+            <span class="s3"># exception of wheels depending on ncurses. PEP 571 states</span>
+            <span class="s3"># manylinux1 wheels should be considered manylinux2010 wheels:</span>
+            <span class="s3"># https://www.python.org/dev/peps/pep-0571/#backwards-compatibility-with-manylinux1-wheels</span>
+            <span class="s1">arches = [arch</span><span class="s2">, </span><span class="s4">'manylinux1' </span><span class="s1">+ arch_sep + arch_suffix]</span>
+        <span class="s2">elif </span><span class="s1">platform </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">arches = []</span>
+            <span class="s2">if </span><span class="s1">is_manylinux2010_compatible():</span>
+                <span class="s1">arches.append(</span><span class="s4">'manylinux2010' </span><span class="s1">+ arch_sep + arch_suffix)</span>
+            <span class="s2">if </span><span class="s1">is_manylinux1_compatible():</span>
+                <span class="s1">arches.append(</span><span class="s4">'manylinux1' </span><span class="s1">+ arch_sep + arch_suffix)</span>
+            <span class="s1">arches.append(arch)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">arches = [arch]</span>
+
+        <span class="s3"># Current version, current API (built specifically for our Python):</span>
+        <span class="s2">for </span><span class="s1">abi </span><span class="s2">in </span><span class="s1">abis:</span>
+            <span class="s2">for </span><span class="s1">arch </span><span class="s2">in </span><span class="s1">arches:</span>
+                <span class="s1">supported.append((</span><span class="s4">'%s%s' </span><span class="s1">% (impl</span><span class="s2">, </span><span class="s1">versions[</span><span class="s5">0</span><span class="s1">])</span><span class="s2">, </span><span class="s1">abi</span><span class="s2">, </span><span class="s1">arch))</span>
+
+        <span class="s3"># abi3 modules compatible with older version of Python</span>
+        <span class="s2">for </span><span class="s1">version </span><span class="s2">in </span><span class="s1">versions[</span><span class="s5">1</span><span class="s1">:]:</span>
+            <span class="s3"># abi3 was introduced in Python 3.2</span>
+            <span class="s2">if </span><span class="s1">version </span><span class="s2">in </span><span class="s1">{</span><span class="s4">'31'</span><span class="s2">, </span><span class="s4">'30'</span><span class="s1">}:</span>
+                <span class="s2">break</span>
+            <span class="s2">for </span><span class="s1">abi </span><span class="s2">in </span><span class="s1">abi3s:   </span><span class="s3"># empty set if not Python 3</span>
+                <span class="s2">for </span><span class="s1">arch </span><span class="s2">in </span><span class="s1">arches:</span>
+                    <span class="s1">supported.append((</span><span class="s4">&quot;%s%s&quot; </span><span class="s1">% (impl</span><span class="s2">, </span><span class="s1">version)</span><span class="s2">, </span><span class="s1">abi</span><span class="s2">, </span><span class="s1">arch))</span>
+
+        <span class="s3"># Has binaries, does not use the Python API:</span>
+        <span class="s2">for </span><span class="s1">arch </span><span class="s2">in </span><span class="s1">arches:</span>
+            <span class="s1">supported.append((</span><span class="s4">'py%s' </span><span class="s1">% (versions[</span><span class="s5">0</span><span class="s1">][</span><span class="s5">0</span><span class="s1">])</span><span class="s2">, </span><span class="s4">'none'</span><span class="s2">, </span><span class="s1">arch))</span>
+
+    <span class="s3"># No abi / arch, but requires our implementation:</span>
+    <span class="s1">supported.append((</span><span class="s4">'%s%s' </span><span class="s1">% (impl</span><span class="s2">, </span><span class="s1">versions[</span><span class="s5">0</span><span class="s1">])</span><span class="s2">, </span><span class="s4">'none'</span><span class="s2">, </span><span class="s4">'any'</span><span class="s1">))</span>
+    <span class="s3"># Tagged specifically as being cross-version compatible</span>
+    <span class="s3"># (with just the major version specified)</span>
+    <span class="s1">supported.append((</span><span class="s4">'%s%s' </span><span class="s1">% (impl</span><span class="s2">, </span><span class="s1">versions[</span><span class="s5">0</span><span class="s1">][</span><span class="s5">0</span><span class="s1">])</span><span class="s2">, </span><span class="s4">'none'</span><span class="s2">, </span><span class="s4">'any'</span><span class="s1">))</span>
+
+    <span class="s3"># No abi / arch, generic Python</span>
+    <span class="s2">for </span><span class="s1">i</span><span class="s2">, </span><span class="s1">version </span><span class="s2">in </span><span class="s1">enumerate(versions):</span>
+        <span class="s1">supported.append((</span><span class="s4">'py%s' </span><span class="s1">% (version</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">'none'</span><span class="s2">, </span><span class="s4">'any'</span><span class="s1">))</span>
+        <span class="s2">if </span><span class="s1">i == </span><span class="s5">0</span><span class="s1">:</span>
+            <span class="s1">supported.append((</span><span class="s4">'py%s' </span><span class="s1">% (version[</span><span class="s5">0</span><span class="s1">])</span><span class="s2">, </span><span class="s4">'none'</span><span class="s2">, </span><span class="s4">'any'</span><span class="s1">))</span>
+
+    <span class="s2">return </span><span class="s1">supported</span>
+
+
+<span class="s1">implementation_tag = get_impl_tag()</span>
+</pre>
+</body>
+</html>

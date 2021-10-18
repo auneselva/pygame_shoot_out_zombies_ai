@@ -1,0 +1,87 @@
+<html>
+<head>
+<title>mixer.h</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6a8759;}
+.s4 { color: #6897bb;}
+.s5 { color: #0f9795;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+mixer.h</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+    pygame - Python Game Library 
+    Copyright (C) 2000-2001  Pete Shinners 
+ 
+    This library is free software; you can redistribute it and/or 
+    modify it under the terms of the GNU Library General Public 
+    License as published by the Free Software Foundation; either 
+    version 2 of the License, or (at your option) any later version. 
+ 
+    This library is distributed in the hope that it will be useful, 
+    but WITHOUT ANY WARRANTY; without even the implied warranty of 
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+    Library General Public License for more details. 
+ 
+    You should have received a copy of the GNU Library General Public 
+    License along with this library; if not, write to the Free 
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+ 
+    Pete Shinners 
+    pete@shinners.org 
+*/</span>
+
+<span class="s2">#include </span><span class="s1">&lt;Python.h&gt;</span>
+<span class="s2">#include </span><span class="s1">&lt;SDL_mixer.h&gt;</span>
+<span class="s2">#include </span><span class="s1">&lt;structmember.h&gt;</span>
+
+
+<span class="s0">/* test mixer initializations */</span>
+<span class="s2">#define </span><span class="s1">MIXER_INIT_CHECK() \</span>
+    <span class="s2">if</span><span class="s1">(!SDL_WasInit(SDL_INIT_AUDIO)) \</span>
+        <span class="s2">return </span><span class="s1">RAISE(pgExc_SDLError, </span><span class="s3">&quot;mixer not initialized&quot;</span><span class="s1">)</span>
+
+
+<span class="s2">#define </span><span class="s1">PYGAMEAPI_MIXER_FIRSTSLOT </span><span class="s4">0</span>
+<span class="s2">#define </span><span class="s1">PYGAMEAPI_MIXER_NUMSLOTS </span><span class="s4">7</span>
+<span class="s2">typedef struct </span><span class="s1">{</span>
+  <span class="s1">PyObject_HEAD</span>
+  <span class="s1">Mix_Chunk *chunk;</span>
+  <span class="s1">Uint8 *mem;</span>
+  <span class="s1">PyObject *weakreflist;</span>
+<span class="s1">} pgSoundObject;</span>
+<span class="s2">typedef struct </span><span class="s1">{</span>
+  <span class="s1">PyObject_HEAD</span>
+  <span class="s2">int </span><span class="s1">chan;</span>
+<span class="s1">} pgChannelObject;</span>
+<span class="s2">#define </span><span class="s1">pgSound_AsChunk(x) (((pgSoundObject*)x)</span><span class="s5">-&gt;</span><span class="s1">chunk)</span>
+<span class="s2">#define </span><span class="s1">pgChannel_AsInt(x) (((pgChannelObject*)x)</span><span class="s5">-&gt;</span><span class="s1">chan)</span>
+
+<span class="s2">#ifndef </span><span class="s1">PYGAMEAPI_MIXER_INTERNAL</span>
+<span class="s2">#define </span><span class="s1">pgSound_Check(x) ((x)</span><span class="s5">-&gt;</span><span class="s1">ob_type == (PyTypeObject*)pgMIXER_C_API[</span><span class="s4">0</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgSound_Type (*(PyTypeObject*)pgMIXER_C_API[</span><span class="s4">0</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgSound_New (*(PyObject*(*)(Mix_Chunk*))pgMIXER_C_API[</span><span class="s4">1</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgSound_Play (*(PyObject*(*)(PyObject*, PyObject*))pgMIXER_C_API[</span><span class="s4">2</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgChannel_Check(x) ((x)</span><span class="s5">-&gt;</span><span class="s1">ob_type == (PyTypeObject*)pgMIXER_C_API[</span><span class="s4">3</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgChannel_Type (*(PyTypeObject*)pgMIXER_C_API[</span><span class="s4">3</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgChannel_New (*(PyObject*(*)(</span><span class="s2">int</span><span class="s1">))pgMIXER_C_API[</span><span class="s4">4</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgMixer_AutoInit (*(PyObject*(*)(PyObject*, PyObject*))pgMIXER_C_API[</span><span class="s4">5</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgMixer_AutoQuit (*(</span><span class="s2">void</span><span class="s1">(*)(</span><span class="s2">void</span><span class="s1">))pgMIXER_C_API[</span><span class="s4">6</span><span class="s1">])</span>
+
+<span class="s2">#define </span><span class="s1">import_pygame_mixer() \</span>
+    <span class="s1">_IMPORT_PYGAME_MODULE(mixer, MIXER, pgMIXER_C_API)</span>
+
+<span class="s2">static void</span><span class="s1">* pgMIXER_C_API[PYGAMEAPI_MIXER_NUMSLOTS] = {NULL};</span>
+<span class="s2">#endif</span>
+
+</pre>
+</body>
+</html>

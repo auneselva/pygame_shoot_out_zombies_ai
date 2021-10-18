@@ -1,0 +1,130 @@
+<html>
+<head>
+<title>paramsetterlauncher.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #629755; font-style: italic;}
+.s4 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+paramsetterlauncher.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">os.path </span><span class="s0">import </span><span class="s1">normpath</span><span class="s0">, </span><span class="s1">basename</span>
+
+<span class="s0">from </span><span class="s1">thorpy.elements.clickable </span><span class="s0">import </span><span class="s1">Clickable</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">constants</span><span class="s0">, </span><span class="s1">parameters</span><span class="s0">, </span><span class="s1">style</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.reaction </span><span class="s0">import </span><span class="s1">Reaction</span><span class="s0">, </span><span class="s1">ConstantReaction</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.launchers </span><span class="s0">import </span><span class="s1">launcher </span><span class="s0">as </span><span class="s1">launchmod</span>
+<span class="s0">from </span><span class="s1">thorpy.elements.paramsetter </span><span class="s0">import </span><span class="s1">ParamSetter</span>
+<span class="s0">from </span><span class="s1">thorpy.elements._wrappers </span><span class="s0">import </span><span class="s1">make_text</span>
+
+<span class="s1">DONE</span><span class="s0">, </span><span class="s1">CANCEL</span><span class="s0">, </span><span class="s1">CLICK_QUIT = launchmod.DONE</span><span class="s0">, </span><span class="s1">launchmod.CANCEL</span><span class="s0">, </span><span class="s1">launchmod.CLICK_QUIT</span>
+
+<span class="s0">def </span><span class="s1">_get_title(title):</span>
+    <span class="s0">if not </span><span class="s1">title:</span>
+        <span class="s0">return None</span>
+    <span class="s0">if </span><span class="s1">isinstance(title</span><span class="s0">, </span><span class="s1">str):</span>
+        <span class="s0">return </span><span class="s1">make_text(title</span><span class="s0">, </span><span class="s1">style.TITLE_FONT_SIZE</span><span class="s0">, </span><span class="s1">style.TITLE_FONT_COLOR)</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s1">title</span>
+
+<span class="s0">class </span><span class="s1">ParamSetterLauncher(Clickable):</span>
+
+    <span class="s1">@staticmethod</span>
+    <span class="s0">def </span><span class="s1">make(params</span><span class="s0">, </span><span class="s1">text=</span><span class="s2">&quot;&quot;</span><span class="s0">, </span><span class="s1">title=</span><span class="s0">None, </span><span class="s1">click_cancel=</span><span class="s0">False, </span><span class="s1">text_ok=</span><span class="s2">&quot;Ok&quot;</span><span class="s0">,</span>
+                <span class="s1">text_cancel=</span><span class="s2">&quot;Cancel&quot;</span><span class="s0">, </span><span class="s1">paramsetter_elements=</span><span class="s0">None,</span>
+                <span class="s1">size=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s0">if </span><span class="s1">size </span><span class="s0">is None</span><span class="s1">: size=style.MAKE_SIZE</span>
+        <span class="s1">psl = ParamSetterLauncher(params</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">title</span><span class="s0">, </span><span class="s1">click_cancel</span><span class="s0">, </span><span class="s1">text_ok</span><span class="s0">,</span>
+                                    <span class="s1">text_cancel</span><span class="s0">, </span><span class="s1">paramsetter_elements</span><span class="s0">, </span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">psl.finish()</span>
+        <span class="s1">psl._make_size(size)</span>
+        <span class="s0">return </span><span class="s1">psl</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">params</span><span class="s0">,</span>
+                 <span class="s1">text=</span><span class="s2">&quot;&quot;</span><span class="s0">,</span>
+                 <span class="s1">title=</span><span class="s0">None,</span>
+                 <span class="s1">click_cancel=</span><span class="s0">False,</span>
+                 <span class="s1">text_ok=</span><span class="s2">&quot;Ok&quot;</span><span class="s0">,</span>
+                 <span class="s1">text_cancel=</span><span class="s2">&quot;Cancel&quot;</span><span class="s0">,</span>
+                 <span class="s1">paramsetter_elements=</span><span class="s0">None,</span>
+                 <span class="s1">finish=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s3">&quot;&quot;&quot;params can either be a varset or a paramsetter. 
+        title can either be a string or an element.&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">isinstance(params</span><span class="s0">, </span><span class="s1">ParamSetter):</span>
+            <span class="s1">self.paramsetter = params</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.paramsetter = ParamSetter(params</span><span class="s0">, </span><span class="s1">elements=paramsetter_elements)</span>
+        <span class="s1">self.click_cancel = click_cancel</span>
+        <span class="s1">self.max_chars = float(</span><span class="s2">&quot;inf&quot;</span><span class="s1">)</span>
+        <span class="s1">self.cut_text = </span><span class="s2">&quot;..&quot;</span>
+        <span class="s1">self.launcher = </span><span class="s0">None</span>
+        <span class="s1">e_title = _get_title(title)</span>
+        <span class="s0">if </span><span class="s1">e_title:</span>
+            <span class="s1">elements = [e_title</span><span class="s0">, </span><span class="s1">self.paramsetter]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">elements = [self.paramsetter]</span>
+        <span class="s1">box = launchmod.make_ok_cancel_box(elements</span><span class="s0">, </span><span class="s1">text_ok</span><span class="s0">, </span><span class="s1">text_cancel)</span>
+        <span class="s1">self.launched = box</span>
+        <span class="s1">Clickable.__init__(self</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">finish:</span>
+            <span class="s1">self.finish()</span>
+
+    <span class="s0">def </span><span class="s1">finish(self):</span>
+        <span class="s1">Clickable.finish(self)</span>
+        <span class="s1">self._set_launcher()</span>
+
+    <span class="s0">def </span><span class="s1">_set_launcher(self):</span>
+        <span class="s1">launcher = launchmod.Launcher(self.launched</span><span class="s0">, </span><span class="s1">launching=self)</span>
+        <span class="s1">reac_enter = ConstantReaction(constants.THORPY_EVENT</span><span class="s0">,</span>
+                             <span class="s1">launcher.launch</span><span class="s0">,</span>
+                             <span class="s1">{</span><span class="s2">&quot;id&quot;</span><span class="s1">: constants.EVENT_UNPRESS</span><span class="s0">, </span><span class="s2">&quot;el&quot;</span><span class="s1">:self})</span>
+<span class="s4">##                             reac_name=&quot;reac_launch&quot;)</span>
+        <span class="s1">reac_done = ConstantReaction(constants.THORPY_EVENT</span><span class="s0">,</span>
+                             <span class="s1">self._unlaunch_done</span><span class="s0">,</span>
+                             <span class="s1">{</span><span class="s2">&quot;id&quot;</span><span class="s1">: constants.EVENT_DONE</span><span class="s0">, </span><span class="s2">&quot;el&quot;</span><span class="s1">:self.launched})</span>
+<span class="s4">##                             reac_name=&quot;reac_done&quot;)</span>
+        <span class="s1">reac_cancel = ConstantReaction(constants.THORPY_EVENT</span><span class="s0">,</span>
+                         <span class="s1">self._unlaunch_cancel</span><span class="s0">,</span>
+                         <span class="s1">{</span><span class="s2">&quot;id&quot;</span><span class="s1">: constants.EVENT_CANCEL</span><span class="s0">, </span><span class="s2">&quot;el&quot;</span><span class="s1">:self.launched})</span>
+<span class="s4">##                         reac_name=&quot;reac_cancel&quot;)</span>
+        <span class="s0">if </span><span class="s1">self.click_cancel:</span>
+            <span class="s1">reac_click_cancel = Reaction(parameters.MOUSEBUTTONUP</span><span class="s0">,</span>
+                                    <span class="s1">self._unlaunch_click_cancel</span><span class="s0">,</span>
+                                    <span class="s1">params={</span><span class="s2">&quot;launcher&quot;</span><span class="s1">:launcher})</span>
+<span class="s4">##                                    reac_name=&quot;reac_click_cancel&quot;)</span>
+            <span class="s1">self.launched.add_reaction(reac_click_cancel)</span>
+        <span class="s1">self.add_reaction(reac_enter)</span>
+        <span class="s1">self.launched.add_reaction(reac_done)</span>
+        <span class="s1">self.launched.add_reaction(reac_cancel)</span>
+        <span class="s1">self.launcher = launcher</span>
+
+    <span class="s0">def </span><span class="s1">_unlaunch_cancel(self</span><span class="s0">, </span><span class="s1">what=CANCEL):</span>
+        <span class="s1">self.paramsetter.reinit_handlers()</span>
+        <span class="s1">self.launcher.unlaunch(what)</span>
+
+    <span class="s0">def </span><span class="s1">_unlaunch_click_cancel(event</span><span class="s0">, </span><span class="s1">launcher):</span>
+        <span class="s0">if not </span><span class="s1">launcher.launched.collide(event.pos):</span>
+            <span class="s1">self._unlaunch_cancel(CLICK_QUIT)</span>
+
+    <span class="s0">def </span><span class="s1">_unlaunch_done(self):</span>
+        <span class="s1">self.paramsetter.save()</span>
+        <span class="s1">self.launcher.unlaunch(DONE)</span>
+
+<span class="s4">##        if self.browser._something_selected and self.show_select:</span>
+<span class="s4">##            text = normpath(self.browser._selected._inserted)</span>
+<span class="s4">##            text = basename(text)</span>
+<span class="s4">##            self._file_element.set_text(text,</span>
+<span class="s4">##                          size=(self.file_width, self.get_fus_rect().h),</span>
+<span class="s4">##                          cut=True)</span>
+</pre>
+</body>
+</html>

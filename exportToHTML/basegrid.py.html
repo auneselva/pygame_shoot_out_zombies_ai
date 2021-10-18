@@ -1,0 +1,185 @@
+<html>
+<head>
+<title>basegrid.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+basegrid.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Module providing several classes for handling grid objects&quot;&quot;&quot;</span>
+
+<span class="s2">class </span><span class="s1">__GridIterator__(object):</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">nx</span><span class="s2">, </span><span class="s1">ny</span><span class="s2">, </span><span class="s1">x</span><span class="s2">, </span><span class="s1">y):</span>
+        <span class="s1">self.x = x-</span><span class="s3">1</span>
+        <span class="s1">self.y = y</span>
+        <span class="s1">self.nx = nx</span>
+        <span class="s1">self.ny = ny</span>
+
+    <span class="s2">def </span><span class="s1">__next__(self):</span>
+        <span class="s2">if </span><span class="s1">self.x == self.nx-</span><span class="s3">1</span><span class="s1">:</span>
+            <span class="s1">self.x = </span><span class="s3">0</span>
+            <span class="s1">self.y += </span><span class="s3">1</span>
+            <span class="s2">if </span><span class="s1">self.y &gt; self.ny-</span><span class="s3">1</span><span class="s1">:</span>
+                <span class="s2">raise </span><span class="s1">StopIteration()</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s1">(self.x</span><span class="s2">, </span><span class="s1">self.y)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">self.x += </span><span class="s3">1</span>
+            <span class="s2">return </span><span class="s1">(self.x</span><span class="s2">, </span><span class="s1">self.y)</span>
+
+    <span class="s2">def </span><span class="s1">next(self): </span><span class="s4">#for python2 compatibility</span>
+        <span class="s2">return </span><span class="s1">self.__next__()</span>
+
+<span class="s2">class </span><span class="s1">BaseGrid(object):</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">nx</span><span class="s2">, </span><span class="s1">ny</span><span class="s2">, </span><span class="s1">value=</span><span class="s2">None, </span><span class="s1">periodicity=(</span><span class="s2">False,False</span><span class="s1">)):</span>
+        <span class="s1">self.nx = nx</span>
+        <span class="s1">self.ny = ny</span>
+        <span class="s1">self.cells = [[value </span><span class="s2">for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(ny)] </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(nx)]</span>
+        <span class="s1">self.default_value = value</span>
+        <span class="s1">self.periodicity = periodicity</span>
+        <span class="s1">self.min_nxy = min(self.nx</span><span class="s2">, </span><span class="s1">self.ny)</span>
+        <span class="s1">self.set_all = self.fill </span><span class="s4">#alias</span>
+
+    <span class="s2">def </span><span class="s1">copy(self):</span>
+        <span class="s1">grid = BaseGrid(self.nx</span><span class="s2">, </span><span class="s1">self.ny</span><span class="s2">, </span><span class="s1">self.periodicity)</span>
+        <span class="s2">for </span><span class="s1">x</span><span class="s2">,</span><span class="s1">y </span><span class="s2">in </span><span class="s1">self:</span>
+            <span class="s1">grid[x</span><span class="s2">,</span><span class="s1">y] = self[x</span><span class="s2">,</span><span class="s1">y]</span>
+        <span class="s2">return </span><span class="s1">grid</span>
+
+    <span class="s2">def </span><span class="s1">__len__(self):</span>
+        <span class="s0">&quot;&quot;&quot;Returns the number of cells contained on the grid.&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self.nx * self.ny</span>
+
+    <span class="s2">def </span><span class="s1">__getitem__(self</span><span class="s2">, </span><span class="s1">key):</span>
+        <span class="s1">x</span><span class="s2">,</span><span class="s1">y = key</span>
+        <span class="s2">if </span><span class="s1">self.periodicity[</span><span class="s3">0</span><span class="s1">]:</span>
+            <span class="s1">x %= self.nx</span>
+        <span class="s2">if </span><span class="s1">self.periodicity[</span><span class="s3">1</span><span class="s1">]:</span>
+            <span class="s1">y %= self.ny</span>
+        <span class="s2">return </span><span class="s1">self.cells[x][y]</span>
+
+    <span class="s2">def </span><span class="s1">__setitem__(self</span><span class="s2">, </span><span class="s1">key</span><span class="s2">, </span><span class="s1">value):</span>
+        <span class="s1">self.cells[key[</span><span class="s3">0</span><span class="s1">]][key[</span><span class="s3">1</span><span class="s1">]] = value</span>
+
+    <span class="s2">def </span><span class="s1">__iter__(self</span><span class="s2">, </span><span class="s1">x=</span><span class="s3">0</span><span class="s2">, </span><span class="s1">y=</span><span class="s3">0</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Iterate over coordinates.&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">__GridIterator__(self.nx</span><span class="s2">, </span><span class="s1">self.ny</span><span class="s2">, </span><span class="s1">x</span><span class="s2">, </span><span class="s1">y)</span>
+
+    <span class="s2">def </span><span class="s1">__repr__(self):</span>
+        <span class="s2">return </span><span class="s1">str(self.cells)</span>
+
+    <span class="s2">def </span><span class="s1">itercells(self):</span>
+        <span class="s0">&quot;&quot;&quot;Iterate over cell values&quot;&quot;&quot;</span>
+        <span class="s2">for </span><span class="s1">x</span><span class="s2">,</span><span class="s1">y </span><span class="s2">in </span><span class="s1">self:</span>
+            <span class="s2">yield </span><span class="s1">self[x</span><span class="s2">,</span><span class="s1">y]</span>
+
+    <span class="s2">def </span><span class="s1">iterline(self</span><span class="s2">, </span><span class="s1">y):</span>
+        <span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(self.nx):</span>
+            <span class="s2">yield </span><span class="s1">self[x</span><span class="s2">,</span><span class="s1">y]</span>
+
+    <span class="s2">def </span><span class="s1">itercolumn(self</span><span class="s2">, </span><span class="s1">x):</span>
+        <span class="s2">for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(self.ny):</span>
+            <span class="s2">yield </span><span class="s1">self[x</span><span class="s2">,</span><span class="s1">y]</span>
+
+
+    <span class="s2">def </span><span class="s1">iterdiag_up(self</span><span class="s2">, </span><span class="s1">x</span><span class="s2">, </span><span class="s1">y):</span>
+        <span class="s1">n = min(self.nx-x</span><span class="s2">, </span><span class="s1">self.ny-y) </span><span class="s4">#opti sans min?</span>
+<span class="s4">##        print(&quot;up&quot;, x, y, n)</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(n):</span>
+<span class="s4">##            print(self[x+i,y+i], x+i, y+i)</span>
+            <span class="s2">yield </span><span class="s1">self[x+i</span><span class="s2">,</span><span class="s1">y+i]</span>
+
+    <span class="s2">def </span><span class="s1">iterdiag_down(self</span><span class="s2">, </span><span class="s1">x</span><span class="s2">, </span><span class="s1">y):</span>
+        <span class="s1">n = min(self.nx-x</span><span class="s2">, </span><span class="s1">y+</span><span class="s3">1</span><span class="s1">) </span><span class="s4">#opti sans min?</span>
+<span class="s4">##        print(&quot;down&quot;, x, y, n)</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(n):</span>
+<span class="s4">##            print(self[x+i,y-i], x+i, y-i)</span>
+            <span class="s2">yield </span><span class="s1">self[x+i</span><span class="s2">,</span><span class="s1">y-i]</span>
+
+    <span class="s2">def </span><span class="s1">fill(self</span><span class="s2">, </span><span class="s1">value):</span>
+        <span class="s2">for </span><span class="s1">x</span><span class="s2">,</span><span class="s1">y </span><span class="s2">in </span><span class="s1">self:</span>
+            <span class="s1">self[x</span><span class="s2">,</span><span class="s1">y] = value</span>
+
+    <span class="s2">def </span><span class="s1">is_inside(self</span><span class="s2">, </span><span class="s1">coord):</span>
+        <span class="s0">&quot;&quot;&quot;returns True if &lt;coord&gt; is contained into the domain (not pixels!)&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">(</span><span class="s3">0 </span><span class="s1">&lt;= coord[</span><span class="s3">0</span><span class="s1">] &lt; self.nx) </span><span class="s2">and  </span><span class="s1">(</span><span class="s3">0 </span><span class="s1">&lt;= coord[</span><span class="s3">1</span><span class="s1">] &lt; self.ny)</span>
+
+    <span class="s2">def </span><span class="s1">shift_values_x(self</span><span class="s2">, </span><span class="s1">amount): </span><span class="s4">#todo: fill new cells (works only for |amount| = 1!!!</span>
+        <span class="s2">if </span><span class="s1">amount &gt; </span><span class="s3">0</span><span class="s1">: </span><span class="s4">#shift to the right, new column on the left</span>
+            <span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(self.nx-</span><span class="s3">1</span><span class="s2">,</span><span class="s1">amount-</span><span class="s3">1</span><span class="s2">,</span><span class="s1">-</span><span class="s3">1</span><span class="s1">):</span>
+                <span class="s2">for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(self.ny):</span>
+                    <span class="s1">self[x</span><span class="s2">,</span><span class="s1">y] = self[x-</span><span class="s3">1</span><span class="s2">,</span><span class="s1">y]</span>
+            <span class="s2">for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(self.ny): </span><span class="s4">#boucler!</span>
+                <span class="s1">self[</span><span class="s3">0</span><span class="s2">,</span><span class="s1">y] = self.default_value</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(self.nx+amount): </span><span class="s4">#amount is negative!</span>
+                <span class="s2">for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(self.ny):</span>
+                    <span class="s1">self[x</span><span class="s2">,</span><span class="s1">y] = self[x+</span><span class="s3">1</span><span class="s2">,</span><span class="s1">y]</span>
+            <span class="s2">for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(self.ny): </span><span class="s4">#boucler!</span>
+                <span class="s1">self[self.nx-</span><span class="s3">1</span><span class="s2">,</span><span class="s1">y] = self.default_value</span>
+
+    <span class="s2">def </span><span class="s1">shift_values_y(self</span><span class="s2">, </span><span class="s1">amount): </span><span class="s4">#todo: fill new cells (works only for |amount| = 1!!!</span>
+        <span class="s2">if </span><span class="s1">amount &gt; </span><span class="s3">0</span><span class="s1">: </span><span class="s4">#shift to the right, new column on the left</span>
+            <span class="s2">for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(self.ny-</span><span class="s3">1</span><span class="s2">,</span><span class="s1">amount-</span><span class="s3">1</span><span class="s2">,</span><span class="s1">-</span><span class="s3">1</span><span class="s1">):</span>
+                <span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(self.nx):</span>
+                    <span class="s1">self[x</span><span class="s2">,</span><span class="s1">y] = self[x</span><span class="s2">,</span><span class="s1">y-</span><span class="s3">1</span><span class="s1">]</span>
+            <span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(self.nx): </span><span class="s4">#boucler!</span>
+                <span class="s1">self[x</span><span class="s2">,</span><span class="s3">0</span><span class="s1">] = self.default_value</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(self.ny+amount): </span><span class="s4">#amount is negative!</span>
+                <span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(self.nx):</span>
+                    <span class="s1">self[x</span><span class="s2">,</span><span class="s1">y] = self[x</span><span class="s2">,</span><span class="s1">y+</span><span class="s3">1</span><span class="s1">]</span>
+            <span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(self.nx): </span><span class="s4">#boucler!</span>
+                <span class="s1">self[x</span><span class="s2">,</span><span class="s1">self.ny-</span><span class="s3">1</span><span class="s1">] = self.default_value</span>
+
+
+
+<span class="s2">class </span><span class="s1">DiagonalHelper(object):</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">grid):</span>
+        <span class="s1">self.grid = grid</span>
+        <span class="s1">self.diags_up = [[</span><span class="s2">None for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(grid.ny)] </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(grid.nx)]</span>
+        <span class="s1">self.diags_down = [[</span><span class="s2">None for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(grid.ny)] </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(grid.nx)]</span>
+        <span class="s1">self._build_diags()</span>
+
+    <span class="s2">def </span><span class="s1">_build_diags(self):</span>
+        <span class="s1">nx</span><span class="s2">, </span><span class="s1">ny = self.grid.nx</span><span class="s2">, </span><span class="s1">self.grid.ny</span>
+        <span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(nx): </span><span class="s4">#coming from up and down lines</span>
+            <span class="s1">n = min(nx-x</span><span class="s2">, </span><span class="s1">ny)</span>
+            <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(n):</span>
+                <span class="s1">self.diags_down[x+i][ny-</span><span class="s3">1</span><span class="s1">-i] = (x</span><span class="s2">, </span><span class="s1">ny-</span><span class="s3">1</span><span class="s2">, </span><span class="s1">n)</span>
+                <span class="s1">self.diags_up[x+i][</span><span class="s3">0</span><span class="s1">+i] = (x</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s1">n)</span>
+        <span class="s2">for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(ny-</span><span class="s3">1</span><span class="s1">): </span><span class="s4">#down coming from left column</span>
+            <span class="s1">n = min(y+</span><span class="s3">1</span><span class="s2">, </span><span class="s1">nx)</span>
+            <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(n):</span>
+                <span class="s1">self.diags_down[</span><span class="s3">0</span><span class="s1">+i][y-i] = (</span><span class="s3">0</span><span class="s2">, </span><span class="s1">y</span><span class="s2">, </span><span class="s1">n)</span>
+        <span class="s2">for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(</span><span class="s3">1</span><span class="s2">, </span><span class="s1">ny): </span><span class="s4">#up coming from left column</span>
+            <span class="s1">n = min(ny-y</span><span class="s2">, </span><span class="s1">nx)</span>
+            <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(n):</span>
+                <span class="s1">self.diags_up[</span><span class="s3">0</span><span class="s1">+i][y+i] = (</span><span class="s3">0</span><span class="s2">, </span><span class="s1">y</span><span class="s2">, </span><span class="s1">n)</span>
+
+    <span class="s2">def </span><span class="s1">iterdiag_up(self</span><span class="s2">, </span><span class="s1">x</span><span class="s2">, </span><span class="s1">y):</span>
+        <span class="s1">x</span><span class="s2">, </span><span class="s1">y</span><span class="s2">, </span><span class="s1">n = self.diags_up[x][y]</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(n):</span>
+            <span class="s2">yield </span><span class="s1">self.grid[x+i</span><span class="s2">,</span><span class="s1">y+i]</span>
+
+    <span class="s2">def </span><span class="s1">iterdiag_down(self</span><span class="s2">, </span><span class="s1">x</span><span class="s2">, </span><span class="s1">y):</span>
+        <span class="s1">x</span><span class="s2">, </span><span class="s1">y</span><span class="s2">, </span><span class="s1">n = self.diags_down[x][y]</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(n):</span>
+            <span class="s2">yield </span><span class="s1">self.grid[x+i</span><span class="s2">,</span><span class="s1">y-i]</span>
+
+</pre>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<html>
+<head>
+<title>_shifters.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_shifters.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">pygame.mouse </span><span class="s0">import </span><span class="s1">get_pressed</span>
+
+<span class="s0">from </span><span class="s1">thorpy.elements.clickable </span><span class="s0">import </span><span class="s1">Clickable</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.constants </span><span class="s0">import </span><span class="s1">STATE_PRESSED</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.reaction </span><span class="s0">import </span><span class="s1">Reaction</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">parameters</span><span class="s0">, </span><span class="s1">constants</span><span class="s0">, </span><span class="s1">style</span>
+<span class="s0">from </span><span class="s1">thorpy.painting.graphics </span><span class="s0">import </span><span class="s1">blit_arrow_on</span>
+
+
+<span class="s0">class </span><span class="s1">Shifter(Clickable):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self):</span>
+        <span class="s1">Clickable.__init__(self)</span>
+        <span class="s1">reac_rightclick = Reaction(parameters.BUTTON_UNPRESS_EVENT</span><span class="s0">,</span>
+                                   <span class="s1">self._reaction_rightpress</span><span class="s0">,</span>
+                                   <span class="s1">{</span><span class="s2">&quot;button&quot;</span><span class="s1">: parameters.RIGHT_CLICK_BUTTON}</span><span class="s0">,</span>
+                                   <span class="s1">reac_name=constants.REAC_RIGHT_CLICK)</span>
+        <span class="s1">self.add_reaction(reac_rightclick)</span>
+        <span class="s1">self.normal_params.polite_set(</span><span class="s2">&quot;painter size&quot;</span><span class="s0">, </span><span class="s1">(</span><span class="s3">16</span><span class="s0">, </span><span class="s3">16</span><span class="s1">))</span>
+        <span class="s1">self.press_params.polite_set(</span><span class="s2">&quot;painter size&quot;</span><span class="s0">, </span><span class="s1">(</span><span class="s3">16</span><span class="s0">, </span><span class="s3">16</span><span class="s1">))</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_rightpress(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s0">pass</span>
+
+    <span class="s0">def </span><span class="s1">add_arrow(self</span><span class="s0">, </span><span class="s1">side):</span>
+        <span class="s4">#first, get frame:</span>
+        <span class="s1">normal_img = self.get_image(constants.STATE_NORMAL)</span>
+        <span class="s1">press_img = self.get_image(constants.STATE_PRESSED)</span>
+        <span class="s4">#then blit an arrow</span>
+        <span class="s1">blit_arrow_on(style.ARROW_IMG</span><span class="s0">, </span><span class="s1">style.ARROW_IMG_COLORKEY</span><span class="s0">,</span>
+                      <span class="s1">style.ARROW_IMG_COLORSOURCE</span><span class="s0">,</span>
+                      <span class="s1">style.ARROW_COLOR</span><span class="s0">, </span><span class="s1">side</span><span class="s0">, </span><span class="s1">normal_img)</span>
+        <span class="s1">blit_arrow_on(style.ARROW_IMG</span><span class="s0">, </span><span class="s1">style.ARROW_IMG_COLORKEY</span><span class="s0">,</span>
+                      <span class="s1">style.ARROW_IMG_COLORSOURCE</span><span class="s0">,</span>
+                      <span class="s1">style.ARROW_COLOR</span><span class="s0">, </span><span class="s1">side</span><span class="s0">, </span><span class="s1">press_img)</span>
+        <span class="s4">#then set the new image (with the arrow)</span>
+        <span class="s1">self.set_image(normal_img</span><span class="s0">, </span><span class="s1">constants.STATE_NORMAL</span><span class="s0">, False</span><span class="s1">)</span>
+        <span class="s1">self.set_image(press_img</span><span class="s0">, </span><span class="s1">constants.STATE_PRESSED</span><span class="s0">, False</span><span class="s1">)</span>
+        <span class="s4">#now we do the same for hovered images</span>
+        <span class="s1">normal_hov = self._hover_imgs[constants.STATE_NORMAL]</span>
+        <span class="s1">press_hov = self._hover_imgs[constants.STATE_PRESSED]</span>
+        <span class="s1">blit_arrow_on(style.ARROW_IMG</span><span class="s0">, </span><span class="s1">style.ARROW_IMG_COLORKEY</span><span class="s0">,</span>
+                      <span class="s1">style.ARROW_IMG_COLORSOURCE</span><span class="s0">,</span>
+                      <span class="s1">style.COLOR_TXT_HOVER</span><span class="s0">, </span><span class="s1">side</span><span class="s0">, </span><span class="s1">normal_hov)</span>
+        <span class="s1">blit_arrow_on(style.ARROW_IMG</span><span class="s0">, </span><span class="s1">style.ARROW_IMG_COLORKEY</span><span class="s0">,</span>
+                      <span class="s1">style.ARROW_IMG_COLORSOURCE</span><span class="s0">,</span>
+                      <span class="s1">style.COLOR_TXT_HOVER</span><span class="s0">, </span><span class="s1">side</span><span class="s0">, </span><span class="s1">press_hov)</span>
+        <span class="s1">self.set_image(normal_hov</span><span class="s0">, </span><span class="s1">constants.STATE_NORMAL</span><span class="s0">, </span><span class="s1">hovered=</span><span class="s0">True</span><span class="s1">)</span>
+        <span class="s1">self.set_image(press_hov</span><span class="s0">, </span><span class="s1">constants.STATE_PRESSED</span><span class="s0">, </span><span class="s1">hovered=</span><span class="s0">True</span><span class="s1">)</span>
+
+
+<span class="s0">class </span><span class="s1">Plus(Shifter):</span>
+
+    <span class="s0">def </span><span class="s1">finish(self):</span>
+        <span class="s1">Clickable.finish(self)</span>
+        <span class="s1">self.add_arrow(</span><span class="s2">&quot;top&quot;</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_rightpress(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s0">if </span><span class="s1">self.collide(event.pos</span><span class="s0">, </span><span class="s1">self.current_state_key):</span>
+            <span class="s1">self.father._drag_element.goto_start()</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_time(self):</span>
+        <span class="s0">if </span><span class="s1">self.current_state_key == STATE_PRESSED:</span>
+            <span class="s0">if </span><span class="s1">get_pressed()[</span><span class="s3">0</span><span class="s1">]:</span>
+                <span class="s1">self.father._drag_element.shift(parameters.CLICK_LIFT_REPEAT)</span>
+
+
+
+<span class="s0">class </span><span class="s1">Minus(Shifter):</span>
+
+    <span class="s0">def </span><span class="s1">finish(self):</span>
+        <span class="s1">Clickable.finish(self)</span>
+        <span class="s1">self.add_arrow(</span><span class="s2">&quot;bottom&quot;</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_rightpress(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s0">if </span><span class="s1">self.collide(event.pos</span><span class="s0">, </span><span class="s1">self.current_state_key):</span>
+            <span class="s1">self.father._drag_element.goto_end()</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_time(self):</span>
+        <span class="s0">if </span><span class="s1">self.current_state_key == STATE_PRESSED:</span>
+            <span class="s0">if </span><span class="s1">get_pressed()[</span><span class="s3">0</span><span class="s1">]:</span>
+                <span class="s1">self.father._drag_element.shift(-parameters.CLICK_LIFT_REPEAT)</span>
+</pre>
+</body>
+</html>

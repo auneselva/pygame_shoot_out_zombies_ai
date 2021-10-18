@@ -1,0 +1,138 @@
+<html>
+<head>
+<title>rwobject_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+rwobject_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">import </span><span class="s1">unittest</span>
+
+<span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">encode_string</span><span class="s0">, </span><span class="s1">encode_file_path</span>
+<span class="s0">from </span><span class="s1">pygame.compat </span><span class="s0">import </span><span class="s1">bytes_</span><span class="s0">, </span><span class="s1">as_bytes</span><span class="s0">, </span><span class="s1">as_unicode</span>
+
+
+<span class="s0">class </span><span class="s1">RWopsEncodeStringTest(unittest.TestCase):</span>
+    <span class="s0">global </span><span class="s1">getrefcount</span>
+
+    <span class="s0">def </span><span class="s1">test_obj_None(self):</span>
+        <span class="s1">encoded_string = encode_string(</span><span class="s0">None</span><span class="s1">)</span>
+
+        <span class="s1">self.assertIsNone(encoded_string)</span>
+
+    <span class="s0">def </span><span class="s1">test_returns_bytes(self):</span>
+        <span class="s1">u = as_unicode(</span><span class="s2">r&quot;Hello&quot;</span><span class="s1">)</span>
+        <span class="s1">encoded_string = encode_string(u)</span>
+
+        <span class="s1">self.assertIsInstance(encoded_string</span><span class="s0">, </span><span class="s1">bytes_)</span>
+
+    <span class="s0">def </span><span class="s1">test_obj_bytes(self):</span>
+        <span class="s1">b = as_bytes(</span><span class="s2">&quot;encyclop</span><span class="s0">\xE6</span><span class="s2">dia&quot;</span><span class="s1">)</span>
+        <span class="s1">encoded_string = encode_string(b</span><span class="s0">, </span><span class="s2">'ascii'</span><span class="s0">, </span><span class="s2">'strict'</span><span class="s1">)</span>
+
+        <span class="s1">self.assertIs(encoded_string</span><span class="s0">, </span><span class="s1">b)</span>
+
+    <span class="s0">def </span><span class="s1">test_encode_unicode(self):</span>
+        <span class="s1">u = as_unicode(</span><span class="s2">r&quot;\u00DEe Olde Komp\u00FCter Shoppe&quot;</span><span class="s1">)</span>
+        <span class="s1">b = u.encode(</span><span class="s2">'utf-8'</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(encode_string(u</span><span class="s0">, </span><span class="s2">'utf-8'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">b)</span>
+
+    <span class="s0">def </span><span class="s1">test_error_fowarding(self):</span>
+        <span class="s1">self.assertRaises(SyntaxError</span><span class="s0">, </span><span class="s1">encode_string)</span>
+
+    <span class="s0">def </span><span class="s1">test_errors(self):</span>
+        <span class="s1">s = </span><span class="s2">r&quot;abc\u0109defg\u011Dh\u0125ij\u0135klmnoprs\u015Dtu\u016Dvz&quot;</span>
+        <span class="s1">u = as_unicode(s)</span>
+        <span class="s1">b = u.encode(</span><span class="s2">'ascii'</span><span class="s0">, </span><span class="s2">'ignore'</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(encode_string(u</span><span class="s0">, </span><span class="s2">'ascii'</span><span class="s0">, </span><span class="s2">'ignore'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">b)</span>
+
+    <span class="s0">def </span><span class="s1">test_encoding_error(self):</span>
+        <span class="s1">u = as_unicode(</span><span class="s2">r&quot;a\x80b&quot;</span><span class="s1">)</span>
+        <span class="s1">encoded_string = encode_string(u</span><span class="s0">, </span><span class="s2">'ascii'</span><span class="s0">, </span><span class="s2">'strict'</span><span class="s1">)</span>
+
+        <span class="s1">self.assertIsNone(encoded_string)</span>
+
+    <span class="s0">def </span><span class="s1">test_check_defaults(self):</span>
+        <span class="s1">u = as_unicode(</span><span class="s2">r&quot;a\u01F7b&quot;</span><span class="s1">)</span>
+        <span class="s1">b = u.encode(</span><span class="s2">&quot;unicode_escape&quot;</span><span class="s0">, </span><span class="s2">&quot;backslashreplace&quot;</span><span class="s1">)</span>
+        <span class="s1">encoded_string = encode_string(u)</span>
+
+        <span class="s1">self.assertEqual(encoded_string</span><span class="s0">, </span><span class="s1">b)</span>
+
+    <span class="s0">def </span><span class="s1">test_etype(self):</span>
+        <span class="s1">u = as_unicode(</span><span class="s2">r&quot;a\x80b&quot;</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(SyntaxError</span><span class="s0">, </span><span class="s1">encode_string</span><span class="s0">,</span>
+                          <span class="s1">u</span><span class="s0">, </span><span class="s2">'ascii'</span><span class="s0">, </span><span class="s2">'strict'</span><span class="s0">, </span><span class="s1">SyntaxError)</span>
+
+    <span class="s0">def </span><span class="s1">test_string_with_null_bytes(self):</span>
+        <span class="s1">b = as_bytes(</span><span class="s2">&quot;a</span><span class="s0">\x00</span><span class="s2">b</span><span class="s0">\x00</span><span class="s2">c&quot;</span><span class="s1">)</span>
+        <span class="s1">encoded_string = encode_string(b</span><span class="s0">, </span><span class="s1">etype=SyntaxError)</span>
+        <span class="s1">encoded_decode_string = encode_string(b.decode()</span><span class="s0">, </span><span class="s2">'ascii'</span><span class="s0">, </span><span class="s2">'strict'</span><span class="s1">)</span>
+
+        <span class="s1">self.assertIs(encoded_string</span><span class="s0">, </span><span class="s1">b)</span>
+        <span class="s1">self.assertEqual(encoded_decode_string</span><span class="s0">, </span><span class="s1">b)</span>
+
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s0">from </span><span class="s1">sys </span><span class="s0">import </span><span class="s1">getrefcount </span><span class="s0">as </span><span class="s1">_g</span>
+        <span class="s1">getrefcount = _g                   </span><span class="s3"># This nonsense is for Python 3.x</span>
+    <span class="s0">except </span><span class="s1">ImportError:</span>
+        <span class="s0">pass</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">def </span><span class="s1">test_refcount(self):</span>
+            <span class="s1">bpath = as_bytes(</span><span class="s2">&quot; This is a string that is not cached.&quot;</span><span class="s1">)[</span><span class="s4">1</span><span class="s1">:]</span>
+            <span class="s1">upath = bpath.decode(</span><span class="s2">'ascii'</span><span class="s1">)</span>
+            <span class="s1">before = getrefcount(bpath)</span>
+            <span class="s1">bpath = encode_string(bpath)</span>
+            <span class="s1">self.assertEqual(getrefcount(bpath)</span><span class="s0">, </span><span class="s1">before)</span>
+            <span class="s1">bpath = encode_string(upath)</span>
+            <span class="s1">self.assertEqual(getrefcount(bpath)</span><span class="s0">, </span><span class="s1">before)</span>
+
+    <span class="s0">def </span><span class="s1">test_smp(self):</span>
+        <span class="s1">utf_8 = as_bytes(</span><span class="s2">&quot;a</span><span class="s0">\xF0\x93\x82\xA7</span><span class="s2">b&quot;</span><span class="s1">)</span>
+        <span class="s1">u = as_unicode(</span><span class="s2">r&quot;a\U000130A7b&quot;</span><span class="s1">)</span>
+        <span class="s1">b = encode_string(u</span><span class="s0">, </span><span class="s2">'utf-8'</span><span class="s0">, </span><span class="s2">'strict'</span><span class="s0">, </span><span class="s1">AssertionError)</span>
+        <span class="s1">self.assertEqual(b</span><span class="s0">, </span><span class="s1">utf_8)</span>
+        <span class="s3">#  For Python 3.1, surrogate pair handling depends on whether the</span>
+        <span class="s3">#  interpreter was built with UCS-2 or USC-4 unicode strings.</span>
+        <span class="s3">##u = as_unicode(r&quot;a\uD80C\uDCA7b&quot;)</span>
+        <span class="s3">##b = encode_string(u, 'utf-8', 'strict', AssertionError)</span>
+        <span class="s3">##self.assertEqual(b, utf_8)</span>
+
+<span class="s0">class </span><span class="s1">RWopsEncodeFilePathTest(unittest.TestCase):</span>
+    <span class="s3"># Most tests can be skipped since RWopsEncodeFilePath wraps</span>
+    <span class="s3"># RWopsEncodeString</span>
+    <span class="s0">def </span><span class="s1">test_encoding(self):</span>
+        <span class="s1">u = as_unicode(</span><span class="s2">r&quot;Hello&quot;</span><span class="s1">)</span>
+        <span class="s1">encoded_file_path = encode_file_path(u)</span>
+
+        <span class="s1">self.assertIsInstance(encoded_file_path</span><span class="s0">, </span><span class="s1">bytes_)</span>
+
+    <span class="s0">def </span><span class="s1">test_error_fowarding(self):</span>
+        <span class="s1">self.assertRaises(SyntaxError</span><span class="s0">, </span><span class="s1">encode_file_path)</span>
+
+    <span class="s0">def </span><span class="s1">test_path_with_null_bytes(self):</span>
+        <span class="s1">b = as_bytes(</span><span class="s2">&quot;a</span><span class="s0">\x00</span><span class="s2">b</span><span class="s0">\x00</span><span class="s2">c&quot;</span><span class="s1">)</span>
+        <span class="s1">encoded_file_path = encode_file_path(b)</span>
+
+        <span class="s1">self.assertIsNone(encoded_file_path)</span>
+
+    <span class="s0">def </span><span class="s1">test_etype(self):</span>
+        <span class="s1">b = as_bytes(</span><span class="s2">&quot;a</span><span class="s0">\x00</span><span class="s2">b</span><span class="s0">\x00</span><span class="s2">c&quot;</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">encode_file_path</span><span class="s0">, </span><span class="s1">b</span><span class="s0">, </span><span class="s1">TypeError)</span>
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s2">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<html>
+<head>
+<title>makeup.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+makeup.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;This module provides functions to add graphical effects on elements.&quot;&quot;&quot;</span>
+
+<span class="s2">from </span><span class="s1">thorpy.elements._makeuputils._shadow </span><span class="s2">import </span><span class="s1">StaticShadow</span>
+<span class="s2">from </span><span class="s1">thorpy.elements.hoverzone </span><span class="s2">import </span><span class="s1">HoverZone</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui </span><span class="s2">import </span><span class="s1">constants</span><span class="s2">, </span><span class="s1">style</span>
+<span class="s2">from </span><span class="s1">thorpy.painting.painters.imageframe </span><span class="s2">import </span><span class="s1">ImageFrame</span>
+
+<span class="s2">def </span><span class="s1">add_static_shadow(element</span><span class="s2">, </span><span class="s1">dict_args=</span><span class="s2">None</span><span class="s1">):</span>
+    <span class="s0">&quot;&quot;&quot;Adds a static shadow to &lt;element&gt;. This means that the shadow is always 
+    the same, regardless of the state of the element. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">shadowel = StaticShadow(element)</span>
+    <span class="s2">if </span><span class="s1">dict_args:</span>
+        <span class="s2">for </span><span class="s1">key</span><span class="s2">, </span><span class="s1">value </span><span class="s2">in </span><span class="s1">iter(dict_args.items()):</span>
+            <span class="s1">setattr(shadowel</span><span class="s2">, </span><span class="s1">key</span><span class="s2">, </span><span class="s1">value)</span>
+    <span class="s1">shadowel.finish()</span>
+
+<span class="s2">def </span><span class="s1">add_button_shadow(element</span><span class="s2">, </span><span class="s1">altitude=</span><span class="s2">None, </span><span class="s1">dict_args=</span><span class="s2">None</span><span class="s1">):</span>
+    <span class="s1">altitude = style.SHADOW_ALTITUDE </span><span class="s2">if </span><span class="s1">altitude </span><span class="s2">is None else </span><span class="s1">altitude</span>
+    <span class="s1">shadow = StaticShadow(element)</span>
+    <span class="s1">shadow.target_altitude = altitude</span>
+    <span class="s1">shadow.vertical = </span><span class="s2">False</span>
+    <span class="s1">shadow.sun_angle2 = </span><span class="s3">45.</span>
+    <span class="s1">shadow.alpha_factor = </span><span class="s3">0.5</span>
+    <span class="s2">if </span><span class="s1">dict_args:</span>
+        <span class="s2">for </span><span class="s1">key</span><span class="s2">, </span><span class="s1">value </span><span class="s2">in </span><span class="s1">(dict_args.items()):</span>
+            <span class="s1">setattr(shadowel</span><span class="s2">, </span><span class="s1">key</span><span class="s2">, </span><span class="s1">value)</span>
+    <span class="s1">shadow.finish()</span>
+
+<span class="s2">def </span><span class="s1">remove_shadow(element):</span>
+    <span class="s1">element._shadow.unlink()</span>
+
+<span class="s2">def </span><span class="s1">add_basic_help(element</span><span class="s2">, </span><span class="s1">text</span><span class="s2">, </span><span class="s1">wait_time=</span><span class="s2">None, </span><span class="s1">jail=</span><span class="s2">None, </span><span class="s1">shadow=</span><span class="s2">False,</span>
+                    <span class="s1">rect=</span><span class="s2">None</span><span class="s1">):</span>
+    <span class="s2">if </span><span class="s1">rect </span><span class="s2">is None</span><span class="s1">:</span>
+        <span class="s1">rect = element.get_help_rect()</span>
+    <span class="s1">hoverzone = HoverZone(rect)</span>
+    <span class="s1">hoverzone.finish()</span>
+    <span class="s1">element.add_elements([hoverzone])</span>
+    <span class="s1">hoverzone.add_basic_help(text</span><span class="s2">, </span><span class="s1">wait_time</span><span class="s2">, </span><span class="s1">jail)</span>
+    <span class="s2">if </span><span class="s1">shadow:</span>
+        <span class="s1">add_button_shadow(hoverzone._help_element)</span>
+        <span class="s1">hoverzone._help_element._shadow.visible = </span><span class="s2">False</span>
+    <span class="s2">return </span><span class="s1">hoverzone</span>
+
+<span class="s4">##def set_image_normal(element, image):</span>
+<span class="s4">##    painter = ImageFrame(image)</span>
+<span class="s4">##    fusionner =</span>
+<span class="s4">##</span>
+<span class="s4">##def set_image_pressed(element, image):</span>
+<span class="s4">##    pass</span>
+<span class="s4">##</span>
+<span class="s4">##def set_image_hover(element, image):</span>
+<span class="s4">##    pass</span></pre>
+</body>
+</html>

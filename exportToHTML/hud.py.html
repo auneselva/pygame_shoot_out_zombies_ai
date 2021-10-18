@@ -1,0 +1,55 @@
+<html>
+<head>
+<title>hud.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+hud.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">math</span><span class="s0">, </span><span class="s1">pygame</span>
+<span class="s0">from </span><span class="s1">thorpy </span><span class="s0">import </span><span class="s1">load_image</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">style</span>
+
+
+<span class="s0">class </span><span class="s1">HeartLife:</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">full=style.HEART_FULL</span><span class="s0">, </span><span class="s1">empty=style.HEART_EMPTY</span><span class="s0">, </span><span class="s1">n=</span><span class="s2">5</span><span class="s0">,</span>
+                    <span class="s1">spacing=</span><span class="s2">5</span><span class="s0">, </span><span class="s1">x0=</span><span class="s2">5</span><span class="s0">, </span><span class="s1">y0=</span><span class="s2">5</span><span class="s0">, </span><span class="s1">size=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">self.full = load_image(full</span><span class="s0">,</span><span class="s1">(</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s1">))</span>
+        <span class="s1">self.empty = load_image(empty</span><span class="s0">,</span><span class="s1">(</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s1">))</span>
+        <span class="s0">if </span><span class="s1">size:</span>
+            <span class="s1">self.full = pygame.transform.scale(self.full</span><span class="s0">, </span><span class="s1">size)</span>
+            <span class="s1">self.empty = pygame.transform.scale(self.empty</span><span class="s0">, </span><span class="s1">size)</span>
+        <span class="s1">self.n = n</span>
+        <span class="s1">self.heart_size = self.full.get_size()</span>
+        <span class="s1">self.heart_spacing = self.heart_size[</span><span class="s2">0</span><span class="s1">] + spacing</span>
+        <span class="s1">self.xlife = - self.heart_spacing + x0</span>
+        <span class="s1">self.ylife = y0</span>
+
+    <span class="s0">def </span><span class="s1">blit(self</span><span class="s0">, </span><span class="s1">surf</span><span class="s0">, </span><span class="s1">life):</span>
+        <span class="s1">x = </span><span class="s2">0</span>
+        <span class="s1">nfull = math.ceil(life*self.n)</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(nfull):</span>
+            <span class="s1">x += self.heart_spacing</span>
+            <span class="s1">surf.blit(self.full</span><span class="s0">,</span><span class="s1">(self.xlife+x</span><span class="s0">,</span><span class="s1">self.ylife))</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(self.n-nfull):</span>
+            <span class="s1">x += self.heart_spacing</span>
+            <span class="s1">surf.blit(self.empty</span><span class="s0">,</span><span class="s1">(self.xlife+x</span><span class="s0">,</span><span class="s1">self.ylife))</span>
+
+    <span class="s0">def </span><span class="s1">move(self</span><span class="s0">, </span><span class="s1">delta):</span>
+        <span class="s1">self.xlife += delta[</span><span class="s2">0</span><span class="s1">]</span>
+        <span class="s1">self.ylife += delta[</span><span class="s2">1</span><span class="s1">]</span>
+
+    <span class="s0">def </span><span class="s1">set_topleft(self</span><span class="s0">, </span><span class="s1">topleft):</span>
+        <span class="s1">self.xlife</span><span class="s0">, </span><span class="s1">self.ylife = topleft</span>
+</pre>
+</body>
+</html>

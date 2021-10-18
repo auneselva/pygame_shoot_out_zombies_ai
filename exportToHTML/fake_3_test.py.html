@@ -1,0 +1,59 @@
+<html>
+<head>
+<title>fake_3_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+fake_3_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">if </span><span class="s1">__name__ == </span><span class="s2">'__main__'</span><span class="s1">:</span>
+    <span class="s0">import </span><span class="s1">sys</span>
+    <span class="s0">import </span><span class="s1">os</span>
+    <span class="s1">pkg_dir = (os.path.split(</span>
+                   <span class="s1">os.path.split(</span>
+                       <span class="s1">os.path.split(</span>
+                           <span class="s1">os.path.abspath(__file__))[</span><span class="s3">0</span><span class="s1">])[</span><span class="s3">0</span><span class="s1">])[</span><span class="s3">0</span><span class="s1">])</span>
+    <span class="s1">parent_dir</span><span class="s0">, </span><span class="s1">pkg_name = os.path.split(pkg_dir)</span>
+    <span class="s1">is_pygame_pkg = (pkg_name == </span><span class="s2">'tests' </span><span class="s0">and</span>
+                     <span class="s1">os.path.split(parent_dir)[</span><span class="s3">1</span><span class="s1">] == </span><span class="s2">'pygame'</span><span class="s1">)</span>
+    <span class="s0">if not </span><span class="s1">is_pygame_pkg:</span>
+        <span class="s1">sys.path.insert(</span><span class="s3">0</span><span class="s0">, </span><span class="s1">parent_dir)</span>
+<span class="s0">else</span><span class="s1">:</span>
+    <span class="s1">is_pygame_pkg = __name__.startswith(</span><span class="s2">'pygame.tests.'</span><span class="s1">)</span>
+
+<span class="s0">import </span><span class="s1">unittest</span>
+
+<span class="s0">class </span><span class="s1">KeyModuleTest(unittest.TestCase):</span>
+    <span class="s0">def </span><span class="s1">test_get_focused(self):</span>
+        <span class="s1">self.assertTrue(</span><span class="s0">True</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_get_mods(self):</span>
+        <span class="s1">self.assertTrue(</span><span class="s0">True</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_get_pressed(self):</span>
+        <span class="s1">self.assertTrue(</span><span class="s0">True</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_name(self):</span>
+        <span class="s1">self.assertTrue(</span><span class="s0">True</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_set_mods(self):</span>
+        <span class="s1">self.assertTrue(</span><span class="s0">True</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_set_repeat(self):</span>
+        <span class="s1">self.assertTrue(</span><span class="s0">True</span><span class="s1">)</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s2">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

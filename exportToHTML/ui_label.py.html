@@ -1,0 +1,287 @@
+<html>
+<head>
+<title>ui_label.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+ui_label.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">warnings</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Tuple</span><span class="s0">, </span><span class="s1">Dict</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core </span><span class="s0">import </span><span class="s1">ObjectID</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IContainerLikeInterface</span><span class="s0">, </span><span class="s1">IUIManagerInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core </span><span class="s0">import </span><span class="s1">ColourGradient</span><span class="s0">, </span><span class="s1">UIElement</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">render_white_text_alpha_black_bg</span><span class="s0">, </span><span class="s1">apply_colour_to_surface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">basic_blit</span>
+
+
+<span class="s0">class </span><span class="s1">UILabel(UIElement):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A label lets us display a single line of text with a single font style. It's a quick to 
+    rebuild and simple alternative to the text box element. 
+ 
+    :param relative_rect: The rectangle that contains and positions the label relative to it's 
+                          container. 
+    :param text: The text to display in the label. 
+    :param manager: The UIManager that manages this label. 
+    :param container: The container that this element is within. If set to None will be the root 
+                      window's container. 
+    :param parent_element: The element this element 'belongs to' in the theming hierarchy. 
+    :param object_id: A custom defined ID for fine tuning of theming. 
+    :param anchors: A dictionary describing what this element's relative_rect is relative to. 
+    :param visible: Whether the element is visible by default. Warning - container visibility 
+                    may override this. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">relative_rect: pygame.Rect</span><span class="s0">,</span>
+                 <span class="s1">text: str</span><span class="s0">,</span>
+                 <span class="s1">manager: IUIManagerInterface</span><span class="s0">,</span>
+                 <span class="s1">container: Union[IContainerLikeInterface</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">parent_element: UIElement = </span><span class="s0">None,</span>
+                 <span class="s1">object_id: Union[ObjectID</span><span class="s0">, </span><span class="s1">str</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">anchors: Dict[str</span><span class="s0">, </span><span class="s1">str] = </span><span class="s0">None,</span>
+                 <span class="s1">visible: int = </span><span class="s3">1</span><span class="s1">):</span>
+
+        <span class="s1">super().__init__(relative_rect</span><span class="s0">, </span><span class="s1">manager</span><span class="s0">, </span><span class="s1">container</span><span class="s0">,</span>
+                         <span class="s1">starting_height=</span><span class="s3">1</span><span class="s0">,</span>
+                         <span class="s1">layer_thickness=</span><span class="s3">1</span><span class="s0">,</span>
+                         <span class="s1">anchors=anchors</span><span class="s0">,</span>
+                         <span class="s1">visible=visible)</span>
+
+        <span class="s1">self._create_valid_ids(container=container</span><span class="s0">,</span>
+                               <span class="s1">parent_element=parent_element</span><span class="s0">,</span>
+                               <span class="s1">object_id=object_id</span><span class="s0">,</span>
+                               <span class="s1">element_id=</span><span class="s4">'label'</span><span class="s1">)</span>
+        <span class="s1">self.text = text</span>
+
+        <span class="s5"># initialise theme params</span>
+        <span class="s1">self.font = </span><span class="s0">None</span>
+
+        <span class="s1">self.bg_colour = </span><span class="s0">None</span>
+        <span class="s1">self.text_colour = </span><span class="s0">None</span>
+        <span class="s1">self.disabled_text_colour = </span><span class="s0">None</span>
+        <span class="s1">self.text_shadow_colour = </span><span class="s0">None</span>
+
+        <span class="s1">self.text_shadow = </span><span class="s0">False</span>
+        <span class="s1">self.text_shadow_size = </span><span class="s3">1</span>
+        <span class="s1">self.text_shadow_offset = (</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+
+        <span class="s1">self.rebuild_from_changed_theme_data()</span>
+
+    <span class="s0">def </span><span class="s1">set_text(self</span><span class="s0">, </span><span class="s1">text: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Changes the string displayed by the label element. Labels do not support HTML styling. 
+ 
+        :param text: the text to set the label to. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">text != self.text:</span>
+            <span class="s1">self.text = text</span>
+            <span class="s1">self.rebuild()</span>
+
+    <span class="s0">def </span><span class="s1">rebuild(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Re-render the text to the label's underlying sprite image. This allows us to change what 
+        the displayed text is or remake it with different theming (if the theming has changed). 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">text_size = self.font.size(self.text)</span>
+        <span class="s0">if </span><span class="s1">text_size[</span><span class="s3">1</span><span class="s1">] &gt; self.relative_rect.height </span><span class="s0">or </span><span class="s1">text_size[</span><span class="s3">0</span><span class="s1">] &gt; self.relative_rect.width:</span>
+            <span class="s1">width_overlap = self.relative_rect.width - text_size[</span><span class="s3">0</span><span class="s1">]</span>
+            <span class="s1">height_overlap = self.relative_rect.height - text_size[</span><span class="s3">1</span><span class="s1">]</span>
+            <span class="s1">warn_text = (</span><span class="s4">'Label Rect is too small for text: '</span>
+                         <span class="s4">'' </span><span class="s1">+ self.text + </span><span class="s4">' - size diff: ' </span><span class="s1">+ str((width_overlap</span><span class="s0">, </span><span class="s1">height_overlap)))</span>
+            <span class="s1">warnings.warn(warn_text</span><span class="s0">, </span><span class="s1">UserWarning)</span>
+
+        <span class="s1">new_image = pygame.surface.Surface(self.relative_rect.size</span><span class="s0">,</span>
+                                           <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                           <span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s0">if </span><span class="s1">isinstance(self.bg_colour</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+            <span class="s1">new_image.fill(pygame.Color(</span><span class="s4">'#FFFFFFFF'</span><span class="s1">))</span>
+            <span class="s1">self.bg_colour.apply_gradient_to_surface(new_image)</span>
+            <span class="s1">text_render = render_white_text_alpha_black_bg(self.font</span><span class="s0">, </span><span class="s1">self.text)</span>
+            <span class="s0">if </span><span class="s1">self.is_enabled:</span>
+                <span class="s0">if </span><span class="s1">isinstance(self.text_colour</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+                    <span class="s1">self.text_colour.apply_gradient_to_surface(text_render)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">apply_colour_to_surface(self.text_colour</span><span class="s0">, </span><span class="s1">text_render)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s0">if </span><span class="s1">isinstance(self.disabled_text_colour</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+                    <span class="s1">self.disabled_text_colour.apply_gradient_to_surface(text_render)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">apply_colour_to_surface(self.disabled_text_colour</span><span class="s0">, </span><span class="s1">text_render)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">new_image.fill(self.bg_colour)</span>
+            <span class="s0">if </span><span class="s1">self.is_enabled:</span>
+                <span class="s0">if </span><span class="s1">isinstance(self.text_colour</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+                    <span class="s1">text_render = render_white_text_alpha_black_bg(self.font</span><span class="s0">, </span><span class="s1">self.text)</span>
+                    <span class="s1">self.text_colour.apply_gradient_to_surface(text_render)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s0">if </span><span class="s1">self.bg_colour.a != </span><span class="s3">255 </span><span class="s0">or </span><span class="s1">self.text_shadow:</span>
+                        <span class="s1">text_render = render_white_text_alpha_black_bg(self.font</span><span class="s0">, </span><span class="s1">self.text)</span>
+                        <span class="s1">apply_colour_to_surface(self.text_colour</span><span class="s0">, </span><span class="s1">text_render)</span>
+                    <span class="s0">else</span><span class="s1">:</span>
+                        <span class="s1">text_render = self.font.render(self.text</span><span class="s0">, True,</span>
+                                                       <span class="s1">self.text_colour</span><span class="s0">, </span><span class="s1">self.bg_colour)</span>
+                        <span class="s1">text_render = text_render.convert_alpha()</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s0">if </span><span class="s1">isinstance(self.disabled_text_colour</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+                    <span class="s1">text_render = render_white_text_alpha_black_bg(self.font</span><span class="s0">, </span><span class="s1">self.text)</span>
+                    <span class="s1">self.disabled_text_colour.apply_gradient_to_surface(text_render)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s0">if </span><span class="s1">self.bg_colour.a != </span><span class="s3">255 </span><span class="s0">or </span><span class="s1">self.text_shadow:</span>
+                        <span class="s1">text_render = render_white_text_alpha_black_bg(self.font</span><span class="s0">, </span><span class="s1">self.text)</span>
+                        <span class="s1">apply_colour_to_surface(self.disabled_text_colour</span><span class="s0">, </span><span class="s1">text_render)</span>
+                    <span class="s0">else</span><span class="s1">:</span>
+                        <span class="s1">text_render = self.font.render(self.text</span><span class="s0">, True,</span>
+                                                       <span class="s1">self.disabled_text_colour</span><span class="s0">, </span><span class="s1">self.bg_colour)</span>
+                        <span class="s1">text_render = text_render.convert_alpha()</span>
+        <span class="s1">text_render_rect = text_render.get_rect(centerx=int(self.rect.width / </span><span class="s3">2</span><span class="s1">)</span><span class="s0">,</span>
+                                                <span class="s1">centery=int(self.rect.height / </span><span class="s3">2</span><span class="s1">))</span>
+
+        <span class="s0">if </span><span class="s1">self.text_shadow:</span>
+            <span class="s1">self._rebuild_shadow(new_image</span><span class="s0">, </span><span class="s1">text_render_rect)</span>
+
+        <span class="s1">basic_blit(new_image</span><span class="s0">, </span><span class="s1">text_render</span><span class="s0">, </span><span class="s1">text_render_rect)</span>
+
+        <span class="s1">self.set_image(new_image)</span>
+
+    <span class="s0">def </span><span class="s1">_rebuild_shadow(self</span><span class="s0">, </span><span class="s1">new_image</span><span class="s0">, </span><span class="s1">text_render_rect):</span>
+        <span class="s1">shadow_text_render = render_white_text_alpha_black_bg(self.font</span><span class="s0">, </span><span class="s1">self.text)</span>
+        <span class="s1">apply_colour_to_surface(self.text_shadow_colour</span><span class="s0">, </span><span class="s1">shadow_text_render)</span>
+        <span class="s0">for </span><span class="s1">y_pos </span><span class="s0">in </span><span class="s1">range(-self.text_shadow_size</span><span class="s0">, </span><span class="s1">self.text_shadow_size + </span><span class="s3">1</span><span class="s1">):</span>
+            <span class="s1">shadow_text_rect = pygame.Rect((text_render_rect.x + self.text_shadow_offset[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">,</span>
+                                            <span class="s1">text_render_rect.y + self.text_shadow_offset[</span><span class="s3">1</span><span class="s1">]</span>
+                                            <span class="s1">+ y_pos)</span><span class="s0">,</span>
+                                           <span class="s1">text_render_rect.size)</span>
+            <span class="s1">basic_blit(new_image</span><span class="s0">, </span><span class="s1">shadow_text_render</span><span class="s0">, </span><span class="s1">shadow_text_rect)</span>
+        <span class="s0">for </span><span class="s1">x_pos </span><span class="s0">in </span><span class="s1">range(-self.text_shadow_size</span><span class="s0">, </span><span class="s1">self.text_shadow_size + </span><span class="s3">1</span><span class="s1">):</span>
+            <span class="s1">shadow_text_rect = pygame.Rect((text_render_rect.x + self.text_shadow_offset[</span><span class="s3">0</span><span class="s1">]</span>
+                                            <span class="s1">+ x_pos</span><span class="s0">,</span>
+                                            <span class="s1">text_render_rect.y + self.text_shadow_offset[</span><span class="s3">1</span><span class="s1">])</span><span class="s0">,</span>
+                                           <span class="s1">text_render_rect.size)</span>
+            <span class="s1">basic_blit(new_image</span><span class="s0">, </span><span class="s1">shadow_text_render</span><span class="s0">, </span><span class="s1">shadow_text_rect)</span>
+        <span class="s0">for </span><span class="s1">x_and_y </span><span class="s0">in </span><span class="s1">range(-self.text_shadow_size</span><span class="s0">, </span><span class="s1">self.text_shadow_size + </span><span class="s3">1</span><span class="s1">):</span>
+            <span class="s1">shadow_text_rect = pygame.Rect(</span>
+                <span class="s1">(text_render_rect.x + self.text_shadow_offset[</span><span class="s3">0</span><span class="s1">] + x_and_y</span><span class="s0">,</span>
+                 <span class="s1">text_render_rect.y + self.text_shadow_offset[</span><span class="s3">1</span><span class="s1">] + x_and_y)</span><span class="s0">,</span>
+                <span class="s1">text_render_rect.size)</span>
+            <span class="s1">basic_blit(new_image</span><span class="s0">, </span><span class="s1">shadow_text_render</span><span class="s0">, </span><span class="s1">shadow_text_rect)</span>
+        <span class="s0">for </span><span class="s1">x_and_y </span><span class="s0">in </span><span class="s1">range(-self.text_shadow_size</span><span class="s0">, </span><span class="s1">self.text_shadow_size + </span><span class="s3">1</span><span class="s1">):</span>
+            <span class="s1">shadow_text_rect = pygame.Rect(</span>
+                <span class="s1">(text_render_rect.x + self.text_shadow_offset[</span><span class="s3">0</span><span class="s1">] - x_and_y</span><span class="s0">,</span>
+                 <span class="s1">text_render_rect.y + self.text_shadow_offset[</span><span class="s3">1</span><span class="s1">] + x_and_y)</span><span class="s0">,</span>
+                <span class="s1">text_render_rect.size)</span>
+            <span class="s1">basic_blit(new_image</span><span class="s0">, </span><span class="s1">shadow_text_render</span><span class="s0">, </span><span class="s1">shadow_text_rect)</span>
+
+    <span class="s0">def </span><span class="s1">rebuild_from_changed_theme_data(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Checks if any theming parameters have changed, and if so triggers a full rebuild of 
+        the element. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().rebuild_from_changed_theme_data()</span>
+        <span class="s1">any_changed = </span><span class="s0">False</span>
+
+        <span class="s1">font = self.ui_theme.get_font(self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">font != self.font:</span>
+            <span class="s1">self.font = font</span>
+            <span class="s1">any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">text_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s4">'normal_text'</span><span class="s0">, </span><span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">text_colour != self.text_colour:</span>
+            <span class="s1">self.text_colour = text_colour</span>
+            <span class="s1">any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">disabled_text_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s4">'disabled_text'</span><span class="s0">,</span>
+                                                                    <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">disabled_text_colour != self.disabled_text_colour:</span>
+            <span class="s1">self.disabled_text_colour = disabled_text_colour</span>
+            <span class="s1">any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">bg_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s4">'dark_bg'</span><span class="s0">, </span><span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">bg_colour != self.bg_colour:</span>
+            <span class="s1">self.bg_colour = bg_colour</span>
+            <span class="s1">any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">text_shadow_colour = self.ui_theme.get_colour(</span><span class="s4">'text_shadow'</span><span class="s0">, </span><span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">text_shadow_colour != self.text_shadow_colour:</span>
+            <span class="s1">self.text_shadow_colour = text_shadow_colour</span>
+            <span class="s1">any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">def </span><span class="s1">parse_to_bool(str_data: str):</span>
+            <span class="s0">return </span><span class="s1">bool(int(str_data))</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'text_shadow'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s0">False,</span>
+                                               <span class="s1">casting_func=parse_to_bool):</span>
+            <span class="s1">any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'text_shadow_size'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s3">1</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=int):</span>
+            <span class="s1">any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'text_shadow_size'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s3">1</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=int):</span>
+            <span class="s1">any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">def </span><span class="s1">tuple_extract(str_data: str) -&gt; Tuple[int</span><span class="s0">, </span><span class="s1">int]:</span>
+            <span class="s0">return </span><span class="s1">int(str_data.split(</span><span class="s4">','</span><span class="s1">)[</span><span class="s3">0</span><span class="s1">])</span><span class="s0">, </span><span class="s1">int(str_data.split(</span><span class="s4">','</span><span class="s1">)[</span><span class="s3">1</span><span class="s1">])</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'text_shadow_offset'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=tuple_extract):</span>
+            <span class="s1">any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">any_changed:</span>
+            <span class="s1">self.rebuild()</span>
+
+    <span class="s0">def </span><span class="s1">set_dimensions(self</span><span class="s0">, </span><span class="s1">dimensions: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Method to directly set the dimensions of a label. 
+ 
+        :param dimensions: The new dimensions to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().set_dimensions(dimensions)</span>
+
+        <span class="s0">if </span><span class="s1">dimensions[</span><span class="s3">0</span><span class="s1">] &gt;= </span><span class="s3">0 </span><span class="s0">and </span><span class="s1">dimensions[</span><span class="s3">1</span><span class="s1">] &gt;= </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">self.rebuild()</span>
+
+    <span class="s0">def </span><span class="s1">disable(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Disables the label so that its text changes to the disabled colour. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.is_enabled:</span>
+            <span class="s1">self.is_enabled = </span><span class="s0">False</span>
+            <span class="s1">self.rebuild()</span>
+
+    <span class="s0">def </span><span class="s1">enable(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Re-enables the label so that its text changes to the normal colour 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if not </span><span class="s1">self.is_enabled:</span>
+            <span class="s1">self.is_enabled = </span><span class="s0">True</span>
+            <span class="s1">self.rebuild()</span>
+</pre>
+</body>
+</html>

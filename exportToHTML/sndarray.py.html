@@ -1,0 +1,124 @@
+<html>
+<head>
+<title>sndarray.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #cc7832;}
+.s4 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+sndarray.py</font>
+</center></td></tr></table>
+<pre><span class="s0">##    pygame - Python Game Library</span>
+<span class="s0">##    Copyright (C) 2008 Marcus von Appen</span>
+<span class="s0">##</span>
+<span class="s0">##    This library is free software; you can redistribute it and/or</span>
+<span class="s0">##    modify it under the terms of the GNU Library General Public</span>
+<span class="s0">##    License as published by the Free Software Foundation; either</span>
+<span class="s0">##    version 2 of the License, or (at your option) any later version.</span>
+<span class="s0">##</span>
+<span class="s0">##    This library is distributed in the hope that it will be useful,</span>
+<span class="s0">##    but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="s0">##    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU</span>
+<span class="s0">##    Library General Public License for more details.</span>
+<span class="s0">##</span>
+<span class="s0">##    You should have received a copy of the GNU Library General Public</span>
+<span class="s0">##    License along with this library; if not, write to the Free</span>
+<span class="s0">##    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</span>
+<span class="s0">##</span>
+<span class="s0">##    Marcus von Appen</span>
+<span class="s0">##    mva@sysfault.org</span>
+
+<span class="s2">&quot;&quot;&quot;pygame module for accessing sound sample data 
+ 
+Functions to convert between numpy arrays and Sound 
+objects. This module will only be available when pygame can use the 
+external numpy package. 
+ 
+Sound data is made of thousands of samples per second, and each sample 
+is the amplitude of the wave at a particular moment in time. For 
+example, in 22-kHz format, element number 5 of the array is the 
+amplitude of the wave after 5/22000 seconds. 
+ 
+Each sample is an 8-bit or 16-bit integer, depending on the data format. 
+A stereo sound file has two values per sample, while a mono sound file 
+only has one. 
+ 
+Supported array systems are 
+ 
+  numpy 
+ 
+The array type to use can be changed at runtime using the use_arraytype() 
+method, which requires one of the above types as string. 
+ 
+Sounds with 16-bit data will be treated as unsigned integers, 
+if the sound sample type requests this. 
+&quot;&quot;&quot;</span>
+
+<span class="s3">import </span><span class="s1">pygame._numpysndarray </span><span class="s3">as </span><span class="s1">numpysnd</span>
+
+<span class="s3">def </span><span class="s1">array (sound):</span>
+    <span class="s2">&quot;&quot;&quot;pygame.sndarray.array(Sound): return array 
+ 
+    Copy Sound samples into an array. 
+ 
+    Creates a new array for the sound data and copies the samples. The 
+    array will always be in the format returned from 
+    pygame.mixer.get_init(). 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">numpysnd.array (sound)</span>
+
+<span class="s3">def </span><span class="s1">samples (sound):</span>
+    <span class="s2">&quot;&quot;&quot;pygame.sndarray.samples(Sound): return array 
+ 
+    Reference Sound samples into an array. 
+ 
+    Creates a new array that directly references the samples in a Sound 
+    object. Modifying the array will change the Sound. The array will 
+    always be in the format returned from pygame.mixer.get_init(). 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">numpysnd.samples (sound)</span>
+
+<span class="s3">def </span><span class="s1">make_sound (array):</span>
+    <span class="s2">&quot;&quot;&quot;pygame.sndarray.make_sound(array): return Sound 
+ 
+    Convert an array into a Sound object. 
+     
+    Create a new playable Sound object from an array. The mixer module 
+    must be initialized and the array format must be similar to the mixer 
+    audio format. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">numpysnd.make_sound (array)</span>
+
+<span class="s3">def </span><span class="s1">use_arraytype (arraytype):</span>
+    <span class="s2">&quot;&quot;&quot;pygame.sndarray.use_arraytype (arraytype): return None 
+ 
+    DEPRECATED - only numpy arrays are now supported. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">arraytype = arraytype.lower ()</span>
+    <span class="s3">if </span><span class="s1">arraytype != </span><span class="s4">'numpy'</span><span class="s1">:</span>
+        <span class="s3">raise </span><span class="s1">ValueError(</span><span class="s4">&quot;invalid array type&quot;</span><span class="s1">)</span>
+
+<span class="s3">def </span><span class="s1">get_arraytype ():</span>
+    <span class="s2">&quot;&quot;&quot;pygame.sndarray.get_arraytype (): return str 
+ 
+    DEPRECATED - only numpy arrays are now supported. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s4">'numpy'</span>
+
+<span class="s3">def </span><span class="s1">get_arraytypes ():</span>
+    <span class="s2">&quot;&quot;&quot;pygame.sndarray.get_arraytypes (): return tuple 
+ 
+    DEPRECATED - only numpy arrays are now supported. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">(</span><span class="s4">'numpy'</span><span class="s3">,</span><span class="s1">)</span>
+</pre>
+</body>
+</html>

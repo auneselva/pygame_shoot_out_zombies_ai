@@ -1,0 +1,1576 @@
+<html>
+<head>
+<title>freetype_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #629755; font-style: italic;}
+.s4 { color: #6897bb;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+freetype_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">os</span>
+<span class="s0">if </span><span class="s1">os.environ.get(</span><span class="s2">'SDL_VIDEODRIVER'</span><span class="s1">) == </span><span class="s2">'dummy'</span><span class="s1">:</span>
+    <span class="s1">__tags__ = (</span><span class="s2">'ignore'</span><span class="s0">, </span><span class="s2">'subprocess_ignore'</span><span class="s1">)</span>
+
+<span class="s0">import </span><span class="s1">unittest</span>
+<span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">import </span><span class="s1">ctypes</span>
+<span class="s0">import </span><span class="s1">weakref</span>
+<span class="s0">import </span><span class="s1">gc</span>
+<span class="s0">import </span><span class="s1">platform</span>
+
+<span class="s1">IS_PYPY = </span><span class="s2">'PyPy' </span><span class="s1">== platform.python_implementation()</span>
+
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s0">from </span><span class="s1">pygame.tests.test_utils </span><span class="s0">import </span><span class="s1">arrinter</span>
+<span class="s0">except </span><span class="s1">NameError:</span>
+    <span class="s0">pass</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s0">import </span><span class="s1">pygame.freetype </span><span class="s0">as </span><span class="s1">ft</span>
+<span class="s0">except </span><span class="s1">ImportError:</span>
+    <span class="s1">ft = </span><span class="s0">None</span>
+<span class="s0">from </span><span class="s1">pygame.compat </span><span class="s0">import </span><span class="s1">as_unicode</span><span class="s0">, </span><span class="s1">bytes_</span><span class="s0">, </span><span class="s1">unichr_</span><span class="s0">, </span><span class="s1">unicode_</span>
+
+
+<span class="s1">FONTDIR = os.path.join(os.path.dirname (os.path.abspath (__file__))</span><span class="s0">,</span>
+                       <span class="s2">'fixtures'</span><span class="s0">, </span><span class="s2">'fonts'</span><span class="s1">)</span>
+
+<span class="s0">def </span><span class="s1">nullfont():</span>
+    <span class="s3">&quot;&quot;&quot;return an uninitialized font instance&quot;&quot;&quot;</span>
+    <span class="s0">return </span><span class="s1">ft.Font.__new__(ft.Font)</span>
+
+<span class="s1">max_point_size_FX6 = </span><span class="s4">0x7FFFFFFF</span>
+<span class="s1">max_point_size = max_point_size_FX6 &gt;&gt; </span><span class="s4">6</span>
+<span class="s1">max_point_size_f = max_point_size_FX6 * </span><span class="s4">0.015625</span>
+
+<span class="s0">def </span><span class="s1">surf_same_image(a</span><span class="s0">, </span><span class="s1">b):</span>
+    <span class="s3">&quot;&quot;&quot;Return True if a's pixel buffer is identical to b's&quot;&quot;&quot;</span>
+
+    <span class="s1">a_sz = a.get_height() * a.get_pitch()</span>
+    <span class="s1">b_sz = b.get_height() * b.get_pitch()</span>
+    <span class="s0">if </span><span class="s1">a_sz != b_sz:</span>
+        <span class="s0">return False</span>
+    <span class="s1">a_bytes = ctypes.string_at(a._pixels_address</span><span class="s0">, </span><span class="s1">a_sz)</span>
+    <span class="s1">b_bytes = ctypes.string_at(b._pixels_address</span><span class="s0">, </span><span class="s1">b_sz)</span>
+    <span class="s0">return </span><span class="s1">a_bytes == b_bytes</span>
+
+
+<span class="s0">class </span><span class="s1">FreeTypeFontTest(unittest.TestCase):</span>
+
+    <span class="s1">_fixed_path = os.path.join(FONTDIR</span><span class="s0">, </span><span class="s2">'test_fixed.otf'</span><span class="s1">)</span>
+    <span class="s1">_sans_path = os.path.join(FONTDIR</span><span class="s0">, </span><span class="s2">'test_sans.ttf'</span><span class="s1">)</span>
+    <span class="s1">_mono_path = os.path.join(FONTDIR</span><span class="s0">, </span><span class="s2">'PyGameMono.otf'</span><span class="s1">)</span>
+    <span class="s1">_bmp_8_75dpi_path = os.path.join(FONTDIR</span><span class="s0">, </span><span class="s2">'PyGameMono-8.bdf'</span><span class="s1">)</span>
+    <span class="s1">_bmp_18_75dpi_path = os.path.join(FONTDIR</span><span class="s0">, </span><span class="s2">'PyGameMono-18-75dpi.bdf'</span><span class="s1">)</span>
+    <span class="s1">_bmp_18_100dpi_path = os.path.join(FONTDIR</span><span class="s0">, </span><span class="s2">'PyGameMono-18-100dpi.bdf'</span><span class="s1">)</span>
+    <span class="s1">_TEST_FONTS = {}</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">setUpClass(cls):</span>
+        <span class="s1">ft.init()</span>
+
+        <span class="s5"># Setup the test fonts.</span>
+
+        <span class="s5"># Inconsolata is an open-source font designed by Raph Levien.</span>
+        <span class="s5"># Licensed under the Open Font License.</span>
+        <span class="s5"># http://www.levien.com/type/myfonts/inconsolata.html</span>
+        <span class="s1">cls._TEST_FONTS[</span><span class="s2">'fixed'</span><span class="s1">] = ft.Font(cls._fixed_path)</span>
+
+        <span class="s5"># Liberation Sans is an open-source font designed by Steve Matteson.</span>
+        <span class="s5"># Licensed under the GNU GPL.</span>
+        <span class="s5"># https://fedorahosted.org/liberation-fonts/</span>
+        <span class="s1">cls._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">] = ft.Font(cls._sans_path)</span>
+
+        <span class="s5"># A scalable mono test font made for pygame. It contains only</span>
+        <span class="s5"># a few glyphs: '\0', 'A', 'B', 'C', and U+13079.</span>
+        <span class="s5"># It also contains two bitmap sizes: 8.0 X 8.0 and 19.0 X 19.0.</span>
+        <span class="s1">cls._TEST_FONTS[</span><span class="s2">'mono'</span><span class="s1">] = ft.Font(cls._mono_path)</span>
+
+        <span class="s5"># A fixed size bitmap mono test font made for pygame.</span>
+        <span class="s5"># It contains only a few glyphs: '\0', 'A', 'B', 'C', and U+13079.</span>
+        <span class="s5"># The size is 8.0 X 8.0.</span>
+        <span class="s1">cls._TEST_FONTS[</span><span class="s2">'bmp-8-75dpi'</span><span class="s1">] = ft.Font(cls._bmp_8_75dpi_path)</span>
+
+        <span class="s5"># A fixed size bitmap mono test font made for pygame.</span>
+        <span class="s5"># It contains only a few glyphs: '\0', 'A', 'B', 'C', and U+13079.</span>
+        <span class="s5"># The size is 8.0 X 8.0.</span>
+        <span class="s1">cls._TEST_FONTS[</span><span class="s2">'bmp-18-75dpi'</span><span class="s1">] = ft.Font(cls._bmp_18_75dpi_path)</span>
+
+        <span class="s5"># A fixed size bitmap mono test font made for pygame.</span>
+        <span class="s5"># It contains only a few glyphs: '\0', 'A', 'B', 'C', and U+13079.</span>
+        <span class="s5"># The size is 8.0 X 8.0.</span>
+        <span class="s1">cls._TEST_FONTS[</span><span class="s2">'bmp-18-100dpi'</span><span class="s1">] = ft.Font(cls._bmp_18_100dpi_path)</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">tearDownClass(cls):</span>
+        <span class="s1">ft.quit()</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_defaultfont(self):</span>
+        <span class="s1">font = ft.Font(</span><span class="s0">None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(font.name</span><span class="s0">, </span><span class="s2">&quot;FreeSans&quot;</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_init(self):</span>
+
+        <span class="s1">self.assertRaises(IOError</span><span class="s0">, </span><span class="s1">ft.Font</span><span class="s0">, </span><span class="s1">os.path.join (FONTDIR</span><span class="s0">, </span><span class="s2">'nonexistant.ttf'</span><span class="s1">))</span>
+
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+        <span class="s1">self.assertIsInstance(f</span><span class="s0">, </span><span class="s1">ft.Font)</span>
+
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'fixed'</span><span class="s1">]</span>
+        <span class="s1">self.assertIsInstance(f</span><span class="s0">, </span><span class="s1">ft.Font)</span>
+
+        <span class="s5"># Test keyword arguments</span>
+        <span class="s1">f = ft.Font(size=</span><span class="s4">22</span><span class="s0">, </span><span class="s1">file=</span><span class="s0">None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(f.size</span><span class="s0">, </span><span class="s4">22</span><span class="s1">)</span>
+        <span class="s1">f = ft.Font(font_index=</span><span class="s4">0</span><span class="s0">, </span><span class="s1">file=</span><span class="s0">None</span><span class="s1">)</span>
+        <span class="s1">self.assertNotEqual(ft.get_default_resolution()</span><span class="s0">, </span><span class="s4">100</span><span class="s1">)</span>
+        <span class="s1">f = ft.Font(resolution=</span><span class="s4">100</span><span class="s0">, </span><span class="s1">file=</span><span class="s0">None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(f.resolution</span><span class="s0">, </span><span class="s4">100</span><span class="s1">)</span>
+        <span class="s1">f = ft.Font(ucs4=</span><span class="s0">True, </span><span class="s1">file=</span><span class="s0">None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(f.ucs4)</span>
+        <span class="s1">self.assertRaises(OverflowError</span><span class="s0">, </span><span class="s1">ft.Font</span><span class="s0">, </span><span class="s1">file=</span><span class="s0">None,</span>
+                          <span class="s1">size=(max_point_size + </span><span class="s4">1</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(OverflowError</span><span class="s0">, </span><span class="s1">ft.Font</span><span class="s0">, </span><span class="s1">file=</span><span class="s0">None, </span><span class="s1">size=-</span><span class="s4">1</span><span class="s1">)</span>
+
+        <span class="s1">f = ft.Font(</span><span class="s0">None, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(f.height &gt; </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(IOError</span><span class="s0">, </span><span class="s1">f.__init__</span><span class="s0">,</span>
+                          <span class="s1">os.path.join(FONTDIR</span><span class="s0">, </span><span class="s2">'nonexistant.ttf'</span><span class="s1">))</span>
+
+        <span class="s5"># Test attribute preservation during reinitalization</span>
+        <span class="s1">f = ft.Font(self._sans_path</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s0">, </span><span class="s1">ucs4=</span><span class="s0">True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(f.name</span><span class="s0">, </span><span class="s2">'Liberation Sans'</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(f.scalable)</span>
+        <span class="s1">self.assertFalse(f.fixed_width)</span>
+        <span class="s1">self.assertTrue(f.antialiased)</span>
+        <span class="s1">self.assertFalse(f.oblique)</span>
+        <span class="s1">self.assertTrue(f.ucs4)</span>
+        <span class="s1">f.antialiased = </span><span class="s0">False</span>
+        <span class="s1">f.oblique = </span><span class="s0">True</span>
+        <span class="s1">f.__init__(self._mono_path)</span>
+        <span class="s1">self.assertEqual(f.name</span><span class="s0">, </span><span class="s2">'PyGameMono'</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(f.scalable)</span>
+        <span class="s1">self.assertTrue(f.fixed_width)</span>
+        <span class="s1">self.assertFalse(f.antialiased)</span>
+        <span class="s1">self.assertTrue(f.oblique)</span>
+        <span class="s1">self.assertTrue(f.ucs4)</span>
+
+        <span class="s5"># For a bitmap font, the size is automatically set to the first</span>
+        <span class="s5"># size in the available sizes list.</span>
+        <span class="s1">f = ft.Font(self._bmp_8_75dpi_path)</span>
+        <span class="s1">sizes = f.get_sizes()</span>
+        <span class="s1">self.assertEqual(len(sizes)</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">size_pt</span><span class="s0">, </span><span class="s1">width_px</span><span class="s0">, </span><span class="s1">height_px</span><span class="s0">, </span><span class="s1">x_ppem</span><span class="s0">, </span><span class="s1">y_ppem = sizes[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(f.size</span><span class="s0">, </span><span class="s1">(x_ppem</span><span class="s0">, </span><span class="s1">y_ppem))</span>
+        <span class="s1">f.__init__(self._bmp_8_75dpi_path</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">12</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(f.size</span><span class="s0">, </span><span class="s4">12.0</span><span class="s1">)</span>
+
+    <span class="s1">@unittest.skipIf(IS_PYPY</span><span class="s0">, </span><span class="s2">&quot;PyPy doesn't use refcounting&quot;</span><span class="s1">)</span>
+    <span class="s0">def </span><span class="s1">test_freetype_Font_dealloc(self):</span>
+        <span class="s0">import </span><span class="s1">sys</span>
+        <span class="s1">handle = open(self._sans_path</span><span class="s0">, </span><span class="s2">'rb'</span><span class="s1">)</span>
+
+        <span class="s0">def </span><span class="s1">load_font():</span>
+            <span class="s1">tempFont = ft.Font(handle)</span>
+
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">load_font()</span>
+
+            <span class="s1">self.assertEqual(sys.getrefcount(handle)</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s5"># Ensures file is closed even if test fails.</span>
+            <span class="s1">handle.close()</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_scalable(self):</span>
+
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+        <span class="s1">self.assertTrue(f.scalable)</span>
+
+        <span class="s1">self.assertRaises(RuntimeError</span><span class="s0">, lambda </span><span class="s1">: nullfont().scalable)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_fixed_width(self):</span>
+
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+        <span class="s1">self.assertFalse(f.fixed_width)</span>
+
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'mono'</span><span class="s1">]</span>
+        <span class="s1">self.assertTrue(f.fixed_width)</span>
+
+        <span class="s1">self.assertRaises(RuntimeError</span><span class="s0">, lambda </span><span class="s1">: nullfont().fixed_width)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_fixed_sizes(self):</span>
+
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(f.fixed_sizes</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'bmp-8-75dpi'</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(f.fixed_sizes</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'mono'</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(f.fixed_sizes</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_get_sizes(self):</span>
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+        <span class="s1">szlist = f.get_sizes()</span>
+        <span class="s1">self.assertIsInstance(szlist</span><span class="s0">, </span><span class="s1">list)</span>
+        <span class="s1">self.assertEqual(len(szlist)</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'bmp-8-75dpi'</span><span class="s1">]</span>
+        <span class="s1">szlist = f.get_sizes()</span>
+        <span class="s1">self.assertIsInstance(szlist</span><span class="s0">, </span><span class="s1">list)</span>
+        <span class="s1">self.assertEqual(len(szlist)</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span>
+
+        <span class="s1">size8 = szlist[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">self.assertIsInstance(size8[</span><span class="s4">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">int)</span>
+        <span class="s1">self.assertEqual(size8[</span><span class="s4">0</span><span class="s1">]</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">self.assertIsInstance(size8[</span><span class="s4">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">int)</span>
+        <span class="s1">self.assertIsInstance(size8[</span><span class="s4">2</span><span class="s1">]</span><span class="s0">, </span><span class="s1">int)</span>
+        <span class="s1">self.assertIsInstance(size8[</span><span class="s4">3</span><span class="s1">]</span><span class="s0">, </span><span class="s1">float)</span>
+        <span class="s1">self.assertEqual(int(size8[</span><span class="s4">3</span><span class="s1">] * </span><span class="s4">64.0 </span><span class="s1">+ </span><span class="s4">0.5</span><span class="s1">)</span><span class="s0">, </span><span class="s4">8 </span><span class="s1">* </span><span class="s4">64</span><span class="s1">)</span>
+        <span class="s1">self.assertIsInstance(size8[</span><span class="s4">4</span><span class="s1">]</span><span class="s0">, </span><span class="s1">float)</span>
+        <span class="s1">self.assertEqual(int(size8[</span><span class="s4">4</span><span class="s1">] * </span><span class="s4">64.0 </span><span class="s1">+ </span><span class="s4">0.5</span><span class="s1">)</span><span class="s0">, </span><span class="s4">8 </span><span class="s1">* </span><span class="s4">64</span><span class="s1">)</span>
+
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'mono'</span><span class="s1">]</span>
+        <span class="s1">szlist = f.get_sizes()</span>
+        <span class="s1">self.assertIsInstance(szlist</span><span class="s0">, </span><span class="s1">list)</span>
+        <span class="s1">self.assertEqual(len(szlist)</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+
+        <span class="s1">size8 = szlist[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(size8[</span><span class="s4">3</span><span class="s1">]</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(int(size8[</span><span class="s4">3</span><span class="s1">] * </span><span class="s4">64.0 </span><span class="s1">+ </span><span class="s4">0.5</span><span class="s1">)</span><span class="s0">, </span><span class="s4">8 </span><span class="s1">* </span><span class="s4">64</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(int(size8[</span><span class="s4">4</span><span class="s1">] * </span><span class="s4">64.0 </span><span class="s1">+ </span><span class="s4">0.5</span><span class="s1">)</span><span class="s0">, </span><span class="s4">8 </span><span class="s1">* </span><span class="s4">64</span><span class="s1">)</span>
+
+        <span class="s1">size19 = szlist[</span><span class="s4">1</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(size19[</span><span class="s4">3</span><span class="s1">]</span><span class="s0">, </span><span class="s4">19</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(int(size19[</span><span class="s4">3</span><span class="s1">] * </span><span class="s4">64.0 </span><span class="s1">+ </span><span class="s4">0.5</span><span class="s1">)</span><span class="s0">, </span><span class="s4">19 </span><span class="s1">* </span><span class="s4">64</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(int(size19[</span><span class="s4">4</span><span class="s1">] * </span><span class="s4">64.0 </span><span class="s1">+ </span><span class="s4">0.5</span><span class="s1">)</span><span class="s0">, </span><span class="s4">19 </span><span class="s1">* </span><span class="s4">64</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_use_bitmap_strikes(self):</span>
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'mono'</span><span class="s1">]</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s5"># use_bitmap_strikes == True</span>
+            <span class="s5">#</span>
+            <span class="s1">self.assertTrue(f.use_bitmap_strikes)</span>
+
+            <span class="s5"># bitmap compatible properties</span>
+            <span class="s1">s_strike</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">f.vertical = </span><span class="s0">True</span>
+                <span class="s1">s_strike_vert</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+            <span class="s0">finally</span><span class="s1">:</span>
+                <span class="s1">f.vertical = </span><span class="s0">False</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">f.wide = </span><span class="s0">True</span>
+                <span class="s1">s_strike_wide</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+            <span class="s0">finally</span><span class="s1">:</span>
+                <span class="s1">f.wide = </span><span class="s0">False</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">f.underline = </span><span class="s0">True</span>
+                <span class="s1">s_strike_underline</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+            <span class="s0">finally</span><span class="s1">:</span>
+                <span class="s1">f.underline = </span><span class="s0">False</span>
+
+            <span class="s5"># bitmap incompatible properties</span>
+            <span class="s1">s_strike_rot45</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s0">, </span><span class="s1">rotation=</span><span class="s4">45</span><span class="s1">)</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">f.strong = </span><span class="s0">True</span>
+                <span class="s1">s_strike_strong</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+            <span class="s0">finally</span><span class="s1">:</span>
+                <span class="s1">f.strong = </span><span class="s0">False</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">f.oblique = </span><span class="s0">True</span>
+                <span class="s1">s_strike_oblique</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+            <span class="s0">finally</span><span class="s1">:</span>
+                <span class="s1">f.oblique = </span><span class="s0">False</span>
+
+            <span class="s5"># compare with use_bitmap_strikes == False</span>
+            <span class="s5">#</span>
+            <span class="s1">f.use_bitmap_strikes = </span><span class="s0">False</span>
+            <span class="s1">self.assertFalse(f.use_bitmap_strikes)</span>
+
+            <span class="s5"># bitmap compatible properties</span>
+            <span class="s1">s_outline</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+            <span class="s1">self.assertNotEqual(s_outline</span><span class="s0">, </span><span class="s1">s_strike)</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">f.vertical = </span><span class="s0">True</span>
+                <span class="s1">s_outline</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+                <span class="s1">self.assertNotEqual(s_outline</span><span class="s0">, </span><span class="s1">s_strike_vert)</span>
+            <span class="s0">finally</span><span class="s1">:</span>
+                <span class="s1">f.vertical = </span><span class="s0">False</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">f.wide = </span><span class="s0">True</span>
+                <span class="s1">s_outline</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+                <span class="s1">self.assertNotEqual(s_outline</span><span class="s0">, </span><span class="s1">s_strike_wide)</span>
+            <span class="s0">finally</span><span class="s1">:</span>
+                <span class="s1">f.wide = </span><span class="s0">False</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">f.underline = </span><span class="s0">True</span>
+                <span class="s1">s_outline</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+                <span class="s1">self.assertNotEqual(s_outline</span><span class="s0">, </span><span class="s1">s_strike_underline)</span>
+            <span class="s0">finally</span><span class="s1">:</span>
+                <span class="s1">f.underline = </span><span class="s0">False</span>
+
+            <span class="s5"># bitmap incompatible properties</span>
+            <span class="s1">s_outline</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s0">, </span><span class="s1">rotation=</span><span class="s4">45</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(s_outline</span><span class="s0">, </span><span class="s1">s_strike_rot45)</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">f.strong = </span><span class="s0">True</span>
+                <span class="s1">s_outline</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+                <span class="s1">self.assertEqual(s_outline</span><span class="s0">, </span><span class="s1">s_strike_strong)</span>
+            <span class="s0">finally</span><span class="s1">:</span>
+                <span class="s1">f.strong = </span><span class="s0">False</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">f.oblique = </span><span class="s0">True</span>
+                <span class="s1">s_outline</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+                <span class="s1">self.assertEqual(s_outline</span><span class="s0">, </span><span class="s1">s_strike_oblique)</span>
+            <span class="s0">finally</span><span class="s1">:</span>
+                <span class="s1">f.oblique = </span><span class="s0">False</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">f.use_bitmap_strikes = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_bitmap_files(self):</span>
+        <span class="s3">&quot;&quot;&quot;Ensure bitmap file restrictions are caught&quot;&quot;&quot;</span>
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'bmp-8-75dpi'</span><span class="s1">]</span>
+        <span class="s1">f_null = nullfont()</span>
+        <span class="s1">s = pygame.Surface((</span><span class="s4">10</span><span class="s0">, </span><span class="s4">10</span><span class="s1">)</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">a = s.get_view(</span><span class="s2">'3'</span><span class="s1">)</span>
+
+        <span class="s1">exception = AttributeError</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'strong'</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'oblique'</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'style'</span><span class="s0">, </span><span class="s1">ft.STYLE_STRONG)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'style'</span><span class="s0">, </span><span class="s1">ft.STYLE_OBLIQUE)</span>
+        <span class="s1">exception = RuntimeError</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f_null</span><span class="s0">, </span><span class="s2">'strong'</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f_null</span><span class="s0">, </span><span class="s2">'oblique'</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f_null</span><span class="s0">, </span><span class="s2">'style'</span><span class="s0">, </span><span class="s1">ft.STYLE_STRONG)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f_null</span><span class="s0">, </span><span class="s2">'style'</span><span class="s0">, </span><span class="s1">ft.STYLE_OBLIQUE)</span>
+        <span class="s1">exception = ValueError</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.render</span><span class="s0">,</span>
+                          <span class="s2">'A'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">rotation=</span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.render</span><span class="s0">,</span>
+                          <span class="s2">'A'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">style=ft.STYLE_OBLIQUE)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.render</span><span class="s0">,</span>
+                          <span class="s2">'A'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">style=ft.STYLE_STRONG)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.render_raw</span><span class="s0">, </span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">rotation=</span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.render_raw</span><span class="s0">,</span>
+                          <span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">style=ft.STYLE_OBLIQUE)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.render_raw</span><span class="s0">,</span>
+                          <span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">style=ft.STYLE_STRONG)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.render_to</span><span class="s0">,</span>
+                          <span class="s1">s</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">rotation=</span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.render_to</span><span class="s0">,</span>
+                          <span class="s1">s</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">,</span>
+                          <span class="s1">style=ft.STYLE_OBLIQUE)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.render_to</span><span class="s0">,</span>
+                          <span class="s1">s</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">,</span>
+                          <span class="s1">style=ft.STYLE_STRONG)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.render_raw_to</span><span class="s0">,</span>
+                          <span class="s1">a</span><span class="s0">, </span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">rotation=</span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.render_raw_to</span><span class="s0">,</span>
+                          <span class="s1">a</span><span class="s0">, </span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">style=ft.STYLE_OBLIQUE)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.render_raw_to</span><span class="s0">,</span>
+                          <span class="s1">a</span><span class="s0">, </span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">style=ft.STYLE_STRONG)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.get_rect</span><span class="s0">, </span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">rotation=</span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.get_rect</span><span class="s0">,</span>
+                          <span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">style=ft.STYLE_OBLIQUE)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.get_rect</span><span class="s0">,</span>
+                          <span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s0">, </span><span class="s1">style=ft.STYLE_STRONG)</span>
+
+        <span class="s5"># Unsupported point size</span>
+        <span class="s1">exception = pygame.error</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.get_rect</span><span class="s0">, </span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">42</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.get_metrics</span><span class="s0">, </span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">42</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.get_sized_ascender</span><span class="s0">, </span><span class="s4">42</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.get_sized_descender</span><span class="s0">, </span><span class="s4">42</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.get_sized_height</span><span class="s0">, </span><span class="s4">42</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(exception</span><span class="s0">, </span><span class="s1">f.get_sized_glyph_height</span><span class="s0">, </span><span class="s4">42</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_get_metrics(self):</span>
+
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+
+        <span class="s1">metrics = font.get_metrics(</span><span class="s2">'ABCD'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(len(metrics)</span><span class="s0">, </span><span class="s1">len(</span><span class="s2">'ABCD'</span><span class="s1">))</span>
+        <span class="s1">self.assertIsInstance(metrics</span><span class="s0">, </span><span class="s1">list)</span>
+
+        <span class="s0">for </span><span class="s1">metrics_tuple </span><span class="s0">in </span><span class="s1">metrics:</span>
+            <span class="s1">self.assertIsInstance(metrics_tuple</span><span class="s0">, </span><span class="s1">tuple</span><span class="s0">, </span><span class="s1">metrics_tuple)</span>
+            <span class="s1">self.assertEqual(len(metrics_tuple)</span><span class="s0">, </span><span class="s4">6</span><span class="s1">)</span>
+
+            <span class="s0">for </span><span class="s1">m </span><span class="s0">in </span><span class="s1">metrics_tuple[:</span><span class="s4">4</span><span class="s1">]:</span>
+                <span class="s1">self.assertIsInstance(m</span><span class="s0">, </span><span class="s1">int)</span>
+
+            <span class="s0">for </span><span class="s1">m </span><span class="s0">in </span><span class="s1">metrics_tuple[</span><span class="s4">4</span><span class="s1">:]:</span>
+                <span class="s1">self.assertIsInstance(m</span><span class="s0">, </span><span class="s1">float)</span>
+
+        <span class="s5"># test for empty string</span>
+        <span class="s1">metrics = font.get_metrics(</span><span class="s2">''</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(metrics</span><span class="s0">, </span><span class="s1">[])</span>
+
+        <span class="s5"># test for invalid string</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">font.get_metrics</span><span class="s0">, </span><span class="s4">24</span><span class="s0">, </span><span class="s4">24</span><span class="s1">)</span>
+
+        <span class="s5"># raises exception when uninitalized</span>
+        <span class="s1">self.assertRaises(RuntimeError</span><span class="s0">, </span><span class="s1">nullfont().get_metrics</span><span class="s0">,</span>
+                          <span class="s2">'a'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_get_rect(self):</span>
+
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+
+        <span class="s0">def </span><span class="s1">test_rect(r):</span>
+            <span class="s1">self.assertIsInstance(r</span><span class="s0">, </span><span class="s1">pygame.Rect)</span>
+
+        <span class="s1">rect_default = font.get_rect(</span><span class="s2">&quot;ABCDabcd&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">test_rect(rect_default)</span>
+        <span class="s1">self.assertTrue(rect_default.size &gt; (</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(rect_default.width &gt; rect_default.height)</span>
+
+        <span class="s1">rect_bigger = font.get_rect(</span><span class="s2">&quot;ABCDabcd&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">test_rect(rect_bigger)</span>
+        <span class="s1">self.assertTrue(rect_bigger.size &gt; rect_default.size)</span>
+
+        <span class="s1">rect_strong = font.get_rect(</span><span class="s2">&quot;ABCDabcd&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s0">, </span><span class="s1">style=ft.STYLE_STRONG)</span>
+        <span class="s1">test_rect(rect_strong)</span>
+        <span class="s1">self.assertTrue(rect_strong.size &gt; rect_default.size)</span>
+
+        <span class="s1">font.vertical = </span><span class="s0">True</span>
+        <span class="s1">rect_vert = font.get_rect(</span><span class="s2">&quot;ABCDabcd&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">test_rect(rect_vert)</span>
+        <span class="s1">self.assertTrue(rect_vert.width &lt; rect_vert.height)</span>
+        <span class="s1">font.vertical = </span><span class="s0">False</span>
+
+        <span class="s1">rect_oblique = font.get_rect(</span><span class="s2">&quot;ABCDabcd&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s0">, </span><span class="s1">style=ft.STYLE_OBLIQUE)</span>
+        <span class="s1">test_rect(rect_oblique)</span>
+        <span class="s1">self.assertTrue(rect_oblique.width &gt; rect_default.width)</span>
+        <span class="s1">self.assertTrue(rect_oblique.height == rect_default.height)</span>
+
+        <span class="s1">rect_under = font.get_rect(</span><span class="s2">&quot;ABCDabcd&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s0">, </span><span class="s1">style=ft.STYLE_UNDERLINE)</span>
+        <span class="s1">test_rect(rect_under)</span>
+        <span class="s1">self.assertTrue(rect_under.width == rect_default.width)</span>
+        <span class="s1">self.assertTrue(rect_under.height &gt; rect_default.height)</span>
+
+        <span class="s5"># Rect size should change if UTF surrogate pairs are treated as</span>
+        <span class="s5"># one code point or two.</span>
+        <span class="s1">ufont = self._TEST_FONTS[</span><span class="s2">'mono'</span><span class="s1">]</span>
+        <span class="s1">rect_utf32 = ufont.get_rect(as_unicode(</span><span class="s2">r'\U00013079'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">rect_utf16 = ufont.get_rect(as_unicode(</span><span class="s2">r'\uD80C\uDC79'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(rect_utf16</span><span class="s0">, </span><span class="s1">rect_utf32);</span>
+        <span class="s1">ufont.ucs4 = </span><span class="s0">True</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">rect_utf16 = ufont.get_rect(as_unicode(</span><span class="s2">r'\uD80C\uDC79'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">ufont.ucs4 = </span><span class="s0">False</span>
+        <span class="s1">self.assertNotEqual(rect_utf16</span><span class="s0">, </span><span class="s1">rect_utf32);</span>
+
+        <span class="s1">self.assertRaises(RuntimeError</span><span class="s0">,</span>
+                          <span class="s1">nullfont().get_rect</span><span class="s0">, </span><span class="s2">'a'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+
+        <span class="s5"># text stretching</span>
+        <span class="s1">rect12 = font.get_rect(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">12.0</span><span class="s1">)</span>
+        <span class="s1">rect24 = font.get_rect(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24.0</span><span class="s1">)</span>
+        <span class="s1">rect_x = font.get_rect(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=(</span><span class="s4">24.0</span><span class="s0">, </span><span class="s4">12.0</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(rect_x.width</span><span class="s0">, </span><span class="s1">rect24.width)</span>
+        <span class="s1">self.assertEqual(rect_x.height</span><span class="s0">, </span><span class="s1">rect12.height)</span>
+        <span class="s1">rect_y = font.get_rect(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=(</span><span class="s4">12.0</span><span class="s0">, </span><span class="s4">24.0</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(rect_y.width</span><span class="s0">, </span><span class="s1">rect12.width)</span>
+        <span class="s1">self.assertEqual(rect_y.height</span><span class="s0">, </span><span class="s1">rect24.height)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_height(self):</span>
+
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(f.height</span><span class="s0">, </span><span class="s4">2355</span><span class="s1">)</span>
+
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'fixed'</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(f.height</span><span class="s0">, </span><span class="s4">1100</span><span class="s1">)</span>
+
+        <span class="s1">self.assertRaises(RuntimeError</span><span class="s0">, lambda </span><span class="s1">: nullfont().height)</span>
+
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_name(self):</span>
+
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(f.name</span><span class="s0">, </span><span class="s2">'Liberation Sans'</span><span class="s1">)</span>
+
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'fixed'</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(f.name</span><span class="s0">, </span><span class="s2">'Inconsolata'</span><span class="s1">)</span>
+
+        <span class="s1">nf = nullfont()</span>
+        <span class="s1">self.assertEqual(nf.name</span><span class="s0">, </span><span class="s1">repr(nf))</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_size(self):</span>
+
+        <span class="s1">f = ft.Font(</span><span class="s0">None, </span><span class="s1">size=</span><span class="s4">12</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(f.size</span><span class="s0">, </span><span class="s4">12</span><span class="s1">)</span>
+        <span class="s1">f.size = </span><span class="s4">22</span>
+        <span class="s1">self.assertEqual(f.size</span><span class="s0">, </span><span class="s4">22</span><span class="s1">)</span>
+        <span class="s1">f.size = </span><span class="s4">0</span>
+        <span class="s1">self.assertEqual(f.size</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">f.size = max_point_size</span>
+        <span class="s1">self.assertEqual(f.size</span><span class="s0">, </span><span class="s1">max_point_size)</span>
+        <span class="s1">f.size = </span><span class="s4">6.5</span>
+        <span class="s1">self.assertEqual(f.size</span><span class="s0">, </span><span class="s4">6.5</span><span class="s1">)</span>
+        <span class="s1">f.size = max_point_size_f</span>
+        <span class="s1">self.assertEqual(f.size</span><span class="s0">, </span><span class="s1">max_point_size_f)</span>
+        <span class="s1">self.assertRaises(OverflowError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'size'</span><span class="s0">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(OverflowError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'size'</span><span class="s0">,</span>
+                          <span class="s1">(max_point_size + </span><span class="s4">1</span><span class="s1">))</span>
+
+        <span class="s1">f.size = </span><span class="s4">24.0</span><span class="s0">, </span><span class="s4">0</span>
+        <span class="s1">size = f.size</span>
+        <span class="s1">self.assertIsInstance(size</span><span class="s0">, </span><span class="s1">float)</span>
+        <span class="s1">self.assertEqual(size</span><span class="s0">, </span><span class="s4">24.0</span><span class="s1">)</span>
+
+        <span class="s1">f.size = </span><span class="s4">16</span><span class="s0">, </span><span class="s4">16</span>
+        <span class="s1">size = f.size</span>
+        <span class="s1">self.assertIsInstance(size</span><span class="s0">, </span><span class="s1">tuple)</span>
+        <span class="s1">self.assertEqual(len(size)</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+
+        <span class="s1">x</span><span class="s0">, </span><span class="s1">y = size</span>
+        <span class="s1">self.assertIsInstance(x</span><span class="s0">, </span><span class="s1">float)</span>
+        <span class="s1">self.assertEqual(x</span><span class="s0">, </span><span class="s4">16.0</span><span class="s1">)</span>
+        <span class="s1">self.assertIsInstance(y</span><span class="s0">, </span><span class="s1">float)</span>
+        <span class="s1">self.assertEqual(y</span><span class="s0">, </span><span class="s4">16.0</span><span class="s1">)</span>
+
+        <span class="s1">f.size = </span><span class="s4">20.5</span><span class="s0">, </span><span class="s4">22.25</span>
+        <span class="s1">x</span><span class="s0">, </span><span class="s1">y = f.size</span>
+        <span class="s1">self.assertEqual(x</span><span class="s0">, </span><span class="s4">20.5</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(y</span><span class="s0">, </span><span class="s4">22.25</span><span class="s1">)</span>
+
+        <span class="s1">f.size = </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span>
+        <span class="s1">size = f.size</span>
+        <span class="s1">self.assertIsInstance(size</span><span class="s0">, </span><span class="s1">float)</span>
+        <span class="s1">self.assertEqual(size</span><span class="s0">, </span><span class="s4">0.0</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'size'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">24.0</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'size'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">24.0</span><span class="s0">,</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'size'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">24.0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'size'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">24.0j</span><span class="s0">, </span><span class="s4">24.0</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'size'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">24.0</span><span class="s0">, </span><span class="s4">24.0j</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(OverflowError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'size'</span><span class="s0">, </span><span class="s1">(-</span><span class="s4">1</span><span class="s0">, </span><span class="s4">16</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(OverflowError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'size'</span><span class="s0">,</span>
+                          <span class="s1">(max_point_size + </span><span class="s4">1</span><span class="s0">, </span><span class="s4">16</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(OverflowError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'size'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">16</span><span class="s0">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(OverflowError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'size'</span><span class="s0">,</span>
+                          <span class="s1">(</span><span class="s4">16</span><span class="s0">, </span><span class="s1">max_point_size + </span><span class="s4">1</span><span class="s1">))</span>
+
+        <span class="s5"># bitmap files with identical point size but differing ppems.</span>
+        <span class="s1">f75 = self._TEST_FONTS[</span><span class="s2">'bmp-18-75dpi'</span><span class="s1">]</span>
+        <span class="s1">sizes = f75.get_sizes()</span>
+        <span class="s1">self.assertEqual(len(sizes)</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">size_pt</span><span class="s0">, </span><span class="s1">width_px</span><span class="s0">, </span><span class="s1">height_px</span><span class="s0">, </span><span class="s1">x_ppem</span><span class="s0">, </span><span class="s1">y_ppem = sizes[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(size_pt</span><span class="s0">, </span><span class="s4">18</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(x_ppem</span><span class="s0">, </span><span class="s4">19.0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(y_ppem</span><span class="s0">, </span><span class="s4">19.0</span><span class="s1">)</span>
+        <span class="s1">rect = f75.get_rect(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">18</span><span class="s1">)</span>
+        <span class="s1">rect = f75.get_rect(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+        <span class="s1">rect = f75.get_rect(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=(</span><span class="s4">19.0</span><span class="s0">, </span><span class="s4">19.0</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(pygame.error</span><span class="s0">, </span><span class="s1">f75.get_rect</span><span class="s0">, </span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">17</span><span class="s1">)</span>
+        <span class="s1">f100 = self._TEST_FONTS[</span><span class="s2">'bmp-18-100dpi'</span><span class="s1">]</span>
+        <span class="s1">sizes = f100.get_sizes()</span>
+        <span class="s1">self.assertEqual(len(sizes)</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">size_pt</span><span class="s0">, </span><span class="s1">width_px</span><span class="s0">, </span><span class="s1">height_px</span><span class="s0">, </span><span class="s1">x_ppem</span><span class="s0">, </span><span class="s1">y_ppem = sizes[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(size_pt</span><span class="s0">, </span><span class="s4">18</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(x_ppem</span><span class="s0">, </span><span class="s4">25.0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(y_ppem</span><span class="s0">, </span><span class="s4">25.0</span><span class="s1">)</span>
+        <span class="s1">rect = f100.get_rect(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">18</span><span class="s1">)</span>
+        <span class="s1">rect = f100.get_rect(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">25</span><span class="s1">)</span>
+        <span class="s1">rect = f100.get_rect(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=(</span><span class="s4">25.0</span><span class="s0">, </span><span class="s4">25.0</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(pygame.error</span><span class="s0">, </span><span class="s1">f100.get_rect</span><span class="s0">, </span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">17</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_rotation(self):</span>
+
+        <span class="s1">test_angles = [(</span><span class="s4">30</span><span class="s0">, </span><span class="s4">30</span><span class="s1">)</span><span class="s0">,</span>
+                       <span class="s1">(</span><span class="s4">360</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">390</span><span class="s0">, </span><span class="s4">30</span><span class="s1">)</span><span class="s0">,</span>
+                       <span class="s1">(</span><span class="s4">720</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">764</span><span class="s0">, </span><span class="s4">44</span><span class="s1">)</span><span class="s0">,</span>
+                       <span class="s1">(-</span><span class="s4">30</span><span class="s0">, </span><span class="s4">330</span><span class="s1">)</span><span class="s0">,</span>
+                       <span class="s1">(-</span><span class="s4">360</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(-</span><span class="s4">390</span><span class="s0">, </span><span class="s4">330</span><span class="s1">)</span><span class="s0">,</span>
+                       <span class="s1">(-</span><span class="s4">720</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(-</span><span class="s4">764</span><span class="s0">, </span><span class="s4">316</span><span class="s1">)]</span>
+
+        <span class="s1">f = ft.Font(</span><span class="s0">None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(f.rotation</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s0">for </span><span class="s1">r</span><span class="s0">, </span><span class="s1">r_reduced </span><span class="s0">in </span><span class="s1">test_angles:</span>
+            <span class="s1">f.rotation = r</span>
+            <span class="s1">self.assertEqual(f.rotation</span><span class="s0">, </span><span class="s1">r_reduced</span><span class="s0">,</span>
+                             <span class="s2">&quot;for angle %d: %d != %d&quot; </span><span class="s1">%</span>
+                             <span class="s1">(r</span><span class="s0">, </span><span class="s1">f.rotation</span><span class="s0">, </span><span class="s1">r_reduced))</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'rotation'</span><span class="s0">, </span><span class="s2">'12'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_render_to(self):</span>
+        <span class="s5"># Rendering to an existing target surface is equivalent to</span>
+        <span class="s5"># blitting a surface returned by Font.render with the target.</span>
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+
+        <span class="s1">surf = pygame.Surface((</span><span class="s4">800</span><span class="s0">, </span><span class="s4">600</span><span class="s1">))</span>
+        <span class="s1">color = pygame.Color(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+
+        <span class="s1">rrect = font.render_to(surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">32</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span><span class="s0">,</span>
+                               <span class="s2">'FoobarBaz'</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, None, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertIsInstance(rrect</span><span class="s0">, </span><span class="s1">pygame.Rect)</span>
+        <span class="s1">self.assertEqual(rrect.top</span><span class="s0">, </span><span class="s1">rrect.height)</span>
+        <span class="s5">## self.assertEqual(rrect.left, something or other)</span>
+
+        <span class="s1">rcopy = rrect.copy()</span>
+        <span class="s1">rcopy.topleft = (</span><span class="s4">32</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(surf.get_rect().contains(rcopy))</span>
+
+        <span class="s1">rect = pygame.Rect(</span><span class="s4">20</span><span class="s0">, </span><span class="s4">20</span><span class="s0">, </span><span class="s4">2</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">rrect = font.render_to(surf</span><span class="s0">, </span><span class="s1">rect</span><span class="s0">, </span><span class="s2">'FoobarBax'</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, None, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(rrect.top</span><span class="s0">, </span><span class="s1">rrect.height)</span>
+        <span class="s1">self.assertNotEqual(rrect.size</span><span class="s0">, </span><span class="s1">rect.size)</span>
+        <span class="s1">rrect = font.render_to(surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">20.1</span><span class="s0">, </span><span class="s4">18.9</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'FoobarBax'</span><span class="s0">,</span>
+                               <span class="s1">color</span><span class="s0">, None, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s5">## self.assertEqual(tuple(rend[1].topleft), (20, 18))</span>
+
+        <span class="s1">rrect = font.render_to(surf</span><span class="s0">, </span><span class="s1">rect</span><span class="s0">, </span><span class="s2">''</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, None, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(rrect)</span>
+        <span class="s1">self.assertEqual(rrect.height</span><span class="s0">, </span><span class="s1">font.get_sized_height(</span><span class="s4">24</span><span class="s1">))</span>
+
+        <span class="s5"># invalid surf test</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">font.render_to</span><span class="s0">,</span>
+                          <span class="s2">&quot;not a surface&quot;</span><span class="s0">, </span><span class="s2">&quot;text&quot;</span><span class="s0">, </span><span class="s1">color)</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">font.render_to</span><span class="s0">,</span>
+                          <span class="s1">pygame.Surface</span><span class="s0">, </span><span class="s2">&quot;text&quot;</span><span class="s0">, </span><span class="s1">color)</span>
+
+        <span class="s5"># invalid dest test</span>
+        <span class="s0">for </span><span class="s1">dest </span><span class="s0">in </span><span class="s1">[</span><span class="s0">None, </span><span class="s4">0</span><span class="s0">, </span><span class="s2">'a'</span><span class="s0">, </span><span class="s2">'ab'</span><span class="s0">,</span>
+                     <span class="s1">()</span><span class="s0">, </span><span class="s1">(</span><span class="s4">1</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">'a'</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">1</span><span class="s0">, </span><span class="s2">'a'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">1</span><span class="s1">+</span><span class="s4">2j</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">1</span><span class="s0">, </span><span class="s4">1</span><span class="s1">+</span><span class="s4">2j</span><span class="s1">)</span><span class="s0">,</span>
+                     <span class="s1">(</span><span class="s4">1</span><span class="s0">, </span><span class="s1">int)</span><span class="s0">, </span><span class="s1">(int</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)]:</span>
+            <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">,</span>
+                              <span class="s1">surf</span><span class="s0">, </span><span class="s1">dest</span><span class="s0">, </span><span class="s2">'foobar'</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+
+        <span class="s5"># misc parameter test</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">font.render_to</span><span class="s0">, </span><span class="s1">surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'foobar'</span><span class="s0">, </span><span class="s1">color)</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">font.render_to</span><span class="s0">, </span><span class="s1">surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'foobar'</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s2">&quot;&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">font.render_to</span><span class="s0">, </span><span class="s1">surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'foobar'</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, None, </span><span class="s1">style=</span><span class="s4">42</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">font.render_to</span><span class="s0">, </span><span class="s1">surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'foobar'</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, None, </span><span class="s1">style=</span><span class="s0">None, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">font.render_to</span><span class="s0">, </span><span class="s1">surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'foobar'</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, None, </span><span class="s1">style=</span><span class="s4">97</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_render(self):</span>
+
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+
+        <span class="s1">surf = pygame.Surface((</span><span class="s4">800</span><span class="s0">, </span><span class="s4">600</span><span class="s1">))</span>
+        <span class="s1">color = pygame.Color(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+
+        <span class="s1">rend = font.render(</span><span class="s2">'FoobarBaz'</span><span class="s0">, </span><span class="s1">pygame.Color(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, None, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertIsInstance(rend</span><span class="s0">, </span><span class="s1">tuple)</span>
+        <span class="s1">self.assertEqual(len(rend)</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.assertIsInstance(rend[</span><span class="s4">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">pygame.Surface)</span>
+        <span class="s1">self.assertIsInstance(rend[</span><span class="s4">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">pygame.Rect)</span>
+        <span class="s1">self.assertEqual(rend[</span><span class="s4">0</span><span class="s1">].get_rect().size</span><span class="s0">, </span><span class="s1">rend[</span><span class="s4">1</span><span class="s1">].size)</span>
+
+        <span class="s1">s</span><span class="s0">, </span><span class="s1">r = font.render(</span><span class="s2">''</span><span class="s0">, </span><span class="s1">pygame.Color(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, None, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(r.width</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(r.height</span><span class="s0">, </span><span class="s1">font.get_sized_height(</span><span class="s4">24</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(s.get_size()</span><span class="s0">, </span><span class="s1">r.size)</span>
+        <span class="s1">self.assertEqual(s.get_bitsize()</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+
+        <span class="s5"># misc parameter test</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">, </span><span class="s2">'foobar'</span><span class="s0">, </span><span class="s1">color)</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">, </span><span class="s2">'foobar'</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s2">&quot;&quot;</span><span class="s0">,</span>
+                          <span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">, </span><span class="s2">'foobar'</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, None,</span>
+                          <span class="s1">style=</span><span class="s4">42</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">, </span><span class="s2">'foobar'</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, None,</span>
+                          <span class="s1">style=</span><span class="s0">None, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">, </span><span class="s2">'foobar'</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, None,</span>
+                          <span class="s1">style=</span><span class="s4">97</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+
+        <span class="s5"># valid surrogate pairs</span>
+        <span class="s1">font2 = self._TEST_FONTS[</span><span class="s2">'mono'</span><span class="s1">]</span>
+        <span class="s1">ucs4 = font2.ucs4</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">font2.ucs4 = </span><span class="s0">False</span>
+            <span class="s1">rend1 = font2.render(as_unicode(</span><span class="s2">r'\uD80C\uDC79'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+            <span class="s1">rend2 = font2.render(as_unicode(</span><span class="s2">r'\U00013079'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(rend1[</span><span class="s4">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">rend2[</span><span class="s4">1</span><span class="s1">])</span>
+            <span class="s1">font2.ucs4 = </span><span class="s0">True</span>
+            <span class="s1">rend1 = font2.render(as_unicode(</span><span class="s2">r'\uD80C\uDC79'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+            <span class="s1">self.assertNotEqual(rend1[</span><span class="s4">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">rend2[</span><span class="s4">1</span><span class="s1">])</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">font2.ucs4 = ucs4</span>
+
+        <span class="s5"># malformed surrogate pairs</span>
+        <span class="s1">self.assertRaises(UnicodeEncodeError</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">,</span>
+                          <span class="s1">as_unicode(</span><span class="s2">r'\uD80C'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(UnicodeEncodeError</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">,</span>
+                          <span class="s1">as_unicode(</span><span class="s2">r'\uDCA7'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(UnicodeEncodeError</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">,</span>
+                          <span class="s1">as_unicode(</span><span class="s2">r'\uD7FF\uDCA7'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(UnicodeEncodeError</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">,</span>
+                          <span class="s1">as_unicode(</span><span class="s2">r'\uDC00\uDCA7'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(UnicodeEncodeError</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">,</span>
+                          <span class="s1">as_unicode(</span><span class="s2">r'\uD80C\uDBFF'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(UnicodeEncodeError</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">,</span>
+                          <span class="s1">as_unicode(</span><span class="s2">r'\uD80C\uE000'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+
+        <span class="s5"># raises exception when uninitalized</span>
+        <span class="s1">self.assertRaises(RuntimeError</span><span class="s0">, </span><span class="s1">nullfont().render</span><span class="s0">,</span>
+                          <span class="s2">'a'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+
+        <span class="s5"># Confirm the correct glpyhs are returned for a couple of</span>
+        <span class="s5"># unicode code points, 'A' and '\U00023079'. For each code point</span>
+        <span class="s5"># the rendered glyph is compared with an image of glyph bitmap</span>
+        <span class="s5"># as exported by FontForge.</span>
+        <span class="s1">path = os.path.join(FONTDIR</span><span class="s0">, </span><span class="s2">'A_PyGameMono-8.png'</span><span class="s1">)</span>
+        <span class="s1">A = pygame.image.load(path)</span>
+        <span class="s1">path = os.path.join(FONTDIR</span><span class="s0">, </span><span class="s2">'u13079_PyGameMono-8.png'</span><span class="s1">)</span>
+        <span class="s1">u13079 = pygame.image.load(path)</span>
+
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'mono'</span><span class="s1">]</span>
+        <span class="s1">font.ucs4 = </span><span class="s0">False</span>
+        <span class="s1">A_rendered</span><span class="s0">, </span><span class="s1">r = font.render(</span><span class="s2">'A'</span><span class="s0">, </span><span class="s1">bgcolor=pygame.Color(</span><span class="s2">'white'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">u13079_rendered</span><span class="s0">, </span><span class="s1">r = font.render(as_unicode(</span><span class="s2">r'\U00013079'</span><span class="s1">)</span><span class="s0">,</span>
+                                         <span class="s1">bgcolor=pygame.Color(</span><span class="s2">'white'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s1">)</span>
+
+        <span class="s5">## before comparing the surfaces, make sure they are the same</span>
+        <span class="s5">## pixel format. Use 32-bit SRCALPHA to avoid row padding and</span>
+        <span class="s5">## undefined bytes (the alpha byte will be set to 255.)</span>
+        <span class="s1">bitmap = pygame.Surface(A.get_size()</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">bitmap.blit(A</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">rendering = pygame.Surface(A_rendered.get_size()</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">rendering.blit(A_rendered</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(surf_same_image(rendering</span><span class="s0">, </span><span class="s1">bitmap))</span>
+        <span class="s1">bitmap = pygame.Surface(u13079.get_size()</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">bitmap.blit(u13079</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">rendering = pygame.Surface(u13079_rendered.get_size()</span><span class="s0">,</span>
+                                   <span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">rendering.blit(u13079_rendered</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(surf_same_image(rendering</span><span class="s0">, </span><span class="s1">bitmap))</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_render_mono(self):</span>
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+        <span class="s1">color = pygame.Color(</span><span class="s2">'black'</span><span class="s1">)</span>
+        <span class="s1">colorkey = pygame.Color(</span><span class="s2">'white'</span><span class="s1">)</span>
+        <span class="s1">text = </span><span class="s2">&quot;.&quot;</span>
+
+        <span class="s1">save_antialiased = font.antialiased</span>
+        <span class="s1">font.antialiased = </span><span class="s0">False</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">surf</span><span class="s0">, </span><span class="s1">r = font.render(text</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(surf.get_bitsize()</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span>
+            <span class="s1">flags = surf.get_flags()</span>
+            <span class="s1">self.assertTrue(flags &amp; pygame.SRCCOLORKEY)</span>
+            <span class="s1">self.assertFalse(flags &amp; (pygame.SRCALPHA | pygame.HWSURFACE))</span>
+            <span class="s1">self.assertEqual(surf.get_colorkey()</span><span class="s0">, </span><span class="s1">colorkey)</span>
+            <span class="s1">self.assertIsNone(surf.get_alpha())</span>
+
+            <span class="s1">translucent_color = pygame.Color(*color)</span>
+            <span class="s1">translucent_color.a = </span><span class="s4">55</span>
+            <span class="s1">surf</span><span class="s0">, </span><span class="s1">r = font.render(text</span><span class="s0">, </span><span class="s1">translucent_color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(surf.get_bitsize()</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span>
+            <span class="s1">flags = surf.get_flags()</span>
+            <span class="s1">self.assertTrue(flags &amp; (pygame.SRCCOLORKEY | pygame.SRCALPHA))</span>
+            <span class="s1">self.assertFalse(flags &amp; pygame.HWSURFACE)</span>
+            <span class="s1">self.assertEqual(surf.get_colorkey()</span><span class="s0">, </span><span class="s1">colorkey)</span>
+            <span class="s1">self.assertEqual(surf.get_alpha()</span><span class="s0">, </span><span class="s1">translucent_color.a)</span>
+
+            <span class="s1">surf</span><span class="s0">, </span><span class="s1">r = font.render(text</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">colorkey</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(surf.get_bitsize()</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">font.antialiased = save_antialiased</span>
+
+    <span class="s1">@unittest.skipIf(pygame.get_sdl_version()[</span><span class="s4">0</span><span class="s1">] == </span><span class="s4">2</span><span class="s0">, </span><span class="s2">&quot;skipping due to blending issue (#864)&quot;</span><span class="s1">)</span>
+    <span class="s0">def </span><span class="s1">test_freetype_Font_render_to_mono(self):</span>
+        <span class="s5"># Blitting is done in two stages. First the target is alpha filled</span>
+        <span class="s5"># with the background color, if any. Second, the foreground</span>
+        <span class="s5"># color is alpha blitted to the background.</span>
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+        <span class="s1">text = </span><span class="s2">&quot; .&quot;</span>
+        <span class="s1">rect = font.get_rect(text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">size = rect.size</span>
+        <span class="s1">fg = pygame.Surface((</span><span class="s4">1</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">bg = pygame.Surface((</span><span class="s4">1</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">surrogate = pygame.Surface((</span><span class="s4">1</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">surfaces = [pygame.Surface(size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span><span class="s0">,</span>
+                    <span class="s1">pygame.Surface(size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">16</span><span class="s1">)</span><span class="s0">,</span>
+                    <span class="s1">pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">16</span><span class="s1">)</span><span class="s0">,</span>
+                    <span class="s1">pygame.Surface(size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">24</span><span class="s1">)</span><span class="s0">,</span>
+                    <span class="s1">pygame.Surface(size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span><span class="s0">,</span>
+                    <span class="s1">pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)]</span>
+        <span class="s1">fg_colors = [</span>
+            <span class="s1">surfaces[</span><span class="s4">0</span><span class="s1">].get_palette_at(</span><span class="s4">2</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">surfaces[</span><span class="s4">1</span><span class="s1">].unmap_rgb(surfaces[</span><span class="s4">1</span><span class="s1">].map_rgb((</span><span class="s4">128</span><span class="s0">, </span><span class="s4">64</span><span class="s0">, </span><span class="s4">200</span><span class="s1">)))</span><span class="s0">,</span>
+            <span class="s1">surfaces[</span><span class="s4">2</span><span class="s1">].unmap_rgb(surfaces[</span><span class="s4">2</span><span class="s1">].map_rgb((</span><span class="s4">99</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">100</span><span class="s0">, </span><span class="s4">64</span><span class="s1">)))</span><span class="s0">,</span>
+            <span class="s1">(</span><span class="s4">128</span><span class="s0">, </span><span class="s4">97</span><span class="s0">, </span><span class="s4">213</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">(</span><span class="s4">128</span><span class="s0">, </span><span class="s4">97</span><span class="s0">, </span><span class="s4">213</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">(</span><span class="s4">128</span><span class="s0">, </span><span class="s4">97</span><span class="s0">, </span><span class="s4">213</span><span class="s0">, </span><span class="s4">60</span><span class="s1">)]</span>
+        <span class="s1">fg_colors = [pygame.Color(*c) </span><span class="s0">for </span><span class="s1">c </span><span class="s0">in </span><span class="s1">fg_colors]</span>
+        <span class="s1">self.assertEqual(len(surfaces)</span><span class="s0">, </span><span class="s1">len(fg_colors))  </span><span class="s5"># integrity check</span>
+        <span class="s1">bg_colors = [</span>
+            <span class="s1">surfaces[</span><span class="s4">0</span><span class="s1">].get_palette_at(</span><span class="s4">4</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">surfaces[</span><span class="s4">1</span><span class="s1">].unmap_rgb(surfaces[</span><span class="s4">1</span><span class="s1">].map_rgb((</span><span class="s4">220</span><span class="s0">, </span><span class="s4">20</span><span class="s0">, </span><span class="s4">99</span><span class="s1">)))</span><span class="s0">,</span>
+            <span class="s1">surfaces[</span><span class="s4">2</span><span class="s1">].unmap_rgb(surfaces[</span><span class="s4">2</span><span class="s1">].map_rgb((</span><span class="s4">55</span><span class="s0">, </span><span class="s4">200</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">86</span><span class="s1">)))</span><span class="s0">,</span>
+            <span class="s1">(</span><span class="s4">255</span><span class="s0">, </span><span class="s4">120</span><span class="s0">, </span><span class="s4">13</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">(</span><span class="s4">255</span><span class="s0">, </span><span class="s4">120</span><span class="s0">, </span><span class="s4">13</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">(</span><span class="s4">255</span><span class="s0">, </span><span class="s4">120</span><span class="s0">, </span><span class="s4">13</span><span class="s0">, </span><span class="s4">180</span><span class="s1">)]</span>
+        <span class="s1">bg_colors = [pygame.Color(*c) </span><span class="s0">for </span><span class="s1">c </span><span class="s0">in </span><span class="s1">bg_colors]</span>
+        <span class="s1">self.assertEqual(len(surfaces)</span><span class="s0">, </span><span class="s1">len(bg_colors))  </span><span class="s5"># integrity check</span>
+
+        <span class="s1">save_antialiased = font.antialiased</span>
+        <span class="s1">font.antialiased = </span><span class="s0">False</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">fill_color = pygame.Color(</span><span class="s2">'black'</span><span class="s1">)</span>
+            <span class="s0">for </span><span class="s1">i</span><span class="s0">, </span><span class="s1">surf </span><span class="s0">in </span><span class="s1">enumerate(surfaces):</span>
+                <span class="s1">surf.fill(fill_color)</span>
+                <span class="s1">fg_color = fg_colors[i]</span>
+                <span class="s1">fg.set_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">fg_color)</span>
+                <span class="s1">surf.blit(fg</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+                <span class="s1">r_fg_color = surf.get_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+                <span class="s1">surf.set_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">fill_color)</span>
+                <span class="s1">rrect = font.render_to(surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">fg_color</span><span class="s0">,</span>
+                                       <span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+                <span class="s1">bottomleft = </span><span class="s4">0</span><span class="s0">, </span><span class="s1">rrect.height - </span><span class="s4">1</span>
+                <span class="s1">self.assertEqual(surf.get_at(bottomleft)</span><span class="s0">, </span><span class="s1">fill_color</span><span class="s0">,</span>
+                                 <span class="s2">&quot;Position: {}. Depth: {}.&quot;</span>
+                                 <span class="s2">&quot; fg_color: {}.&quot;</span><span class="s1">.format(bottomleft</span><span class="s0">,</span>
+                                                        <span class="s1">surf.get_bitsize()</span><span class="s0">, </span><span class="s1">fg_color))</span>
+                <span class="s1">bottomright = rrect.width - </span><span class="s4">1</span><span class="s0">, </span><span class="s1">rrect.height - </span><span class="s4">1</span>
+                <span class="s1">self.assertEqual(surf.get_at(bottomright)</span><span class="s0">, </span><span class="s1">r_fg_color</span><span class="s0">,</span>
+                                 <span class="s2">&quot;Position: {}. Depth: {}.&quot;</span>
+                                 <span class="s2">&quot; fg_color: {}.&quot;</span><span class="s1">.format(bottomright</span><span class="s0">,</span>
+                                                        <span class="s1">surf.get_bitsize()</span><span class="s0">, </span><span class="s1">fg_color))</span>
+            <span class="s0">for </span><span class="s1">i</span><span class="s0">, </span><span class="s1">surf </span><span class="s0">in </span><span class="s1">enumerate(surfaces):</span>
+                <span class="s1">surf.fill(fill_color)</span>
+                <span class="s1">fg_color = fg_colors[i]</span>
+                <span class="s1">bg_color = bg_colors[i]</span>
+                <span class="s1">bg.set_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">bg_color)</span>
+                <span class="s1">fg.set_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">fg_color)</span>
+                <span class="s0">if </span><span class="s1">surf.get_bitsize() == </span><span class="s4">24</span><span class="s1">:</span>
+                    <span class="s5"># For a 24 bit target surface test against Pygame's alpha</span>
+                    <span class="s5"># blit as there appears to be a problem with SDL's alpha</span>
+                    <span class="s5"># blit:</span>
+                    <span class="s5">#</span>
+                    <span class="s5"># self.assertEqual(surf.get_at(bottomright), r_fg_color)</span>
+                    <span class="s5">#</span>
+                    <span class="s5"># raises</span>
+                    <span class="s5">#</span>
+                    <span class="s5"># AssertionError: (128, 97, 213, 255) != (129, 98, 213, 255)</span>
+                    <span class="s5">#</span>
+                    <span class="s1">surrogate.set_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">fill_color)</span>
+                    <span class="s1">surrogate.blit(bg</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+                    <span class="s1">r_bg_color = surrogate.get_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+                    <span class="s1">surrogate.blit(fg</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+                    <span class="s1">r_fg_color = surrogate.get_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s5"># Surface blit values for comparison.</span>
+                    <span class="s1">surf.blit(bg</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+                    <span class="s1">r_bg_color = surf.get_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+                    <span class="s1">surf.blit(fg</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+                    <span class="s1">r_fg_color = surf.get_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+                    <span class="s1">surf.set_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">fill_color)</span>
+                <span class="s1">rrect = font.render_to(surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">fg_color</span><span class="s0">,</span>
+                                       <span class="s1">bg_color</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+                <span class="s1">bottomleft = </span><span class="s4">0</span><span class="s0">, </span><span class="s1">rrect.height - </span><span class="s4">1</span>
+                <span class="s1">self.assertEqual(surf.get_at(bottomleft)</span><span class="s0">, </span><span class="s1">r_bg_color)</span>
+                <span class="s1">bottomright = rrect.width - </span><span class="s4">1</span><span class="s0">, </span><span class="s1">rrect.height - </span><span class="s4">1</span>
+                <span class="s1">self.assertEqual(surf.get_at(bottomright)</span><span class="s0">, </span><span class="s1">r_fg_color)</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">font.antialiased = save_antialiased</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_render_raw(self):</span>
+
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+
+        <span class="s1">text = </span><span class="s2">&quot;abc&quot;</span>
+        <span class="s1">size = font.get_rect(text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">).size</span>
+        <span class="s1">rend = font.render_raw(text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertIsInstance(rend</span><span class="s0">, </span><span class="s1">tuple)</span>
+        <span class="s1">self.assertEqual(len(rend)</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+
+        <span class="s1">r</span><span class="s0">, </span><span class="s1">s = rend</span>
+        <span class="s1">self.assertIsInstance(r</span><span class="s0">, </span><span class="s1">bytes_)</span>
+        <span class="s1">self.assertIsInstance(s</span><span class="s0">, </span><span class="s1">tuple)</span>
+        <span class="s1">self.assertTrue(len(s)</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+
+        <span class="s1">w</span><span class="s0">, </span><span class="s1">h = s</span>
+        <span class="s1">self.assertIsInstance(w</span><span class="s0">, </span><span class="s1">int)</span>
+        <span class="s1">self.assertIsInstance(h</span><span class="s0">, </span><span class="s1">int)</span>
+        <span class="s1">self.assertEqual(s</span><span class="s0">, </span><span class="s1">size)</span>
+        <span class="s1">self.assertEqual(len(r)</span><span class="s0">, </span><span class="s1">w * h)</span>
+
+        <span class="s1">r</span><span class="s0">, </span><span class="s1">(w</span><span class="s0">, </span><span class="s1">h) = font.render_raw(</span><span class="s2">''</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(w</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(h</span><span class="s0">, </span><span class="s1">font.height)</span>
+        <span class="s1">self.assertEqual(len(r)</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+
+        <span class="s5"># bug with decenders: this would crash</span>
+        <span class="s1">rend = font.render_raw(</span><span class="s2">'render_raw'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+
+        <span class="s5"># bug with non-printable characters: this would cause a crash</span>
+        <span class="s5"># because the text length was not adjusted for skipped characters.</span>
+        <span class="s1">text = unicode_(</span><span class="s2">&quot;&quot;</span><span class="s1">).join([unichr_(i) </span><span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(</span><span class="s4">31</span><span class="s0">, </span><span class="s4">64</span><span class="s1">)])</span>
+        <span class="s1">rend = font.render_raw(text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">10</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_render_raw_to(self):</span>
+
+        <span class="s5"># This only checks that blits do not crash. It needs to check:</span>
+        <span class="s5"># - int values</span>
+        <span class="s5"># - invert option</span>
+        <span class="s5">#</span>
+
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+        <span class="s1">text = </span><span class="s2">&quot;abc&quot;</span>
+
+        <span class="s5"># No frills antialiased render to int1 (__render_glyph_INT)</span>
+        <span class="s1">srect = font.get_rect(text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">surf = pygame.Surface(srect.size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">rrect = font.render_raw_to(surf.get_view(</span><span class="s2">'2'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(rrect</span><span class="s0">, </span><span class="s1">srect)</span>
+
+        <span class="s0">for </span><span class="s1">bpp </span><span class="s0">in </span><span class="s1">[</span><span class="s4">24</span><span class="s0">, </span><span class="s4">32</span><span class="s1">]:</span>
+            <span class="s1">surf = pygame.Surface(srect.size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">bpp)</span>
+            <span class="s1">rrect = font.render_raw_to(surf.get_view(</span><span class="s2">'r'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(rrect</span><span class="s0">, </span><span class="s1">srect)</span>
+
+        <span class="s5"># Underlining to int1 (__fill_glyph_INT)</span>
+        <span class="s1">srect = font.get_rect(text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s0">, </span><span class="s1">style=ft.STYLE_UNDERLINE)</span>
+        <span class="s1">surf = pygame.Surface(srect.size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">rrect = font.render_raw_to(surf.get_view(</span><span class="s2">'2'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s0">,</span>
+                                  <span class="s1">style=ft.STYLE_UNDERLINE)</span>
+        <span class="s1">self.assertEqual(rrect</span><span class="s0">, </span><span class="s1">srect)</span>
+
+        <span class="s0">for </span><span class="s1">bpp </span><span class="s0">in </span><span class="s1">[</span><span class="s4">24</span><span class="s0">, </span><span class="s4">32</span><span class="s1">]:</span>
+            <span class="s1">surf = pygame.Surface(srect.size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">bpp)</span>
+            <span class="s1">rrect = font.render_raw_to(surf.get_view(</span><span class="s2">'r'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s0">,</span>
+                                       <span class="s1">style=ft.STYLE_UNDERLINE)</span>
+            <span class="s1">self.assertEqual(rrect</span><span class="s0">, </span><span class="s1">srect)</span>
+
+        <span class="s5"># Unaliased (mono) rendering to int1 (__render_glyph_MONO_as_INT)</span>
+        <span class="s1">font.antialiased = </span><span class="s0">False</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">srect = font.get_rect(text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+            <span class="s1">surf = pygame.Surface(srect.size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span>
+            <span class="s1">rrect = font.render_raw_to(surf.get_view(</span><span class="s2">'2'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(rrect</span><span class="s0">, </span><span class="s1">srect)</span>
+
+            <span class="s0">for </span><span class="s1">bpp </span><span class="s0">in </span><span class="s1">[</span><span class="s4">24</span><span class="s0">, </span><span class="s4">32</span><span class="s1">]:</span>
+                <span class="s1">surf = pygame.Surface(srect.size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">bpp)</span>
+                <span class="s1">rrect = font.render_raw_to(surf.get_view(</span><span class="s2">'r'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+                <span class="s1">self.assertEqual(rrect</span><span class="s0">, </span><span class="s1">srect)</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">font.antialiased = </span><span class="s0">True</span>
+
+        <span class="s5"># Antialiased render to ints sized greater than 1 byte</span>
+        <span class="s5"># (__render_glyph_INT)</span>
+        <span class="s1">srect = font.get_rect(text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+
+        <span class="s0">for </span><span class="s1">bpp </span><span class="s0">in </span><span class="s1">[</span><span class="s4">16</span><span class="s0">, </span><span class="s4">24</span><span class="s0">, </span><span class="s4">32</span><span class="s1">]:</span>
+            <span class="s1">surf = pygame.Surface(srect.size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">bpp)</span>
+            <span class="s1">rrect = font.render_raw_to(surf.get_view(</span><span class="s2">'2'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(rrect</span><span class="s0">, </span><span class="s1">srect)</span>
+
+        <span class="s5"># Underline render to ints sized greater than 1 byte</span>
+        <span class="s5"># (__fill_glyph_INT)</span>
+        <span class="s1">srect = font.get_rect(text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s0">, </span><span class="s1">style=ft.STYLE_UNDERLINE)</span>
+
+        <span class="s0">for </span><span class="s1">bpp </span><span class="s0">in </span><span class="s1">[</span><span class="s4">16</span><span class="s0">, </span><span class="s4">24</span><span class="s0">, </span><span class="s4">32</span><span class="s1">]:</span>
+            <span class="s1">surf = pygame.Surface(srect.size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">bpp)</span>
+            <span class="s1">rrect = font.render_raw_to(surf.get_view(</span><span class="s2">'2'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s0">,</span>
+                                       <span class="s1">style=ft.STYLE_UNDERLINE)</span>
+            <span class="s1">self.assertEqual(rrect</span><span class="s0">, </span><span class="s1">srect)</span>
+
+        <span class="s5"># Unaliased (mono) rendering to ints greater than 1 byte</span>
+        <span class="s5"># (__render_glyph_MONO_as_INT)</span>
+        <span class="s1">font.antialiased = </span><span class="s0">False</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">srect = font.get_rect(text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+
+            <span class="s0">for </span><span class="s1">bpp </span><span class="s0">in </span><span class="s1">[</span><span class="s4">16</span><span class="s0">, </span><span class="s4">24</span><span class="s0">, </span><span class="s4">32</span><span class="s1">]:</span>
+                <span class="s1">surf = pygame.Surface(srect.size</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">bpp)</span>
+                <span class="s1">rrect = font.render_raw_to(surf.get_view(</span><span class="s2">'2'</span><span class="s1">)</span><span class="s0">,</span>
+                                           <span class="s1">text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+                <span class="s1">self.assertEqual(rrect</span><span class="s0">, </span><span class="s1">srect)</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">font.antialiased = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_text_is_None(self):</span>
+        <span class="s1">f = ft.Font(self._sans_path</span><span class="s0">, </span><span class="s4">36</span><span class="s1">)</span>
+        <span class="s1">f.style = ft.STYLE_NORMAL</span>
+        <span class="s1">f.rotation = </span><span class="s4">0</span>
+        <span class="s1">text = </span><span class="s2">'ABCD'</span>
+
+        <span class="s5"># reference values</span>
+        <span class="s1">get_rect = f.get_rect(text)</span>
+        <span class="s1">f.vertical = </span><span class="s0">True</span>
+        <span class="s1">get_rect_vert = f.get_rect(text)</span>
+
+        <span class="s1">self.assertTrue(get_rect_vert.width &lt; get_rect.width)</span>
+        <span class="s1">self.assertTrue(get_rect_vert.height &gt; get_rect.height)</span>
+        <span class="s1">f.vertical = </span><span class="s0">False</span>
+        <span class="s1">render_to_surf = pygame.Surface(get_rect.size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+
+        <span class="s0">if </span><span class="s1">IS_PYPY:</span>
+            <span class="s0">return</span>
+
+        <span class="s1">arr = arrinter.Array(get_rect.size</span><span class="s0">, </span><span class="s2">'u'</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">render = f.render(text</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">render_to = f.render_to(render_to_surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">render_raw = f.render_raw(text)</span>
+        <span class="s1">render_raw_to = f.render_raw_to(arr</span><span class="s0">, </span><span class="s1">text)</span>
+
+        <span class="s5"># comparisons</span>
+        <span class="s1">surf = pygame.Surface(get_rect.size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(f.get_rect(</span><span class="s0">None</span><span class="s1">)</span><span class="s0">, </span><span class="s1">get_rect)</span>
+        <span class="s1">s</span><span class="s0">, </span><span class="s1">r = f.render(</span><span class="s0">None, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(r</span><span class="s0">, </span><span class="s1">render[</span><span class="s4">1</span><span class="s1">])</span>
+        <span class="s1">self.assertTrue(surf_same_image(s</span><span class="s0">, </span><span class="s1">render[</span><span class="s4">0</span><span class="s1">]))</span>
+        <span class="s1">r = f.render_to(surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, None, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(r</span><span class="s0">, </span><span class="s1">render_to)</span>
+        <span class="s1">self.assertTrue(surf_same_image(surf</span><span class="s0">, </span><span class="s1">render_to_surf))</span>
+        <span class="s1">px</span><span class="s0">, </span><span class="s1">sz = f.render_raw(</span><span class="s0">None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sz</span><span class="s0">, </span><span class="s1">render_raw[</span><span class="s4">1</span><span class="s1">])</span>
+        <span class="s1">self.assertEqual(px</span><span class="s0">, </span><span class="s1">render_raw[</span><span class="s4">0</span><span class="s1">])</span>
+        <span class="s1">sz = f.render_raw_to(arr</span><span class="s0">, None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sz</span><span class="s0">, </span><span class="s1">render_raw_to)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_text_is_None(self):</span>
+        <span class="s1">f = ft.Font(self._sans_path</span><span class="s0">, </span><span class="s4">36</span><span class="s1">)</span>
+        <span class="s1">f.style = ft.STYLE_NORMAL</span>
+        <span class="s1">f.rotation = </span><span class="s4">0</span>
+        <span class="s1">text = </span><span class="s2">'ABCD'</span>
+
+        <span class="s5"># reference values</span>
+        <span class="s1">get_rect = f.get_rect(text)</span>
+        <span class="s1">f.vertical = </span><span class="s0">True</span>
+        <span class="s1">get_rect_vert = f.get_rect(text)</span>
+
+        <span class="s5"># vertical: trigger glyph positioning.</span>
+        <span class="s1">f.vertical = </span><span class="s0">True</span>
+        <span class="s1">r = f.get_rect(</span><span class="s0">None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(r</span><span class="s0">, </span><span class="s1">get_rect_vert)</span>
+        <span class="s1">f.vertical = </span><span class="s0">False</span>
+
+        <span class="s5"># wide style: trigger glyph reload</span>
+        <span class="s1">r = f.get_rect(</span><span class="s0">None, </span><span class="s1">style=ft.STYLE_WIDE)</span>
+        <span class="s1">self.assertEqual(r.height</span><span class="s0">, </span><span class="s1">get_rect.height)</span>
+        <span class="s1">self.assertTrue(r.width &gt; get_rect.width)</span>
+        <span class="s1">r = f.get_rect(</span><span class="s0">None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(r</span><span class="s0">, </span><span class="s1">get_rect)</span>
+
+        <span class="s5"># rotated: trigger glyph reload</span>
+        <span class="s1">r = f.get_rect(</span><span class="s0">None, </span><span class="s1">rotation=</span><span class="s4">90</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(r.width</span><span class="s0">, </span><span class="s1">get_rect.height)</span>
+        <span class="s1">self.assertEqual(r.height</span><span class="s0">, </span><span class="s1">get_rect.width)</span>
+
+        <span class="s5"># this method will not support None text</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">f.get_metrics</span><span class="s0">, None</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_fgcolor(self):</span>
+        <span class="s1">f = ft.Font(self._bmp_8_75dpi_path)</span>
+        <span class="s1">notdef = </span><span class="s2">'</span><span class="s0">\0</span><span class="s2">'  </span><span class="s5"># the PyGameMono .notdef glyph has a pixel at (0, 0)</span>
+        <span class="s1">f.origin = </span><span class="s0">False</span>
+        <span class="s1">f.pad = </span><span class="s0">False</span>
+        <span class="s1">black = pygame.Color(</span><span class="s2">'black'</span><span class="s1">)  </span><span class="s5"># initial color</span>
+        <span class="s1">green = pygame.Color(</span><span class="s2">'green'</span><span class="s1">)</span>
+        <span class="s1">alpha128 = pygame.Color(</span><span class="s4">10</span><span class="s0">, </span><span class="s4">20</span><span class="s0">, </span><span class="s4">30</span><span class="s0">, </span><span class="s4">128</span><span class="s1">)</span>
+
+        <span class="s1">c = f.fgcolor</span>
+        <span class="s1">self.assertIsInstance(c</span><span class="s0">, </span><span class="s1">pygame.Color)</span>
+        <span class="s1">self.assertEqual(c</span><span class="s0">, </span><span class="s1">black)</span>
+
+        <span class="s1">s</span><span class="s0">, </span><span class="s1">r = f.render(notdef)</span>
+        <span class="s1">self.assertEqual(s.get_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">black)</span>
+
+        <span class="s1">f.fgcolor = green</span>
+        <span class="s1">self.assertEqual(f.fgcolor</span><span class="s0">, </span><span class="s1">green)</span>
+
+        <span class="s1">s</span><span class="s0">, </span><span class="s1">r = f.render(notdef)</span>
+        <span class="s1">self.assertEqual(s.get_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">green)</span>
+
+        <span class="s1">f.fgcolor = alpha128</span>
+        <span class="s1">s</span><span class="s0">, </span><span class="s1">r = f.render(notdef)</span>
+        <span class="s1">self.assertEqual(s.get_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">alpha128)</span>
+
+        <span class="s1">surf = pygame.Surface(f.get_rect(notdef).size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">f.render_to(surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(surf.get_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">alpha128)</span>
+
+        <span class="s1">self.assertRaises(AttributeError</span><span class="s0">, </span><span class="s1">setattr</span><span class="s0">, </span><span class="s1">f</span><span class="s0">, </span><span class="s2">'fgcolor'</span><span class="s0">, None</span><span class="s1">)</span>
+
+    <span class="s1">@unittest.skipIf(</span><span class="s0">not </span><span class="s1">pygame.HAVE_NEWBUF</span><span class="s0">, </span><span class="s2">'newbuf not implemented'</span><span class="s1">)</span>
+    <span class="s0">def </span><span class="s1">test_newbuf(self):</span>
+        <span class="s0">from </span><span class="s1">pygame.tests.test_utils </span><span class="s0">import </span><span class="s1">buftools</span>
+        <span class="s1">Exporter = buftools.Exporter</span>
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+        <span class="s1">srect = font.get_rect(</span><span class="s2">&quot;Hi&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">12</span><span class="s1">)</span>
+        <span class="s0">for </span><span class="s1">format </span><span class="s0">in </span><span class="s1">[</span><span class="s2">'b'</span><span class="s0">, </span><span class="s2">'B'</span><span class="s0">, </span><span class="s2">'h'</span><span class="s0">, </span><span class="s2">'H'</span><span class="s0">, </span><span class="s2">'i'</span><span class="s0">, </span><span class="s2">'I'</span><span class="s0">, </span><span class="s2">'l'</span><span class="s0">, </span><span class="s2">'L'</span><span class="s0">, </span><span class="s2">'q'</span><span class="s0">, </span><span class="s2">'Q'</span><span class="s0">,</span>
+                       <span class="s2">'x'</span><span class="s0">, </span><span class="s2">'1x'</span><span class="s0">, </span><span class="s2">'2x'</span><span class="s0">, </span><span class="s2">'3x'</span><span class="s0">, </span><span class="s2">'4x'</span><span class="s0">, </span><span class="s2">'5x'</span><span class="s0">, </span><span class="s2">'6x'</span><span class="s0">, </span><span class="s2">'7x'</span><span class="s0">,</span>
+                       <span class="s2">'8x'</span><span class="s0">, </span><span class="s2">'9x'</span><span class="s0">, </span><span class="s2">'&lt;h'</span><span class="s0">, </span><span class="s2">'&gt;h'</span><span class="s0">, </span><span class="s2">'=h'</span><span class="s0">, </span><span class="s2">'@h'</span><span class="s0">, </span><span class="s2">'!h'</span><span class="s0">, </span><span class="s2">'1h'</span><span class="s0">, </span><span class="s2">'=1h'</span><span class="s1">]:</span>
+            <span class="s1">newbuf = Exporter(srect.size</span><span class="s0">, </span><span class="s1">format=format)</span>
+            <span class="s1">rrect = font.render_raw_to(newbuf</span><span class="s0">, </span><span class="s2">&quot;Hi&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">12</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(rrect</span><span class="s0">, </span><span class="s1">srect)</span>
+        <span class="s5"># Some unsupported formats</span>
+        <span class="s0">for </span><span class="s1">format </span><span class="s0">in </span><span class="s1">[</span><span class="s2">'f'</span><span class="s0">, </span><span class="s2">'d'</span><span class="s0">, </span><span class="s2">'2h'</span><span class="s0">, </span><span class="s2">'?'</span><span class="s0">, </span><span class="s2">'hh'</span><span class="s1">]:</span>
+            <span class="s1">newbuf = Exporter(srect.size</span><span class="s0">, </span><span class="s1">format=format</span><span class="s0">, </span><span class="s1">itemsize=</span><span class="s4">4</span><span class="s1">)</span>
+            <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">font.render_raw_to</span><span class="s0">,</span>
+                              <span class="s1">newbuf</span><span class="s0">, </span><span class="s2">&quot;Hi&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">12</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_style(self):</span>
+
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+
+        <span class="s5"># make sure STYLE_NORMAL is the default value</span>
+        <span class="s1">self.assertEqual(ft.STYLE_NORMAL</span><span class="s0">, </span><span class="s1">font.style)</span>
+
+        <span class="s5"># make sure we check for style type</span>
+        <span class="s0">with </span><span class="s1">self.assertRaises(TypeError):</span>
+            <span class="s1">font.style = </span><span class="s2">&quot;None&quot;</span>
+        <span class="s0">with </span><span class="s1">self.assertRaises(TypeError):</span>
+            <span class="s1">font.style = </span><span class="s0">None</span>
+
+        <span class="s5"># make sure we only accept valid constants</span>
+        <span class="s0">with </span><span class="s1">self.assertRaises(ValueError):</span>
+            <span class="s1">font.style = </span><span class="s4">112</span>
+
+        <span class="s5"># make assure no assignements happened</span>
+        <span class="s1">self.assertEqual(ft.STYLE_NORMAL</span><span class="s0">, </span><span class="s1">font.style)</span>
+
+        <span class="s5"># test assignement</span>
+        <span class="s1">font.style = ft.STYLE_UNDERLINE</span>
+        <span class="s1">self.assertEqual(ft.STYLE_UNDERLINE</span><span class="s0">, </span><span class="s1">font.style)</span>
+
+        <span class="s5"># test complex styles</span>
+        <span class="s1">st = (  ft.STYLE_STRONG | ft.STYLE_UNDERLINE |</span>
+                <span class="s1">ft.STYLE_OBLIQUE )</span>
+
+        <span class="s1">font.style = st</span>
+        <span class="s1">self.assertEqual(st</span><span class="s0">, </span><span class="s1">font.style)</span>
+
+        <span class="s5"># and that STYLE_DEFAULT has no effect (continued from above)</span>
+        <span class="s1">self.assertNotEqual(st</span><span class="s0">, </span><span class="s1">ft.STYLE_DEFAULT)</span>
+        <span class="s1">font.style = ft.STYLE_DEFAULT</span>
+        <span class="s1">self.assertEqual(st</span><span class="s0">, </span><span class="s1">font.style)</span>
+
+        <span class="s5"># revert changes</span>
+        <span class="s1">font.style = ft.STYLE_NORMAL</span>
+        <span class="s1">self.assertEqual(ft.STYLE_NORMAL</span><span class="s0">, </span><span class="s1">font.style)</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_resolution(self):</span>
+        <span class="s1">text = </span><span class="s2">&quot;|&quot;  </span><span class="s5"># Differs in width and height</span>
+        <span class="s1">resolution = ft.get_default_resolution()</span>
+        <span class="s1">new_font = ft.Font(self._sans_path</span><span class="s0">, </span><span class="s1">resolution=</span><span class="s4">2 </span><span class="s1">* resolution)</span>
+        <span class="s1">self.assertEqual(new_font.resolution</span><span class="s0">, </span><span class="s4">2 </span><span class="s1">* resolution)</span>
+        <span class="s1">size_normal = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">].get_rect(text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">).size</span>
+        <span class="s1">size_scaled = new_font.get_rect(text</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">).size</span>
+        <span class="s1">size_by_2 = size_normal[</span><span class="s4">0</span><span class="s1">] * </span><span class="s4">2</span>
+        <span class="s1">self.assertTrue(size_by_2 + </span><span class="s4">2 </span><span class="s1">&gt;= size_scaled[</span><span class="s4">0</span><span class="s1">] &gt;= size_by_2 - </span><span class="s4">2</span><span class="s0">,</span>
+                        <span class="s2">&quot;%i not equal %i&quot; </span><span class="s1">% (size_scaled[</span><span class="s4">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">size_by_2))</span>
+        <span class="s1">size_by_2 = size_normal[</span><span class="s4">1</span><span class="s1">] * </span><span class="s4">2</span>
+        <span class="s1">self.assertTrue(size_by_2 + </span><span class="s4">2 </span><span class="s1">&gt;= size_scaled[</span><span class="s4">1</span><span class="s1">] &gt;= size_by_2 - </span><span class="s4">2</span><span class="s0">,</span>
+                        <span class="s2">&quot;%i not equal %i&quot; </span><span class="s1">% (size_scaled[</span><span class="s4">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">size_by_2))</span>
+        <span class="s1">new_resolution = resolution + </span><span class="s4">10</span>
+        <span class="s1">ft.set_default_resolution(new_resolution)</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">new_font = ft.Font(self._sans_path</span><span class="s0">, </span><span class="s1">resolution=</span><span class="s4">0</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(new_font.resolution</span><span class="s0">, </span><span class="s1">new_resolution)</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">ft.set_default_resolution()</span>
+
+    <span class="s0">def </span><span class="s1">test_freetype_Font_path(self):</span>
+        <span class="s1">self.assertEqual(self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">].path</span><span class="s0">, </span><span class="s1">self._sans_path)</span>
+        <span class="s1">self.assertRaises(AttributeError</span><span class="s0">, </span><span class="s1">getattr</span><span class="s0">, </span><span class="s1">nullfont()</span><span class="s0">, </span><span class="s2">'path'</span><span class="s1">)</span>
+
+    <span class="s5"># This Font cache test is conditional on freetype being built by a debug</span>
+    <span class="s5"># version of Python or with the C macro PGFT_DEBUG_CACHE defined.</span>
+    <span class="s0">def </span><span class="s1">test_freetype_Font_cache(self):</span>
+        <span class="s1">glyphs = </span><span class="s2">&quot;abcde&quot;</span>
+        <span class="s1">glen = len(glyphs)</span>
+        <span class="s1">other_glyphs = </span><span class="s2">&quot;123&quot;</span>
+        <span class="s1">oglen = len(other_glyphs)</span>
+        <span class="s1">uempty = unicode_(</span><span class="s2">&quot;&quot;</span><span class="s1">)</span>
+<span class="s5">##        many_glyphs = (uempty.join([unichr_(i) for i in range(32,127)] +</span>
+<span class="s5">##                                   [unichr_(i) for i in range(161,172)] +</span>
+<span class="s5">##                                   [unichr_(i) for i in range(174,239)]))</span>
+        <span class="s1">many_glyphs = uempty.join([unichr_(i) </span><span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(</span><span class="s4">32</span><span class="s0">,</span><span class="s4">127</span><span class="s1">)])</span>
+        <span class="s1">mglen = len(many_glyphs)</span>
+
+        <span class="s1">count = </span><span class="s4">0</span>
+        <span class="s1">access = </span><span class="s4">0</span>
+        <span class="s1">hit = </span><span class="s4">0</span>
+        <span class="s1">miss = </span><span class="s4">0</span>
+
+        <span class="s1">f = ft.Font(</span><span class="s0">None, </span><span class="s1">size=</span><span class="s4">24</span><span class="s0">, </span><span class="s1">font_index=</span><span class="s4">0</span><span class="s0">, </span><span class="s1">resolution=</span><span class="s4">72</span><span class="s0">, </span><span class="s1">ucs4=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">f.style = ft.STYLE_NORMAL</span>
+        <span class="s1">f.antialiased = </span><span class="s0">True</span>
+
+        <span class="s5"># Ensure debug counters are zero</span>
+        <span class="s1">self.assertEqual(f._debug_cache_stats</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s5"># Load some basic glyphs</span>
+        <span class="s1">count = access = miss = glen</span>
+        <span class="s1">f.render_raw(glyphs)</span>
+        <span class="s1">self.assertEqual(f._debug_cache_stats</span><span class="s0">, </span><span class="s1">(count</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">access</span><span class="s0">, </span><span class="s1">hit</span><span class="s0">, </span><span class="s1">miss))</span>
+        <span class="s5"># Vertical should not affect the cache</span>
+        <span class="s1">access += glen</span>
+        <span class="s1">hit += glen</span>
+        <span class="s1">f.vertical = </span><span class="s0">True</span>
+        <span class="s1">f.render_raw(glyphs)</span>
+        <span class="s1">f.vertical = </span><span class="s0">False</span>
+        <span class="s1">self.assertEqual(f._debug_cache_stats</span><span class="s0">, </span><span class="s1">(count</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">access</span><span class="s0">, </span><span class="s1">hit</span><span class="s0">, </span><span class="s1">miss))</span>
+        <span class="s5"># New glyphs will</span>
+        <span class="s1">count += oglen</span>
+        <span class="s1">access += oglen</span>
+        <span class="s1">miss += oglen</span>
+        <span class="s1">f.render_raw(other_glyphs)</span>
+        <span class="s1">self.assertEqual(f._debug_cache_stats</span><span class="s0">, </span><span class="s1">(count</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">access</span><span class="s0">, </span><span class="s1">hit</span><span class="s0">, </span><span class="s1">miss))</span>
+        <span class="s5"># Point size does</span>
+        <span class="s1">count += glen</span>
+        <span class="s1">access += glen</span>
+        <span class="s1">miss += glen</span>
+        <span class="s1">f.render_raw(glyphs</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">12</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(f._debug_cache_stats</span><span class="s0">, </span><span class="s1">(count</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">access</span><span class="s0">, </span><span class="s1">hit</span><span class="s0">, </span><span class="s1">miss))</span>
+        <span class="s5"># Underline style does not</span>
+        <span class="s1">access += oglen</span>
+        <span class="s1">hit += oglen</span>
+        <span class="s1">f.underline = </span><span class="s0">True</span>
+        <span class="s1">f.render_raw(other_glyphs)</span>
+        <span class="s1">f.underline = </span><span class="s0">False</span>
+        <span class="s1">self.assertEqual(f._debug_cache_stats</span><span class="s0">, </span><span class="s1">(count</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">access</span><span class="s0">, </span><span class="s1">hit</span><span class="s0">, </span><span class="s1">miss))</span>
+        <span class="s5"># Oblique style does</span>
+        <span class="s1">count += glen</span>
+        <span class="s1">access += glen</span>
+        <span class="s1">miss += glen</span>
+        <span class="s1">f.oblique = </span><span class="s0">True</span>
+        <span class="s1">f.render_raw(glyphs)</span>
+        <span class="s1">f.oblique = </span><span class="s0">False</span>
+        <span class="s1">self.assertEqual(f._debug_cache_stats</span><span class="s0">, </span><span class="s1">(count</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">access</span><span class="s0">, </span><span class="s1">hit</span><span class="s0">, </span><span class="s1">miss))</span>
+        <span class="s5"># Strong style does; by this point cache clears can happen</span>
+        <span class="s1">count += glen</span>
+        <span class="s1">access += glen</span>
+        <span class="s1">miss += glen</span>
+        <span class="s1">f.strong = </span><span class="s0">True</span>
+        <span class="s1">f.render_raw(glyphs)</span>
+        <span class="s1">f.strong = </span><span class="s0">False</span>
+        <span class="s1">ccount</span><span class="s0">, </span><span class="s1">cdelete_count</span><span class="s0">, </span><span class="s1">caccess</span><span class="s0">, </span><span class="s1">chit</span><span class="s0">, </span><span class="s1">cmiss = f._debug_cache_stats</span>
+        <span class="s1">self.assertEqual((ccount + cdelete_count</span><span class="s0">, </span><span class="s1">caccess</span><span class="s0">, </span><span class="s1">chit</span><span class="s0">, </span><span class="s1">cmiss)</span><span class="s0">,</span>
+                         <span class="s1">(count</span><span class="s0">, </span><span class="s1">access</span><span class="s0">, </span><span class="s1">hit</span><span class="s0">, </span><span class="s1">miss))</span>
+        <span class="s5"># Rotation does</span>
+        <span class="s1">count += glen</span>
+        <span class="s1">access += glen</span>
+        <span class="s1">miss += glen</span>
+        <span class="s1">f.render_raw(glyphs</span><span class="s0">, </span><span class="s1">rotation=</span><span class="s4">10</span><span class="s1">)</span>
+        <span class="s1">ccount</span><span class="s0">, </span><span class="s1">cdelete_count</span><span class="s0">, </span><span class="s1">caccess</span><span class="s0">, </span><span class="s1">chit</span><span class="s0">, </span><span class="s1">cmiss = f._debug_cache_stats</span>
+        <span class="s1">self.assertEqual((ccount + cdelete_count</span><span class="s0">, </span><span class="s1">caccess</span><span class="s0">, </span><span class="s1">chit</span><span class="s0">, </span><span class="s1">cmiss)</span><span class="s0">,</span>
+                         <span class="s1">(count</span><span class="s0">, </span><span class="s1">access</span><span class="s0">, </span><span class="s1">hit</span><span class="s0">, </span><span class="s1">miss))</span>
+        <span class="s5"># aliased (mono) glyphs do</span>
+        <span class="s1">count += oglen</span>
+        <span class="s1">access += oglen</span>
+        <span class="s1">miss += oglen</span>
+        <span class="s1">f.antialiased = </span><span class="s0">False</span>
+        <span class="s1">f.render_raw(other_glyphs)</span>
+        <span class="s1">f.antialiased = </span><span class="s0">True</span>
+        <span class="s1">ccount</span><span class="s0">, </span><span class="s1">cdelete_count</span><span class="s0">, </span><span class="s1">caccess</span><span class="s0">, </span><span class="s1">chit</span><span class="s0">, </span><span class="s1">cmiss = f._debug_cache_stats</span>
+        <span class="s1">self.assertEqual((ccount + cdelete_count</span><span class="s0">, </span><span class="s1">caccess</span><span class="s0">, </span><span class="s1">chit</span><span class="s0">, </span><span class="s1">cmiss)</span><span class="s0">,</span>
+                         <span class="s1">(count</span><span class="s0">, </span><span class="s1">access</span><span class="s0">, </span><span class="s1">hit</span><span class="s0">, </span><span class="s1">miss))</span>
+        <span class="s5"># Trigger a cleanup for sure.</span>
+        <span class="s1">count += </span><span class="s4">2 </span><span class="s1">* mglen</span>
+        <span class="s1">access += </span><span class="s4">2 </span><span class="s1">* mglen</span>
+        <span class="s1">miss += </span><span class="s4">2 </span><span class="s1">* mglen</span>
+        <span class="s1">f.get_metrics(many_glyphs</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">f.get_metrics(many_glyphs</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">10</span><span class="s1">)</span>
+        <span class="s1">ccount</span><span class="s0">, </span><span class="s1">cdelete_count</span><span class="s0">, </span><span class="s1">caccess</span><span class="s0">, </span><span class="s1">chit</span><span class="s0">, </span><span class="s1">cmiss = f._debug_cache_stats</span>
+        <span class="s1">self.assertTrue(ccount &lt; count)</span>
+        <span class="s1">self.assertEqual((ccount + cdelete_count</span><span class="s0">, </span><span class="s1">caccess</span><span class="s0">, </span><span class="s1">chit</span><span class="s0">, </span><span class="s1">cmiss)</span><span class="s0">,</span>
+                         <span class="s1">(count</span><span class="s0">, </span><span class="s1">access</span><span class="s0">, </span><span class="s1">hit</span><span class="s0">, </span><span class="s1">miss))</span>
+
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s1">ft.Font._debug_cache_stats</span>
+    <span class="s0">except </span><span class="s1">AttributeError:</span>
+        <span class="s0">del </span><span class="s1">test_freetype_Font_cache</span>
+
+    <span class="s0">def </span><span class="s1">test_undefined_character_code(self):</span>
+        <span class="s5"># To be consistent with pygame.font.Font, undefined codes</span>
+        <span class="s5"># are rendered as the undefined character, and has metrics</span>
+        <span class="s5"># of None.</span>
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+
+        <span class="s1">img</span><span class="s0">, </span><span class="s1">size1 = font.render(unichr_(</span><span class="s4">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">img</span><span class="s0">, </span><span class="s1">size0 = font.render(</span><span class="s2">&quot;&quot;</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(size1.width &gt; size0.width )</span>
+
+        <span class="s1">metrics = font.get_metrics(unichr_(</span><span class="s4">1</span><span class="s1">) + unichr_(</span><span class="s4">48</span><span class="s1">)</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(len(metrics)</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.assertIsNone(metrics[</span><span class="s4">0</span><span class="s1">])</span>
+        <span class="s1">self.assertIsInstance(metrics[</span><span class="s4">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">tuple)</span>
+
+    <span class="s1">@unittest.skipIf(pygame.get_sdl_version()[</span><span class="s4">0</span><span class="s1">] == </span><span class="s4">2</span><span class="s0">, </span><span class="s2">&quot;SDL2 surfaces are only limited by memory&quot;</span><span class="s1">)</span>
+    <span class="s0">def </span><span class="s1">test_issue_144(self):</span>
+        <span class="s3">&quot;&quot;&quot;Issue #144: unable to render text&quot;&quot;&quot;</span>
+
+        <span class="s5"># The bug came in two parts. The first was a convertion bug from</span>
+        <span class="s5"># FT_Fixed to integer in for an Intel x86_64 Pygame build. The second</span>
+        <span class="s5"># was to have the raised exception disappear before Font.render</span>
+        <span class="s5"># returned to Python level.</span>
+        <span class="s5">#</span>
+        <span class="s1">font = ft.Font(</span><span class="s0">None, </span><span class="s1">size=</span><span class="s4">64</span><span class="s1">)</span>
+        <span class="s1">s = </span><span class="s2">'M' </span><span class="s1">* </span><span class="s4">100000  </span><span class="s5"># Way too long for an SDL surface</span>
+        <span class="s1">self.assertRaises(pygame.error</span><span class="s0">, </span><span class="s1">font.render</span><span class="s0">, </span><span class="s1">s</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+
+    <span class="s0">def </span><span class="s1">test_issue_242(self):</span>
+        <span class="s3">&quot;&quot;&quot;Issue #242: get_rect() uses 0 as default style&quot;&quot;&quot;</span>
+
+        <span class="s5"># Issue #242: freetype.Font.get_rect() ignores style defaults when</span>
+        <span class="s5">#             the style argument is not given</span>
+        <span class="s5">#</span>
+        <span class="s5"># The text boundary rectangle returned by freetype.Font.get_rect()</span>
+        <span class="s5"># should match the boundary of the same text rendered directly to a</span>
+        <span class="s5"># surface. This permits accurate text positioning. To work properly,</span>
+        <span class="s5"># get_rect() should calculate the text boundary to reflect text style,</span>
+        <span class="s5"># such as underline. Instead, it ignores the style settings for the</span>
+        <span class="s5"># Font object when the style argument is omitted.</span>
+        <span class="s5">#</span>
+        <span class="s5"># When the style argument is not given, freetype.get_rect() uses</span>
+        <span class="s5"># unstyled text when calculating the boundary rectangle. This is</span>
+        <span class="s5"># because _ftfont_getrect(), in _freetype.c, set the default</span>
+        <span class="s5"># style to 0 rather than FT_STYLE_DEFAULT.</span>
+        <span class="s5">#</span>
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+
+        <span class="s5"># Try wide style on a wide character.</span>
+        <span class="s1">prev_style = font.wide</span>
+        <span class="s1">font.wide = </span><span class="s0">True</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">rect = font.get_rect(</span><span class="s2">'M'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">64</span><span class="s1">)</span>
+            <span class="s1">surf</span><span class="s0">, </span><span class="s1">rrect = font.render(</span><span class="s0">None, </span><span class="s1">size=</span><span class="s4">64</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(rect</span><span class="s0">, </span><span class="s1">rrect)</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">font.wide = prev_style</span>
+
+        <span class="s5"># Try strong style on several wide characters.</span>
+        <span class="s1">prev_style = font.strong</span>
+        <span class="s1">font.strong = </span><span class="s0">True</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">rect = font.get_rect(</span><span class="s2">'Mm_'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">64</span><span class="s1">)</span>
+            <span class="s1">surf</span><span class="s0">, </span><span class="s1">rrect = font.render(</span><span class="s0">None, </span><span class="s1">size=</span><span class="s4">64</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(rect</span><span class="s0">, </span><span class="s1">rrect)</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">font.strong = prev_style</span>
+
+        <span class="s5"># Try oblique style on a tall, narrow character.</span>
+        <span class="s1">prev_style = font.oblique</span>
+        <span class="s1">font.oblique = </span><span class="s0">True</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">rect = font.get_rect(</span><span class="s2">'|'</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">64</span><span class="s1">)</span>
+            <span class="s1">surf</span><span class="s0">, </span><span class="s1">rrect = font.render(</span><span class="s0">None, </span><span class="s1">size=</span><span class="s4">64</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(rect</span><span class="s0">, </span><span class="s1">rrect)</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">font.oblique = prev_style</span>
+
+        <span class="s5"># Try underline style on a glyphless character.</span>
+        <span class="s1">prev_style = font.underline</span>
+        <span class="s1">font.underline = </span><span class="s0">True</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">rect = font.get_rect(</span><span class="s2">' '</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">64</span><span class="s1">)</span>
+            <span class="s1">surf</span><span class="s0">, </span><span class="s1">rrect = font.render(</span><span class="s0">None, </span><span class="s1">size=</span><span class="s4">64</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(rect</span><span class="s0">, </span><span class="s1">rrect)</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">font.underline = prev_style</span>
+
+    <span class="s0">def </span><span class="s1">test_issue_237(self):</span>
+        <span class="s3">&quot;&quot;&quot;Issue #237: Memory overrun when rendered with underlining&quot;&quot;&quot;</span>
+
+        <span class="s5"># Issue #237: Memory overrun when text without descenders is rendered</span>
+        <span class="s5">#             with underlining</span>
+        <span class="s5">#</span>
+        <span class="s5"># The bug crashes the Python interpreter. The bug is caught with C</span>
+        <span class="s5"># assertions in ft_render_cb.c when the Pygame module is compiled</span>
+        <span class="s5"># for debugging. So far it is only known to affect Times New Roman.</span>
+        <span class="s5">#</span>
+        <span class="s1">name = </span><span class="s2">&quot;Times New Roman&quot;</span>
+        <span class="s1">font = ft.SysFont(name</span><span class="s0">, </span><span class="s4">19</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">font.name != name:</span>
+            <span class="s5"># The font is unavailable, so skip the test.</span>
+            <span class="s0">return</span>
+        <span class="s1">font.underline = </span><span class="s0">True</span>
+        <span class="s1">s</span><span class="s0">, </span><span class="s1">r = font.render(</span><span class="s2">&quot;Amazon&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+
+        <span class="s5"># Some other checks to make sure nothing else broke.</span>
+        <span class="s0">for </span><span class="s1">adj </span><span class="s0">in </span><span class="s1">[-</span><span class="s4">2</span><span class="s0">, </span><span class="s1">-</span><span class="s4">1.9</span><span class="s0">, </span><span class="s1">-</span><span class="s4">1</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">1.9</span><span class="s0">, </span><span class="s4">2</span><span class="s1">]:</span>
+            <span class="s1">font.underline_adjustment = adj</span>
+            <span class="s1">s</span><span class="s0">, </span><span class="s1">r = font.render(</span><span class="s2">&quot;Amazon&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">19</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_issue_243(self):</span>
+        <span class="s3">&quot;&quot;&quot;Issue Y: trailing space ignored in boundary calculation&quot;&quot;&quot;</span>
+
+        <span class="s5"># Issue #243: For a string with trailing spaces, freetype ignores the</span>
+        <span class="s5"># last space in boundary calculations</span>
+        <span class="s5">#</span>
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'fixed'</span><span class="s1">]</span>
+        <span class="s1">r1 = font.get_rect(</span><span class="s2">&quot; &quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">64</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(r1.width &gt; </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">r2 = font.get_rect(</span><span class="s2">&quot;  &quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">64</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(r2.width</span><span class="s0">, </span><span class="s4">2 </span><span class="s1">* r1.width)</span>
+
+    <span class="s0">def </span><span class="s1">test_garbage_collection(self):</span>
+        <span class="s3">&quot;&quot;&quot;Check reference counting on returned new references&quot;&quot;&quot;</span>
+        <span class="s0">def </span><span class="s1">ref_items(seq):</span>
+            <span class="s0">return </span><span class="s1">[weakref.ref(o) </span><span class="s0">for </span><span class="s1">o </span><span class="s0">in </span><span class="s1">seq]</span>
+
+        <span class="s1">font = self._TEST_FONTS[</span><span class="s2">'bmp-8-75dpi'</span><span class="s1">]</span>
+        <span class="s1">font.size = font.get_sizes()[</span><span class="s4">0</span><span class="s1">][</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">text = </span><span class="s2">'A'</span>
+        <span class="s1">rect = font.get_rect(text)</span>
+        <span class="s1">surf = pygame.Surface(rect.size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">refs = []</span>
+        <span class="s1">refs.extend(ref_items(font.render(text</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))))</span>
+        <span class="s1">refs.append(weakref.ref(font.render_to(surf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))))</span>
+        <span class="s1">refs.append(weakref.ref(font.get_rect(text)))</span>
+
+        <span class="s1">n = len(refs)</span>
+        <span class="s1">self.assertTrue(n &gt; </span><span class="s4">0</span><span class="s1">)</span>
+
+        <span class="s5"># for pypy we garbage collection twice.</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(</span><span class="s4">2</span><span class="s1">):</span>
+            <span class="s1">gc.collect()</span>
+
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(n):</span>
+            <span class="s1">self.assertIsNone(refs[i]()</span><span class="s0">, </span><span class="s2">&quot;ref %d not collected&quot; </span><span class="s1">% i)</span>
+
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s0">from </span><span class="s1">sys </span><span class="s0">import </span><span class="s1">getrefcount</span>
+        <span class="s0">except </span><span class="s1">ImportError:</span>
+            <span class="s0">pass</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">array = arrinter.Array(rect.size</span><span class="s0">, </span><span class="s2">'u'</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span>
+            <span class="s1">o = font.render_raw(text)</span>
+            <span class="s1">self.assertEqual(getrefcount(o)</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(getrefcount(o[</span><span class="s4">0</span><span class="s1">])</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(getrefcount(o[</span><span class="s4">1</span><span class="s1">])</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(getrefcount(font.render_raw_to(array</span><span class="s0">, </span><span class="s1">text))</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span>
+            <span class="s1">o = font.get_metrics(</span><span class="s2">'AB'</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(getrefcount(o)</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+            <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(len(o)):</span>
+                <span class="s1">self.assertEqual(getrefcount(o[i])</span><span class="s0">, </span><span class="s4">2</span><span class="s0">,</span>
+                                 <span class="s2">&quot;refcount fail for item %d&quot; </span><span class="s1">% i)</span>
+            <span class="s1">o = font.get_sizes()</span>
+            <span class="s1">self.assertEqual(getrefcount(o)</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+            <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(len(o)):</span>
+                <span class="s1">self.assertEqual(getrefcount(o[i])</span><span class="s0">, </span><span class="s4">2</span><span class="s0">,</span>
+                                 <span class="s2">&quot;refcount fail for item %d&quot; </span><span class="s1">% i)</span>
+
+    <span class="s0">def </span><span class="s1">test_display_surface_quit(self):</span>
+        <span class="s3">&quot;&quot;&quot;Font.render_to() on a closed display surface&quot;&quot;&quot;</span>
+
+        <span class="s5"># The Font.render_to() method checks that PySurfaceObject.surf is NULL</span>
+        <span class="s5"># and raise a exception if it is. This fixes a bug in Pygame revision</span>
+        <span class="s5"># 0600ea4f1cfb and earlier where Pygame segfaults instead.</span>
+        <span class="s1">null_surface = pygame.Surface.__new__(pygame.Surface)</span>
+        <span class="s1">f = self._TEST_FONTS[</span><span class="s2">'sans'</span><span class="s1">]</span>
+        <span class="s1">self.assertRaises(pygame.error</span><span class="s0">, </span><span class="s1">f.render_to</span><span class="s0">,</span>
+                          <span class="s1">null_surface</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;Crash!&quot;</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">12</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_issue_565(self):</span>
+        <span class="s3">&quot;&quot;&quot;get_metrics supporting rotation/styles/size&quot;&quot;&quot;</span>
+
+        <span class="s1">tests = [</span>
+            <span class="s1">{</span><span class="s2">'method'</span><span class="s1">: </span><span class="s2">'size'</span><span class="s0">, </span><span class="s2">'value'</span><span class="s1">: </span><span class="s4">36</span><span class="s0">, </span><span class="s2">'msg'</span><span class="s1">: </span><span class="s2">'metrics same for size'</span><span class="s1">}</span><span class="s0">,</span>
+            <span class="s1">{</span><span class="s2">'method'</span><span class="s1">: </span><span class="s2">'rotation'</span><span class="s0">, </span><span class="s2">'value'</span><span class="s1">: </span><span class="s4">90</span><span class="s0">, </span><span class="s2">'msg'</span><span class="s1">: </span><span class="s2">'metrics same for rotation'</span><span class="s1">}</span><span class="s0">,</span>
+            <span class="s1">{</span><span class="s2">'method'</span><span class="s1">: </span><span class="s2">'oblique'</span><span class="s0">, </span><span class="s2">'value'</span><span class="s1">: </span><span class="s0">True, </span><span class="s2">'msg'</span><span class="s1">: </span><span class="s2">'metrics same for oblique'</span><span class="s1">}</span>
+        <span class="s1">]</span>
+        <span class="s1">text = </span><span class="s2">&quot;|&quot;</span>
+
+        <span class="s0">def </span><span class="s1">run_test(method</span><span class="s0">, </span><span class="s1">value</span><span class="s0">, </span><span class="s1">msg):</span>
+            <span class="s1">font = ft.Font(self._sans_path</span><span class="s0">, </span><span class="s1">size=</span><span class="s4">24</span><span class="s1">)</span>
+            <span class="s1">before = font.get_metrics(text)</span>
+            <span class="s1">font.__setattr__(method</span><span class="s0">, </span><span class="s1">value)</span>
+            <span class="s1">after = font.get_metrics(text)</span>
+            <span class="s1">self.assertNotEqual(before</span><span class="s0">, </span><span class="s1">after</span><span class="s0">, </span><span class="s1">msg)</span>
+
+        <span class="s0">for </span><span class="s1">test </span><span class="s0">in </span><span class="s1">tests:</span>
+            <span class="s1">run_test(test[</span><span class="s2">'method'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">test[</span><span class="s2">'value'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">test[</span><span class="s2">'msg'</span><span class="s1">])</span>
+
+
+<span class="s0">class </span><span class="s1">FreeTypeTest(unittest.TestCase):</span>
+    <span class="s0">def </span><span class="s1">setUp(self):</span>
+        <span class="s1">ft.init()</span>
+
+    <span class="s0">def </span><span class="s1">tearDown(self):</span>
+        <span class="s1">ft.quit()</span>
+
+    <span class="s0">def </span><span class="s1">test_resolution(self):</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">ft.set_default_resolution()</span>
+            <span class="s1">resolution = ft.get_default_resolution()</span>
+            <span class="s1">self.assertEqual(resolution</span><span class="s0">, </span><span class="s4">72</span><span class="s1">)</span>
+            <span class="s1">new_resolution = resolution + </span><span class="s4">10</span>
+            <span class="s1">ft.set_default_resolution(new_resolution)</span>
+            <span class="s1">self.assertEqual(ft.get_default_resolution()</span><span class="s0">, </span><span class="s1">new_resolution)</span>
+            <span class="s1">ft.init(resolution=resolution+</span><span class="s4">20</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(ft.get_default_resolution()</span><span class="s0">, </span><span class="s1">new_resolution)</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">ft.set_default_resolution()</span>
+
+    <span class="s0">def </span><span class="s1">test_autoinit_and_autoquit(self):</span>
+        <span class="s1">pygame.init()</span>
+        <span class="s1">self.assertTrue(ft.get_init())</span>
+        <span class="s1">pygame.quit()</span>
+        <span class="s1">self.assertFalse(ft.get_init())</span>
+
+        <span class="s5"># Ensure autoquit is replaced at init time</span>
+        <span class="s1">pygame.init()</span>
+        <span class="s1">self.assertTrue(ft.get_init())</span>
+        <span class="s1">pygame.quit()</span>
+        <span class="s1">self.assertFalse(ft.get_init())</span>
+
+    <span class="s0">def </span><span class="s1">test_init(self):</span>
+        <span class="s5"># Test if module initialized after calling init().</span>
+        <span class="s1">ft.quit()</span>
+        <span class="s1">ft.init()</span>
+
+        <span class="s1">self.assertTrue(ft.get_init())</span>
+
+    <span class="s0">def </span><span class="s1">test_init__multiple(self):</span>
+        <span class="s5"># Test if module initialized after multiple init() calls.</span>
+        <span class="s1">ft.init()</span>
+        <span class="s1">ft.init()</span>
+
+        <span class="s1">self.assertTrue(ft.get_init())</span>
+
+    <span class="s0">def </span><span class="s1">test_quit(self):</span>
+        <span class="s5"># Test if module uninitialized after calling quit().</span>
+        <span class="s1">ft.quit()</span>
+
+        <span class="s1">self.assertFalse(ft.get_init())</span>
+
+    <span class="s0">def </span><span class="s1">test_quit__multiple(self):</span>
+        <span class="s5"># Test if module initialized after multiple quit() calls.</span>
+        <span class="s1">ft.quit()</span>
+        <span class="s1">ft.quit()</span>
+
+        <span class="s1">self.assertFalse(ft.get_init())</span>
+
+    <span class="s0">def </span><span class="s1">test_get_init(self):</span>
+        <span class="s5"># Test if get_init() gets the init state.</span>
+        <span class="s1">self.assertTrue(ft.get_init())</span>
+
+    <span class="s0">def </span><span class="s1">test_cache_size(self):</span>
+        <span class="s1">DEFAULT_CACHE_SIZE = </span><span class="s4">64</span>
+        <span class="s1">self.assertEqual(ft.get_cache_size()</span><span class="s0">, </span><span class="s1">DEFAULT_CACHE_SIZE)</span>
+        <span class="s1">ft.quit()</span>
+        <span class="s1">self.assertEqual(ft.get_cache_size()</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">new_cache_size = DEFAULT_CACHE_SIZE * </span><span class="s4">2</span>
+        <span class="s1">ft.init(cache_size=new_cache_size)</span>
+        <span class="s1">self.assertEqual(ft.get_cache_size()</span><span class="s0">, </span><span class="s1">new_cache_size)</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s2">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

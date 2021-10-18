@@ -1,0 +1,1043 @@
+<html>
+<head>
+<title>req_install.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #629755; font-style: italic;}
+.s4 { color: #6a8759;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+req_install.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span>
+
+<span class="s0">import </span><span class="s1">logging</span>
+<span class="s0">import </span><span class="s1">os</span>
+<span class="s0">import </span><span class="s1">shutil</span>
+<span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">import </span><span class="s1">sysconfig</span>
+<span class="s0">import </span><span class="s1">zipfile</span>
+<span class="s0">from </span><span class="s1">distutils.util </span><span class="s0">import </span><span class="s1">change_root</span>
+
+<span class="s0">from </span><span class="s1">pip._vendor </span><span class="s0">import </span><span class="s1">pkg_resources</span><span class="s0">, </span><span class="s1">six</span>
+<span class="s0">from </span><span class="s1">pip._vendor.packaging.requirements </span><span class="s0">import </span><span class="s1">Requirement</span>
+<span class="s0">from </span><span class="s1">pip._vendor.packaging.utils </span><span class="s0">import </span><span class="s1">canonicalize_name</span>
+<span class="s0">from </span><span class="s1">pip._vendor.packaging.version </span><span class="s0">import </span><span class="s1">Version</span>
+<span class="s0">from </span><span class="s1">pip._vendor.packaging.version </span><span class="s0">import </span><span class="s1">parse </span><span class="s0">as </span><span class="s1">parse_version</span>
+<span class="s0">from </span><span class="s1">pip._vendor.pep517.wrappers </span><span class="s0">import </span><span class="s1">Pep517HookCaller</span>
+
+<span class="s0">from </span><span class="s1">pip._internal </span><span class="s0">import </span><span class="s1">wheel</span>
+<span class="s0">from </span><span class="s1">pip._internal.build_env </span><span class="s0">import </span><span class="s1">NoOpBuildEnvironment</span>
+<span class="s0">from </span><span class="s1">pip._internal.exceptions </span><span class="s0">import </span><span class="s1">InstallationError</span>
+<span class="s0">from </span><span class="s1">pip._internal.locations </span><span class="s0">import </span><span class="s1">(</span>
+    <span class="s1">PIP_DELETE_MARKER_FILENAME</span><span class="s0">, </span><span class="s1">running_under_virtualenv</span><span class="s0">,</span>
+<span class="s1">)</span>
+<span class="s0">from </span><span class="s1">pip._internal.models.link </span><span class="s0">import </span><span class="s1">Link</span>
+<span class="s0">from </span><span class="s1">pip._internal.pyproject </span><span class="s0">import </span><span class="s1">load_pyproject_toml</span><span class="s0">, </span><span class="s1">make_pyproject_path</span>
+<span class="s0">from </span><span class="s1">pip._internal.req.req_uninstall </span><span class="s0">import </span><span class="s1">UninstallPathSet</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.compat </span><span class="s0">import </span><span class="s1">native_str</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.hashes </span><span class="s0">import </span><span class="s1">Hashes</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.logging </span><span class="s0">import </span><span class="s1">indent_log</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.misc </span><span class="s0">import </span><span class="s1">(</span>
+    <span class="s1">_make_build_dir</span><span class="s0">, </span><span class="s1">ask_path_exists</span><span class="s0">, </span><span class="s1">backup_dir</span><span class="s0">, </span><span class="s1">call_subprocess</span><span class="s0">,</span>
+    <span class="s1">display_path</span><span class="s0">, </span><span class="s1">dist_in_site_packages</span><span class="s0">, </span><span class="s1">dist_in_usersite</span><span class="s0">, </span><span class="s1">ensure_dir</span><span class="s0">,</span>
+    <span class="s1">get_installed_version</span><span class="s0">, </span><span class="s1">redact_password_from_url</span><span class="s0">, </span><span class="s1">rmtree</span><span class="s0">,</span>
+<span class="s1">)</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.packaging </span><span class="s0">import </span><span class="s1">get_metadata</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.setuptools_build </span><span class="s0">import </span><span class="s1">SETUPTOOLS_SHIM</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.temp_dir </span><span class="s0">import </span><span class="s1">TempDirectory</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.typing </span><span class="s0">import </span><span class="s1">MYPY_CHECK_RUNNING</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.ui </span><span class="s0">import </span><span class="s1">open_spinner</span>
+<span class="s0">from </span><span class="s1">pip._internal.vcs </span><span class="s0">import </span><span class="s1">vcs</span>
+<span class="s0">from </span><span class="s1">pip._internal.wheel </span><span class="s0">import </span><span class="s1">move_wheel_files</span>
+
+<span class="s0">if </span><span class="s1">MYPY_CHECK_RUNNING:</span>
+    <span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">(  </span><span class="s2"># noqa: F401</span>
+        <span class="s1">Optional</span><span class="s0">, </span><span class="s1">Iterable</span><span class="s0">, </span><span class="s1">List</span><span class="s0">, </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Any</span><span class="s0">, </span><span class="s1">Text</span><span class="s0">, </span><span class="s1">Sequence</span><span class="s0">, </span><span class="s1">Dict</span>
+    <span class="s1">)</span>
+    <span class="s0">from </span><span class="s1">pip._internal.build_env </span><span class="s0">import </span><span class="s1">BuildEnvironment  </span><span class="s2"># noqa: F401</span>
+    <span class="s0">from </span><span class="s1">pip._internal.cache </span><span class="s0">import </span><span class="s1">WheelCache  </span><span class="s2"># noqa: F401</span>
+    <span class="s0">from </span><span class="s1">pip._internal.index </span><span class="s0">import </span><span class="s1">PackageFinder  </span><span class="s2"># noqa: F401</span>
+    <span class="s0">from </span><span class="s1">pip._vendor.pkg_resources </span><span class="s0">import </span><span class="s1">Distribution  </span><span class="s2"># noqa: F401</span>
+    <span class="s0">from </span><span class="s1">pip._vendor.packaging.specifiers </span><span class="s0">import </span><span class="s1">SpecifierSet  </span><span class="s2"># noqa: F401</span>
+    <span class="s0">from </span><span class="s1">pip._vendor.packaging.markers </span><span class="s0">import </span><span class="s1">Marker  </span><span class="s2"># noqa: F401</span>
+
+
+<span class="s1">logger = logging.getLogger(__name__)</span>
+
+
+<span class="s0">class </span><span class="s1">InstallRequirement(object):</span>
+    <span class="s3">&quot;&quot;&quot; 
+    Represents something that may be installed later on, may have information 
+    about where to fetch the relavant requirement and also contains logic for 
+    installing the said requirement. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(</span>
+        <span class="s1">self</span><span class="s0">,</span>
+        <span class="s1">req</span><span class="s0">,  </span><span class="s2"># type: Optional[Requirement]</span>
+        <span class="s1">comes_from</span><span class="s0">,  </span><span class="s2"># type: Optional[Union[str, InstallRequirement]]</span>
+        <span class="s1">source_dir=</span><span class="s0">None,  </span><span class="s2"># type: Optional[str]</span>
+        <span class="s1">editable=</span><span class="s0">False,  </span><span class="s2"># type: bool</span>
+        <span class="s1">link=</span><span class="s0">None,  </span><span class="s2"># type: Optional[Link]</span>
+        <span class="s1">update=</span><span class="s0">True,  </span><span class="s2"># type: bool</span>
+        <span class="s1">markers=</span><span class="s0">None,  </span><span class="s2"># type: Optional[Marker]</span>
+        <span class="s1">use_pep517=</span><span class="s0">None,  </span><span class="s2"># type: Optional[bool]</span>
+        <span class="s1">isolated=</span><span class="s0">False,  </span><span class="s2"># type: bool</span>
+        <span class="s1">options=</span><span class="s0">None,  </span><span class="s2"># type: Optional[Dict[str, Any]]</span>
+        <span class="s1">wheel_cache=</span><span class="s0">None,  </span><span class="s2"># type: Optional[WheelCache]</span>
+        <span class="s1">constraint=</span><span class="s0">False,  </span><span class="s2"># type: bool</span>
+        <span class="s1">extras=()  </span><span class="s2"># type: Iterable[str]</span>
+    <span class="s1">):</span>
+        <span class="s2"># type: (...) -&gt; None</span>
+        <span class="s0">assert </span><span class="s1">req </span><span class="s0">is None or </span><span class="s1">isinstance(req</span><span class="s0">, </span><span class="s1">Requirement)</span><span class="s0">, </span><span class="s1">req</span>
+        <span class="s1">self.req = req</span>
+        <span class="s1">self.comes_from = comes_from</span>
+        <span class="s1">self.constraint = constraint</span>
+        <span class="s0">if </span><span class="s1">source_dir </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.source_dir = os.path.normpath(os.path.abspath(source_dir))</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.source_dir = </span><span class="s0">None</span>
+        <span class="s1">self.editable = editable</span>
+
+        <span class="s1">self._wheel_cache = wheel_cache</span>
+        <span class="s0">if </span><span class="s1">link </span><span class="s0">is None and </span><span class="s1">req </span><span class="s0">and </span><span class="s1">req.url:</span>
+            <span class="s2"># PEP 508 URL requirement</span>
+            <span class="s1">link = Link(req.url)</span>
+        <span class="s1">self.link = self.original_link = link</span>
+
+        <span class="s0">if </span><span class="s1">extras:</span>
+            <span class="s1">self.extras = extras</span>
+        <span class="s0">elif </span><span class="s1">req:</span>
+            <span class="s1">self.extras = {</span>
+                <span class="s1">pkg_resources.safe_extra(extra) </span><span class="s0">for </span><span class="s1">extra </span><span class="s0">in </span><span class="s1">req.extras</span>
+            <span class="s1">}</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.extras = set()</span>
+        <span class="s0">if </span><span class="s1">markers </span><span class="s0">is None and </span><span class="s1">req:</span>
+            <span class="s1">markers = req.marker</span>
+        <span class="s1">self.markers = markers</span>
+
+        <span class="s1">self._egg_info_path = </span><span class="s0">None  </span><span class="s2"># type: Optional[str]</span>
+        <span class="s2"># This holds the pkg_resources.Distribution object if this requirement</span>
+        <span class="s2"># is already available:</span>
+        <span class="s1">self.satisfied_by = </span><span class="s0">None</span>
+        <span class="s2"># This hold the pkg_resources.Distribution object if this requirement</span>
+        <span class="s2"># conflicts with another installed distribution:</span>
+        <span class="s1">self.conflicts_with = </span><span class="s0">None</span>
+        <span class="s2"># Temporary build location</span>
+        <span class="s1">self._temp_build_dir = TempDirectory(kind=</span><span class="s4">&quot;req-build&quot;</span><span class="s1">)</span>
+        <span class="s2"># Used to store the global directory where the _temp_build_dir should</span>
+        <span class="s2"># have been created. Cf _correct_build_location method.</span>
+        <span class="s1">self._ideal_build_dir = </span><span class="s0">None  </span><span class="s2"># type: Optional[str]</span>
+        <span class="s2"># True if the editable should be updated:</span>
+        <span class="s1">self.update = update</span>
+        <span class="s2"># Set to True after successful installation</span>
+        <span class="s1">self.install_succeeded = </span><span class="s0">None  </span><span class="s2"># type: Optional[bool]</span>
+        <span class="s2"># UninstallPathSet of uninstalled distribution (for possible rollback)</span>
+        <span class="s1">self.uninstalled_pathset = </span><span class="s0">None</span>
+        <span class="s1">self.options = options </span><span class="s0">if </span><span class="s1">options </span><span class="s0">else </span><span class="s1">{}</span>
+        <span class="s2"># Set to True after successful preparation of this requirement</span>
+        <span class="s1">self.prepared = </span><span class="s0">False</span>
+        <span class="s1">self.is_direct = </span><span class="s0">False</span>
+
+        <span class="s1">self.isolated = isolated</span>
+        <span class="s1">self.build_env = NoOpBuildEnvironment()  </span><span class="s2"># type: BuildEnvironment</span>
+
+        <span class="s2"># For PEP 517, the directory where we request the project metadata</span>
+        <span class="s2"># gets stored. We need this to pass to build_wheel, so the backend</span>
+        <span class="s2"># can ensure that the wheel matches the metadata (see the PEP for</span>
+        <span class="s2"># details).</span>
+        <span class="s1">self.metadata_directory = </span><span class="s0">None  </span><span class="s2"># type: Optional[str]</span>
+
+        <span class="s2"># The static build requirements (from pyproject.toml)</span>
+        <span class="s1">self.pyproject_requires = </span><span class="s0">None  </span><span class="s2"># type: Optional[List[str]]</span>
+
+        <span class="s2"># Build requirements that we will check are available</span>
+        <span class="s1">self.requirements_to_check = []  </span><span class="s2"># type: List[str]</span>
+
+        <span class="s2"># The PEP 517 backend we should use to build the project</span>
+        <span class="s1">self.pep517_backend = </span><span class="s0">None  </span><span class="s2"># type: Optional[Pep517HookCaller]</span>
+
+        <span class="s2"># Are we using PEP 517 for this requirement?</span>
+        <span class="s2"># After pyproject.toml has been loaded, the only valid values are True</span>
+        <span class="s2"># and False. Before loading, None is valid (meaning &quot;use the default&quot;).</span>
+        <span class="s2"># Setting an explicit value before loading pyproject.toml is supported,</span>
+        <span class="s2"># but after loading this flag should be treated as read only.</span>
+        <span class="s1">self.use_pep517 = use_pep517</span>
+
+    <span class="s0">def </span><span class="s1">__str__(self):</span>
+        <span class="s0">if </span><span class="s1">self.req:</span>
+            <span class="s1">s = str(self.req)</span>
+            <span class="s0">if </span><span class="s1">self.link:</span>
+                <span class="s1">s += </span><span class="s4">' from %s' </span><span class="s1">% redact_password_from_url(self.link.url)</span>
+        <span class="s0">elif </span><span class="s1">self.link:</span>
+            <span class="s1">s = redact_password_from_url(self.link.url)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">s = </span><span class="s4">'&lt;InstallRequirement&gt;'</span>
+        <span class="s0">if </span><span class="s1">self.satisfied_by </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">s += </span><span class="s4">' in %s' </span><span class="s1">% display_path(self.satisfied_by.location)</span>
+        <span class="s0">if </span><span class="s1">self.comes_from:</span>
+            <span class="s0">if </span><span class="s1">isinstance(self.comes_from</span><span class="s0">, </span><span class="s1">six.string_types):</span>
+                <span class="s1">comes_from = self.comes_from</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">comes_from = self.comes_from.from_path()</span>
+            <span class="s0">if </span><span class="s1">comes_from:</span>
+                <span class="s1">s += </span><span class="s4">' (from %s)' </span><span class="s1">% comes_from</span>
+        <span class="s0">return </span><span class="s1">s</span>
+
+    <span class="s0">def </span><span class="s1">__repr__(self):</span>
+        <span class="s0">return </span><span class="s4">'&lt;%s object: %s editable=%r&gt;' </span><span class="s1">% (</span>
+            <span class="s1">self.__class__.__name__</span><span class="s0">, </span><span class="s1">str(self)</span><span class="s0">, </span><span class="s1">self.editable)</span>
+
+    <span class="s0">def </span><span class="s1">populate_link(self</span><span class="s0">, </span><span class="s1">finder</span><span class="s0">, </span><span class="s1">upgrade</span><span class="s0">, </span><span class="s1">require_hashes):</span>
+        <span class="s2"># type: (PackageFinder, bool, bool) -&gt; None</span>
+        <span class="s3">&quot;&quot;&quot;Ensure that if a link can be found for this, that it is found. 
+ 
+        Note that self.link may still be None - if Upgrade is False and the 
+        requirement is already installed. 
+ 
+        If require_hashes is True, don't use the wheel cache, because cached 
+        wheels, always built locally, have different hashes than the files 
+        downloaded from the index server and thus throw false hash mismatches. 
+        Furthermore, cached wheels at present have undeterministic contents due 
+        to file modification times. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.link </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">self.link = finder.find_requirement(self</span><span class="s0">, </span><span class="s1">upgrade)</span>
+        <span class="s0">if </span><span class="s1">self._wheel_cache </span><span class="s0">is not None and not </span><span class="s1">require_hashes:</span>
+            <span class="s1">old_link = self.link</span>
+            <span class="s1">self.link = self._wheel_cache.get(self.link</span><span class="s0">, </span><span class="s1">self.name)</span>
+            <span class="s0">if </span><span class="s1">old_link != self.link:</span>
+                <span class="s1">logger.debug(</span><span class="s4">'Using cached wheel link: %s'</span><span class="s0">, </span><span class="s1">self.link)</span>
+
+    <span class="s2"># Things that are valid for all kinds of requirements?</span>
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">name(self):</span>
+        <span class="s2"># type: () -&gt; Optional[str]</span>
+        <span class="s0">if </span><span class="s1">self.req </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s0">return None</span>
+        <span class="s0">return </span><span class="s1">native_str(pkg_resources.safe_name(self.req.name))</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">specifier(self):</span>
+        <span class="s2"># type: () -&gt; SpecifierSet</span>
+        <span class="s0">return </span><span class="s1">self.req.specifier</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">is_pinned(self):</span>
+        <span class="s2"># type: () -&gt; bool</span>
+        <span class="s3">&quot;&quot;&quot;Return whether I am pinned to an exact version. 
+ 
+        For example, some-package==1.2 is pinned; some-package&gt;1.2 is not. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">specifiers = self.specifier</span>
+        <span class="s0">return </span><span class="s1">(len(specifiers) == </span><span class="s5">1 </span><span class="s0">and</span>
+                <span class="s1">next(iter(specifiers)).operator </span><span class="s0">in </span><span class="s1">{</span><span class="s4">'=='</span><span class="s0">, </span><span class="s4">'==='</span><span class="s1">})</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">installed_version(self):</span>
+        <span class="s0">return </span><span class="s1">get_installed_version(self.name)</span>
+
+    <span class="s0">def </span><span class="s1">match_markers(self</span><span class="s0">, </span><span class="s1">extras_requested=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s2"># type: (Optional[Iterable[str]]) -&gt; bool</span>
+        <span class="s0">if not </span><span class="s1">extras_requested:</span>
+            <span class="s2"># Provide an extra to safely evaluate the markers</span>
+            <span class="s2"># without matching any extra</span>
+            <span class="s1">extras_requested = (</span><span class="s4">''</span><span class="s0">,</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">self.markers </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">any(</span>
+                <span class="s1">self.markers.evaluate({</span><span class="s4">'extra'</span><span class="s1">: extra})</span>
+                <span class="s0">for </span><span class="s1">extra </span><span class="s0">in </span><span class="s1">extras_requested)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return True</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">has_hash_options(self):</span>
+        <span class="s2"># type: () -&gt; bool</span>
+        <span class="s3">&quot;&quot;&quot;Return whether any known-good hashes are specified as options. 
+ 
+        These activate --require-hashes mode; hashes specified as part of a 
+        URL do not. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">bool(self.options.get(</span><span class="s4">'hashes'</span><span class="s0">, </span><span class="s1">{}))</span>
+
+    <span class="s0">def </span><span class="s1">hashes(self</span><span class="s0">, </span><span class="s1">trust_internet=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s2"># type: (bool) -&gt; Hashes</span>
+        <span class="s3">&quot;&quot;&quot;Return a hash-comparer that considers my option- and URL-based 
+        hashes to be known-good. 
+ 
+        Hashes in URLs--ones embedded in the requirements file, not ones 
+        downloaded from an index server--are almost peers with ones from 
+        flags. They satisfy --require-hashes (whether it was implicitly or 
+        explicitly activated) but do not activate it. md5 and sha224 are not 
+        allowed in flags, which should nudge people toward good algos. We 
+        always OR all hashes together, even ones from URLs. 
+ 
+        :param trust_internet: Whether to trust URL-based (#md5=...) hashes 
+            downloaded from the internet, as by populate_link() 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">good_hashes = self.options.get(</span><span class="s4">'hashes'</span><span class="s0">, </span><span class="s1">{}).copy()</span>
+        <span class="s1">link = self.link </span><span class="s0">if </span><span class="s1">trust_internet </span><span class="s0">else </span><span class="s1">self.original_link</span>
+        <span class="s0">if </span><span class="s1">link </span><span class="s0">and </span><span class="s1">link.hash:</span>
+            <span class="s1">good_hashes.setdefault(link.hash_name</span><span class="s0">, </span><span class="s1">[]).append(link.hash)</span>
+        <span class="s0">return </span><span class="s1">Hashes(good_hashes)</span>
+
+    <span class="s0">def </span><span class="s1">from_path(self):</span>
+        <span class="s2"># type: () -&gt; Optional[str]</span>
+        <span class="s3">&quot;&quot;&quot;Format a nice indicator to show where this &quot;comes from&quot; 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.req </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s0">return None</span>
+        <span class="s1">s = str(self.req)</span>
+        <span class="s0">if </span><span class="s1">self.comes_from:</span>
+            <span class="s0">if </span><span class="s1">isinstance(self.comes_from</span><span class="s0">, </span><span class="s1">six.string_types):</span>
+                <span class="s1">comes_from = self.comes_from</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">comes_from = self.comes_from.from_path()</span>
+            <span class="s0">if </span><span class="s1">comes_from:</span>
+                <span class="s1">s += </span><span class="s4">'-&gt;' </span><span class="s1">+ comes_from</span>
+        <span class="s0">return </span><span class="s1">s</span>
+
+    <span class="s0">def </span><span class="s1">build_location(self</span><span class="s0">, </span><span class="s1">build_dir):</span>
+        <span class="s2"># type: (str) -&gt; Optional[str]</span>
+        <span class="s0">assert </span><span class="s1">build_dir </span><span class="s0">is not None</span>
+        <span class="s0">if </span><span class="s1">self._temp_build_dir.path </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">self._temp_build_dir.path</span>
+        <span class="s0">if </span><span class="s1">self.req </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s2"># for requirement via a path to a directory: the name of the</span>
+            <span class="s2"># package is not available yet so we create a temp directory</span>
+            <span class="s2"># Once run_egg_info will have run, we'll be able</span>
+            <span class="s2"># to fix it via _correct_build_location</span>
+            <span class="s2"># Some systems have /tmp as a symlink which confuses custom</span>
+            <span class="s2"># builds (such as numpy). Thus, we ensure that the real path</span>
+            <span class="s2"># is returned.</span>
+            <span class="s1">self._temp_build_dir.create()</span>
+            <span class="s1">self._ideal_build_dir = build_dir</span>
+
+            <span class="s0">return </span><span class="s1">self._temp_build_dir.path</span>
+        <span class="s0">if </span><span class="s1">self.editable:</span>
+            <span class="s1">name = self.name.lower()</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">name = self.name</span>
+        <span class="s2"># FIXME: Is there a better place to create the build_dir? (hg and bzr</span>
+        <span class="s2"># need this)</span>
+        <span class="s0">if not </span><span class="s1">os.path.exists(build_dir):</span>
+            <span class="s1">logger.debug(</span><span class="s4">'Creating directory %s'</span><span class="s0">, </span><span class="s1">build_dir)</span>
+            <span class="s1">_make_build_dir(build_dir)</span>
+        <span class="s0">return </span><span class="s1">os.path.join(build_dir</span><span class="s0">, </span><span class="s1">name)</span>
+
+    <span class="s0">def </span><span class="s1">_correct_build_location(self):</span>
+        <span class="s2"># type: () -&gt; None</span>
+        <span class="s3">&quot;&quot;&quot;Move self._temp_build_dir to self._ideal_build_dir/self.req.name 
+ 
+        For some requirements (e.g. a path to a directory), the name of the 
+        package is not available until we run egg_info, so the build_location 
+        will return a temporary directory and store the _ideal_build_dir. 
+ 
+        This is only called by self.run_egg_info to fix the temporary build 
+        directory. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.source_dir </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">return</span>
+        <span class="s0">assert </span><span class="s1">self.req </span><span class="s0">is not None</span>
+        <span class="s0">assert </span><span class="s1">self._temp_build_dir.path</span>
+        <span class="s0">assert </span><span class="s1">(self._ideal_build_dir </span><span class="s0">is not None and</span>
+                <span class="s1">self._ideal_build_dir.path)  </span><span class="s2"># type: ignore</span>
+        <span class="s1">old_location = self._temp_build_dir.path</span>
+        <span class="s1">self._temp_build_dir.path = </span><span class="s0">None</span>
+
+        <span class="s1">new_location = self.build_location(self._ideal_build_dir)</span>
+        <span class="s0">if </span><span class="s1">os.path.exists(new_location):</span>
+            <span class="s0">raise </span><span class="s1">InstallationError(</span>
+                <span class="s4">'A package already exists in %s; please remove it to continue'</span>
+                <span class="s1">% display_path(new_location))</span>
+        <span class="s1">logger.debug(</span>
+            <span class="s4">'Moving package %s from %s to new location %s'</span><span class="s0">,</span>
+            <span class="s1">self</span><span class="s0">, </span><span class="s1">display_path(old_location)</span><span class="s0">, </span><span class="s1">display_path(new_location)</span><span class="s0">,</span>
+        <span class="s1">)</span>
+        <span class="s1">shutil.move(old_location</span><span class="s0">, </span><span class="s1">new_location)</span>
+        <span class="s1">self._temp_build_dir.path = new_location</span>
+        <span class="s1">self._ideal_build_dir = </span><span class="s0">None</span>
+        <span class="s1">self.source_dir = os.path.normpath(os.path.abspath(new_location))</span>
+        <span class="s1">self._egg_info_path = </span><span class="s0">None</span>
+
+        <span class="s2"># Correct the metadata directory, if it exists</span>
+        <span class="s0">if </span><span class="s1">self.metadata_directory:</span>
+            <span class="s1">old_meta = self.metadata_directory</span>
+            <span class="s1">rel = os.path.relpath(old_meta</span><span class="s0">, </span><span class="s1">start=old_location)</span>
+            <span class="s1">new_meta = os.path.join(new_location</span><span class="s0">, </span><span class="s1">rel)</span>
+            <span class="s1">new_meta = os.path.normpath(os.path.abspath(new_meta))</span>
+            <span class="s1">self.metadata_directory = new_meta</span>
+
+    <span class="s0">def </span><span class="s1">remove_temporary_source(self):</span>
+        <span class="s2"># type: () -&gt; None</span>
+        <span class="s3">&quot;&quot;&quot;Remove the source files from this requirement, if they are marked 
+        for deletion&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.source_dir </span><span class="s0">and </span><span class="s1">os.path.exists(</span>
+                <span class="s1">os.path.join(self.source_dir</span><span class="s0">, </span><span class="s1">PIP_DELETE_MARKER_FILENAME)):</span>
+            <span class="s1">logger.debug(</span><span class="s4">'Removing source in %s'</span><span class="s0">, </span><span class="s1">self.source_dir)</span>
+            <span class="s1">rmtree(self.source_dir)</span>
+        <span class="s1">self.source_dir = </span><span class="s0">None</span>
+        <span class="s1">self._temp_build_dir.cleanup()</span>
+        <span class="s1">self.build_env.cleanup()</span>
+
+    <span class="s0">def </span><span class="s1">check_if_exists(self</span><span class="s0">, </span><span class="s1">use_user_site):</span>
+        <span class="s2"># type: (bool) -&gt; bool</span>
+        <span class="s3">&quot;&quot;&quot;Find an installed distribution that satisfies or conflicts 
+        with this requirement, and set self.satisfied_by or 
+        self.conflicts_with appropriately. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.req </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s0">return False</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s2"># get_distribution() will resolve the entire list of requirements</span>
+            <span class="s2"># anyway, and we've already determined that we need the requirement</span>
+            <span class="s2"># in question, so strip the marker so that we don't try to</span>
+            <span class="s2"># evaluate it.</span>
+            <span class="s1">no_marker = Requirement(str(self.req))</span>
+            <span class="s1">no_marker.marker = </span><span class="s0">None</span>
+            <span class="s1">self.satisfied_by = pkg_resources.get_distribution(str(no_marker))</span>
+            <span class="s0">if </span><span class="s1">self.editable </span><span class="s0">and </span><span class="s1">self.satisfied_by:</span>
+                <span class="s1">self.conflicts_with = self.satisfied_by</span>
+                <span class="s2"># when installing editables, nothing pre-existing should ever</span>
+                <span class="s2"># satisfy</span>
+                <span class="s1">self.satisfied_by = </span><span class="s0">None</span>
+                <span class="s0">return True</span>
+        <span class="s0">except </span><span class="s1">pkg_resources.DistributionNotFound:</span>
+            <span class="s0">return False</span>
+        <span class="s0">except </span><span class="s1">pkg_resources.VersionConflict:</span>
+            <span class="s1">existing_dist = pkg_resources.get_distribution(</span>
+                <span class="s1">self.req.name</span>
+            <span class="s1">)</span>
+            <span class="s0">if </span><span class="s1">use_user_site:</span>
+                <span class="s0">if </span><span class="s1">dist_in_usersite(existing_dist):</span>
+                    <span class="s1">self.conflicts_with = existing_dist</span>
+                <span class="s0">elif </span><span class="s1">(running_under_virtualenv() </span><span class="s0">and</span>
+                        <span class="s1">dist_in_site_packages(existing_dist)):</span>
+                    <span class="s0">raise </span><span class="s1">InstallationError(</span>
+                        <span class="s4">&quot;Will not install to the user site because it will &quot;</span>
+                        <span class="s4">&quot;lack sys.path precedence to %s in %s&quot; </span><span class="s1">%</span>
+                        <span class="s1">(existing_dist.project_name</span><span class="s0">, </span><span class="s1">existing_dist.location)</span>
+                    <span class="s1">)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.conflicts_with = existing_dist</span>
+        <span class="s0">return True</span>
+
+    <span class="s2"># Things valid for wheels</span>
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">is_wheel(self):</span>
+        <span class="s2"># type: () -&gt; bool</span>
+        <span class="s0">if not </span><span class="s1">self.link:</span>
+            <span class="s0">return False</span>
+        <span class="s0">return </span><span class="s1">self.link.is_wheel</span>
+
+    <span class="s0">def </span><span class="s1">move_wheel_files(</span>
+        <span class="s1">self</span><span class="s0">,</span>
+        <span class="s1">wheeldir</span><span class="s0">,  </span><span class="s2"># type: str</span>
+        <span class="s1">root=</span><span class="s0">None,  </span><span class="s2"># type: Optional[str]</span>
+        <span class="s1">home=</span><span class="s0">None,  </span><span class="s2"># type: Optional[str]</span>
+        <span class="s1">prefix=</span><span class="s0">None,  </span><span class="s2"># type: Optional[str]</span>
+        <span class="s1">warn_script_location=</span><span class="s0">True,  </span><span class="s2"># type: bool</span>
+        <span class="s1">use_user_site=</span><span class="s0">False,  </span><span class="s2"># type: bool</span>
+        <span class="s1">pycompile=</span><span class="s0">True  </span><span class="s2"># type: bool</span>
+    <span class="s1">):</span>
+        <span class="s2"># type: (...) -&gt; None</span>
+        <span class="s1">move_wheel_files(</span>
+            <span class="s1">self.name</span><span class="s0">, </span><span class="s1">self.req</span><span class="s0">, </span><span class="s1">wheeldir</span><span class="s0">,</span>
+            <span class="s1">user=use_user_site</span><span class="s0">,</span>
+            <span class="s1">home=home</span><span class="s0">,</span>
+            <span class="s1">root=root</span><span class="s0">,</span>
+            <span class="s1">prefix=prefix</span><span class="s0">,</span>
+            <span class="s1">pycompile=pycompile</span><span class="s0">,</span>
+            <span class="s1">isolated=self.isolated</span><span class="s0">,</span>
+            <span class="s1">warn_script_location=warn_script_location</span><span class="s0">,</span>
+        <span class="s1">)</span>
+
+    <span class="s2"># Things valid for sdists</span>
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">setup_py_dir(self):</span>
+        <span class="s2"># type: () -&gt; str</span>
+        <span class="s0">return </span><span class="s1">os.path.join(</span>
+            <span class="s1">self.source_dir</span><span class="s0">,</span>
+            <span class="s1">self.link </span><span class="s0">and </span><span class="s1">self.link.subdirectory_fragment </span><span class="s0">or </span><span class="s4">''</span><span class="s1">)</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">setup_py(self):</span>
+        <span class="s2"># type: () -&gt; str</span>
+        <span class="s0">assert </span><span class="s1">self.source_dir</span><span class="s0">, </span><span class="s4">&quot;No source dir for %s&quot; </span><span class="s1">% self</span>
+
+        <span class="s1">setup_py = os.path.join(self.setup_py_dir</span><span class="s0">, </span><span class="s4">'setup.py'</span><span class="s1">)</span>
+
+        <span class="s2"># Python2 __file__ should not be unicode</span>
+        <span class="s0">if </span><span class="s1">six.PY2 </span><span class="s0">and </span><span class="s1">isinstance(setup_py</span><span class="s0">, </span><span class="s1">six.text_type):</span>
+            <span class="s1">setup_py = setup_py.encode(sys.getfilesystemencoding())</span>
+
+        <span class="s0">return </span><span class="s1">setup_py</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">pyproject_toml(self):</span>
+        <span class="s2"># type: () -&gt; str</span>
+        <span class="s0">assert </span><span class="s1">self.source_dir</span><span class="s0">, </span><span class="s4">&quot;No source dir for %s&quot; </span><span class="s1">% self</span>
+
+        <span class="s0">return </span><span class="s1">make_pyproject_path(self.setup_py_dir)</span>
+
+    <span class="s0">def </span><span class="s1">load_pyproject_toml(self):</span>
+        <span class="s2"># type: () -&gt; None</span>
+        <span class="s3">&quot;&quot;&quot;Load the pyproject.toml file. 
+ 
+        After calling this routine, all of the attributes related to PEP 517 
+        processing for this requirement have been set. In particular, the 
+        use_pep517 attribute can be used to determine whether we should 
+        follow the PEP 517 or legacy (setup.py) code path. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">pep517_data = load_pyproject_toml(</span>
+            <span class="s1">self.use_pep517</span><span class="s0">,</span>
+            <span class="s1">self.pyproject_toml</span><span class="s0">,</span>
+            <span class="s1">self.setup_py</span><span class="s0">,</span>
+            <span class="s1">str(self)</span>
+        <span class="s1">)</span>
+
+        <span class="s0">if </span><span class="s1">pep517_data </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">self.use_pep517 = </span><span class="s0">False</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.use_pep517 = </span><span class="s0">True</span>
+            <span class="s1">requires</span><span class="s0">, </span><span class="s1">backend</span><span class="s0">, </span><span class="s1">check = pep517_data</span>
+            <span class="s1">self.requirements_to_check = check</span>
+            <span class="s1">self.pyproject_requires = requires</span>
+            <span class="s1">self.pep517_backend = Pep517HookCaller(self.setup_py_dir</span><span class="s0">, </span><span class="s1">backend)</span>
+
+            <span class="s2"># Use a custom function to call subprocesses</span>
+            <span class="s1">self.spin_message = </span><span class="s4">&quot;&quot;</span>
+
+            <span class="s0">def </span><span class="s1">runner(cmd</span><span class="s0">, </span><span class="s1">cwd=</span><span class="s0">None, </span><span class="s1">extra_environ=</span><span class="s0">None</span><span class="s1">):</span>
+                <span class="s0">with </span><span class="s1">open_spinner(self.spin_message) </span><span class="s0">as </span><span class="s1">spinner:</span>
+                    <span class="s1">call_subprocess(</span>
+                        <span class="s1">cmd</span><span class="s0">,</span>
+                        <span class="s1">cwd=cwd</span><span class="s0">,</span>
+                        <span class="s1">extra_environ=extra_environ</span><span class="s0">,</span>
+                        <span class="s1">show_stdout=</span><span class="s0">False,</span>
+                        <span class="s1">spinner=spinner</span>
+                    <span class="s1">)</span>
+                <span class="s1">self.spin_message = </span><span class="s4">&quot;&quot;</span>
+
+            <span class="s1">self.pep517_backend._subprocess_runner = runner</span>
+
+    <span class="s0">def </span><span class="s1">prepare_metadata(self):</span>
+        <span class="s2"># type: () -&gt; None</span>
+        <span class="s3">&quot;&quot;&quot;Ensure that project metadata is available. 
+ 
+        Under PEP 517, call the backend hook to prepare the metadata. 
+        Under legacy processing, call setup.py egg-info. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">assert </span><span class="s1">self.source_dir</span>
+
+        <span class="s0">with </span><span class="s1">indent_log():</span>
+            <span class="s0">if </span><span class="s1">self.use_pep517:</span>
+                <span class="s1">self.prepare_pep517_metadata()</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.run_egg_info()</span>
+
+        <span class="s0">if not </span><span class="s1">self.req:</span>
+            <span class="s0">if </span><span class="s1">isinstance(parse_version(self.metadata[</span><span class="s4">&quot;Version&quot;</span><span class="s1">])</span><span class="s0">, </span><span class="s1">Version):</span>
+                <span class="s1">op = </span><span class="s4">&quot;==&quot;</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">op = </span><span class="s4">&quot;===&quot;</span>
+            <span class="s1">self.req = Requirement(</span>
+                <span class="s4">&quot;&quot;</span><span class="s1">.join([</span>
+                    <span class="s1">self.metadata[</span><span class="s4">&quot;Name&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                    <span class="s1">op</span><span class="s0">,</span>
+                    <span class="s1">self.metadata[</span><span class="s4">&quot;Version&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                <span class="s1">])</span>
+            <span class="s1">)</span>
+            <span class="s1">self._correct_build_location()</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">metadata_name = canonicalize_name(self.metadata[</span><span class="s4">&quot;Name&quot;</span><span class="s1">])</span>
+            <span class="s0">if </span><span class="s1">canonicalize_name(self.req.name) != metadata_name:</span>
+                <span class="s1">logger.warning(</span>
+                    <span class="s4">'Generating metadata for package %s '</span>
+                    <span class="s4">'produced metadata for project name %s. Fix your '</span>
+                    <span class="s4">'#egg=%s fragments.'</span><span class="s0">,</span>
+                    <span class="s1">self.name</span><span class="s0">, </span><span class="s1">metadata_name</span><span class="s0">, </span><span class="s1">self.name</span>
+                <span class="s1">)</span>
+                <span class="s1">self.req = Requirement(metadata_name)</span>
+
+    <span class="s0">def </span><span class="s1">prepare_pep517_metadata(self):</span>
+        <span class="s2"># type: () -&gt; None</span>
+        <span class="s0">assert </span><span class="s1">self.pep517_backend </span><span class="s0">is not None</span>
+
+        <span class="s1">metadata_dir = os.path.join(</span>
+            <span class="s1">self.setup_py_dir</span><span class="s0">,</span>
+            <span class="s4">'pip-wheel-metadata'</span>
+        <span class="s1">)</span>
+        <span class="s1">ensure_dir(metadata_dir)</span>
+
+        <span class="s0">with </span><span class="s1">self.build_env:</span>
+            <span class="s2"># Note that Pep517HookCaller implements a fallback for</span>
+            <span class="s2"># prepare_metadata_for_build_wheel, so we don't have to</span>
+            <span class="s2"># consider the possibility that this hook doesn't exist.</span>
+            <span class="s1">backend = self.pep517_backend</span>
+            <span class="s1">self.spin_message = </span><span class="s4">&quot;Preparing wheel metadata&quot;</span>
+            <span class="s1">distinfo_dir = backend.prepare_metadata_for_build_wheel(</span>
+                <span class="s1">metadata_dir</span>
+            <span class="s1">)</span>
+
+        <span class="s1">self.metadata_directory = os.path.join(metadata_dir</span><span class="s0">, </span><span class="s1">distinfo_dir)</span>
+
+    <span class="s0">def </span><span class="s1">run_egg_info(self):</span>
+        <span class="s2"># type: () -&gt; None</span>
+        <span class="s0">if </span><span class="s1">self.name:</span>
+            <span class="s1">logger.debug(</span>
+                <span class="s4">'Running setup.py (path:%s) egg_info for package %s'</span><span class="s0">,</span>
+                <span class="s1">self.setup_py</span><span class="s0">, </span><span class="s1">self.name</span><span class="s0">,</span>
+            <span class="s1">)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">logger.debug(</span>
+                <span class="s4">'Running setup.py (path:%s) egg_info for package from %s'</span><span class="s0">,</span>
+                <span class="s1">self.setup_py</span><span class="s0">, </span><span class="s1">self.link</span><span class="s0">,</span>
+            <span class="s1">)</span>
+        <span class="s1">script = SETUPTOOLS_SHIM % self.setup_py</span>
+        <span class="s1">base_cmd = [sys.executable</span><span class="s0">, </span><span class="s4">'-c'</span><span class="s0">, </span><span class="s1">script]</span>
+        <span class="s0">if </span><span class="s1">self.isolated:</span>
+            <span class="s1">base_cmd += [</span><span class="s4">&quot;--no-user-cfg&quot;</span><span class="s1">]</span>
+        <span class="s1">egg_info_cmd = base_cmd + [</span><span class="s4">'egg_info'</span><span class="s1">]</span>
+        <span class="s2"># We can't put the .egg-info files at the root, because then the</span>
+        <span class="s2"># source code will be mistaken for an installed egg, causing</span>
+        <span class="s2"># problems</span>
+        <span class="s0">if </span><span class="s1">self.editable:</span>
+            <span class="s1">egg_base_option = []  </span><span class="s2"># type: List[str]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">egg_info_dir = os.path.join(self.setup_py_dir</span><span class="s0">, </span><span class="s4">'pip-egg-info'</span><span class="s1">)</span>
+            <span class="s1">ensure_dir(egg_info_dir)</span>
+            <span class="s1">egg_base_option = [</span><span class="s4">'--egg-base'</span><span class="s0">, </span><span class="s4">'pip-egg-info'</span><span class="s1">]</span>
+        <span class="s0">with </span><span class="s1">self.build_env:</span>
+            <span class="s1">call_subprocess(</span>
+                <span class="s1">egg_info_cmd + egg_base_option</span><span class="s0">,</span>
+                <span class="s1">cwd=self.setup_py_dir</span><span class="s0">,</span>
+                <span class="s1">show_stdout=</span><span class="s0">False,</span>
+                <span class="s1">command_desc=</span><span class="s4">'python setup.py egg_info'</span><span class="s1">)</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">egg_info_path(self):</span>
+        <span class="s2"># type: () -&gt; str</span>
+        <span class="s0">if </span><span class="s1">self._egg_info_path </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.editable:</span>
+                <span class="s1">base = self.source_dir</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">base = os.path.join(self.setup_py_dir</span><span class="s0">, </span><span class="s4">'pip-egg-info'</span><span class="s1">)</span>
+            <span class="s1">filenames = os.listdir(base)</span>
+            <span class="s0">if </span><span class="s1">self.editable:</span>
+                <span class="s1">filenames = []</span>
+                <span class="s0">for </span><span class="s1">root</span><span class="s0">, </span><span class="s1">dirs</span><span class="s0">, </span><span class="s1">files </span><span class="s0">in </span><span class="s1">os.walk(base):</span>
+                    <span class="s0">for </span><span class="s1">dir </span><span class="s0">in </span><span class="s1">vcs.dirnames:</span>
+                        <span class="s0">if </span><span class="s1">dir </span><span class="s0">in </span><span class="s1">dirs:</span>
+                            <span class="s1">dirs.remove(dir)</span>
+                    <span class="s2"># Iterate over a copy of ``dirs``, since mutating</span>
+                    <span class="s2"># a list while iterating over it can cause trouble.</span>
+                    <span class="s2"># (See https://github.com/pypa/pip/pull/462.)</span>
+                    <span class="s0">for </span><span class="s1">dir </span><span class="s0">in </span><span class="s1">list(dirs):</span>
+                        <span class="s2"># Don't search in anything that looks like a virtualenv</span>
+                        <span class="s2"># environment</span>
+                        <span class="s0">if </span><span class="s1">(</span>
+                                <span class="s1">os.path.lexists(</span>
+                                    <span class="s1">os.path.join(root</span><span class="s0">, </span><span class="s1">dir</span><span class="s0">, </span><span class="s4">'bin'</span><span class="s0">, </span><span class="s4">'python'</span><span class="s1">)</span>
+                                <span class="s1">) </span><span class="s0">or</span>
+                                <span class="s1">os.path.exists(</span>
+                                    <span class="s1">os.path.join(</span>
+                                        <span class="s1">root</span><span class="s0">, </span><span class="s1">dir</span><span class="s0">, </span><span class="s4">'Scripts'</span><span class="s0">, </span><span class="s4">'Python.exe'</span>
+                                    <span class="s1">)</span>
+                                <span class="s1">)):</span>
+                            <span class="s1">dirs.remove(dir)</span>
+                        <span class="s2"># Also don't search through tests</span>
+                        <span class="s0">elif </span><span class="s1">dir == </span><span class="s4">'test' </span><span class="s0">or </span><span class="s1">dir == </span><span class="s4">'tests'</span><span class="s1">:</span>
+                            <span class="s1">dirs.remove(dir)</span>
+                    <span class="s1">filenames.extend([os.path.join(root</span><span class="s0">, </span><span class="s1">dir)</span>
+                                      <span class="s0">for </span><span class="s1">dir </span><span class="s0">in </span><span class="s1">dirs])</span>
+                <span class="s1">filenames = [f </span><span class="s0">for </span><span class="s1">f </span><span class="s0">in </span><span class="s1">filenames </span><span class="s0">if </span><span class="s1">f.endswith(</span><span class="s4">'.egg-info'</span><span class="s1">)]</span>
+
+            <span class="s0">if not </span><span class="s1">filenames:</span>
+                <span class="s0">raise </span><span class="s1">InstallationError(</span>
+                    <span class="s4">&quot;Files/directories not found in %s&quot; </span><span class="s1">% base</span>
+                <span class="s1">)</span>
+            <span class="s2"># if we have more than one match, we pick the toplevel one.  This</span>
+            <span class="s2"># can easily be the case if there is a dist folder which contains</span>
+            <span class="s2"># an extracted tarball for testing purposes.</span>
+            <span class="s0">if </span><span class="s1">len(filenames) &gt; </span><span class="s5">1</span><span class="s1">:</span>
+                <span class="s1">filenames.sort(</span>
+                    <span class="s1">key=</span><span class="s0">lambda </span><span class="s1">x: x.count(os.path.sep) +</span>
+                    <span class="s1">(os.path.altsep </span><span class="s0">and </span><span class="s1">x.count(os.path.altsep) </span><span class="s0">or </span><span class="s5">0</span><span class="s1">)</span>
+                <span class="s1">)</span>
+            <span class="s1">self._egg_info_path = os.path.join(base</span><span class="s0">, </span><span class="s1">filenames[</span><span class="s5">0</span><span class="s1">])</span>
+        <span class="s0">return </span><span class="s1">self._egg_info_path</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">metadata(self):</span>
+        <span class="s0">if not </span><span class="s1">hasattr(self</span><span class="s0">, </span><span class="s4">'_metadata'</span><span class="s1">):</span>
+            <span class="s1">self._metadata = get_metadata(self.get_dist())</span>
+
+        <span class="s0">return </span><span class="s1">self._metadata</span>
+
+    <span class="s0">def </span><span class="s1">get_dist(self):</span>
+        <span class="s2"># type: () -&gt; Distribution</span>
+        <span class="s3">&quot;&quot;&quot;Return a pkg_resources.Distribution for this requirement&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.metadata_directory:</span>
+            <span class="s1">base_dir</span><span class="s0">, </span><span class="s1">distinfo = os.path.split(self.metadata_directory)</span>
+            <span class="s1">metadata = pkg_resources.PathMetadata(</span>
+                <span class="s1">base_dir</span><span class="s0">, </span><span class="s1">self.metadata_directory</span>
+            <span class="s1">)</span>
+            <span class="s1">dist_name = os.path.splitext(distinfo)[</span><span class="s5">0</span><span class="s1">]</span>
+            <span class="s1">typ = pkg_resources.DistInfoDistribution</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">egg_info = self.egg_info_path.rstrip(os.path.sep)</span>
+            <span class="s1">base_dir = os.path.dirname(egg_info)</span>
+            <span class="s1">metadata = pkg_resources.PathMetadata(base_dir</span><span class="s0">, </span><span class="s1">egg_info)</span>
+            <span class="s1">dist_name = os.path.splitext(os.path.basename(egg_info))[</span><span class="s5">0</span><span class="s1">]</span>
+            <span class="s2"># https://github.com/python/mypy/issues/1174</span>
+            <span class="s1">typ = pkg_resources.Distribution  </span><span class="s2"># type: ignore</span>
+
+        <span class="s0">return </span><span class="s1">typ(</span>
+            <span class="s1">base_dir</span><span class="s0">,</span>
+            <span class="s1">project_name=dist_name</span><span class="s0">,</span>
+            <span class="s1">metadata=metadata</span><span class="s0">,</span>
+        <span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">assert_source_matches_version(self):</span>
+        <span class="s2"># type: () -&gt; None</span>
+        <span class="s0">assert </span><span class="s1">self.source_dir</span>
+        <span class="s1">version = self.metadata[</span><span class="s4">'version'</span><span class="s1">]</span>
+        <span class="s0">if </span><span class="s1">self.req.specifier </span><span class="s0">and </span><span class="s1">version </span><span class="s0">not in </span><span class="s1">self.req.specifier:</span>
+            <span class="s1">logger.warning(</span>
+                <span class="s4">'Requested %s, but installing version %s'</span><span class="s0">,</span>
+                <span class="s1">self</span><span class="s0">,</span>
+                <span class="s1">version</span><span class="s0">,</span>
+            <span class="s1">)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">logger.debug(</span>
+                <span class="s4">'Source in %s has version %s, which satisfies requirement %s'</span><span class="s0">,</span>
+                <span class="s1">display_path(self.source_dir)</span><span class="s0">,</span>
+                <span class="s1">version</span><span class="s0">,</span>
+                <span class="s1">self</span><span class="s0">,</span>
+            <span class="s1">)</span>
+
+    <span class="s2"># For both source distributions and editables</span>
+    <span class="s0">def </span><span class="s1">ensure_has_source_dir(self</span><span class="s0">, </span><span class="s1">parent_dir):</span>
+        <span class="s2"># type: (str) -&gt; str</span>
+        <span class="s3">&quot;&quot;&quot;Ensure that a source_dir is set. 
+ 
+        This will create a temporary build dir if the name of the requirement 
+        isn't known yet. 
+ 
+        :param parent_dir: The ideal pip parent_dir for the source_dir. 
+            Generally src_dir for editables and build_dir for sdists. 
+        :return: self.source_dir 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.source_dir </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">self.source_dir = self.build_location(parent_dir)</span>
+        <span class="s0">return </span><span class="s1">self.source_dir</span>
+
+    <span class="s2"># For editable installations</span>
+    <span class="s0">def </span><span class="s1">install_editable(</span>
+        <span class="s1">self</span><span class="s0">,</span>
+        <span class="s1">install_options</span><span class="s0">,  </span><span class="s2"># type: List[str]</span>
+        <span class="s1">global_options=()</span><span class="s0">,  </span><span class="s2"># type: Sequence[str]</span>
+        <span class="s1">prefix=</span><span class="s0">None  </span><span class="s2"># type: Optional[str]</span>
+    <span class="s1">):</span>
+        <span class="s2"># type: (...) -&gt; None</span>
+        <span class="s1">logger.info(</span><span class="s4">'Running setup.py develop for %s'</span><span class="s0">, </span><span class="s1">self.name)</span>
+
+        <span class="s0">if </span><span class="s1">self.isolated:</span>
+            <span class="s1">global_options = list(global_options) + [</span><span class="s4">&quot;--no-user-cfg&quot;</span><span class="s1">]</span>
+
+        <span class="s0">if </span><span class="s1">prefix:</span>
+            <span class="s1">prefix_param = [</span><span class="s4">'--prefix={}'</span><span class="s1">.format(prefix)]</span>
+            <span class="s1">install_options = list(install_options) + prefix_param</span>
+
+        <span class="s0">with </span><span class="s1">indent_log():</span>
+            <span class="s2"># FIXME: should we do --install-headers here too?</span>
+            <span class="s0">with </span><span class="s1">self.build_env:</span>
+                <span class="s1">call_subprocess(</span>
+                    <span class="s1">[</span>
+                        <span class="s1">sys.executable</span><span class="s0">,</span>
+                        <span class="s4">'-c'</span><span class="s0">,</span>
+                        <span class="s1">SETUPTOOLS_SHIM % self.setup_py</span>
+                    <span class="s1">] +</span>
+                    <span class="s1">list(global_options) +</span>
+                    <span class="s1">[</span><span class="s4">'develop'</span><span class="s0">, </span><span class="s4">'--no-deps'</span><span class="s1">] +</span>
+                    <span class="s1">list(install_options)</span><span class="s0">,</span>
+
+                    <span class="s1">cwd=self.setup_py_dir</span><span class="s0">,</span>
+                    <span class="s1">show_stdout=</span><span class="s0">False,</span>
+                <span class="s1">)</span>
+
+        <span class="s1">self.install_succeeded = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">update_editable(self</span><span class="s0">, </span><span class="s1">obtain=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s2"># type: (bool) -&gt; None</span>
+        <span class="s0">if not </span><span class="s1">self.link:</span>
+            <span class="s1">logger.debug(</span>
+                <span class="s4">&quot;Cannot update repository at %s; repository location is &quot;</span>
+                <span class="s4">&quot;unknown&quot;</span><span class="s0">,</span>
+                <span class="s1">self.source_dir</span><span class="s0">,</span>
+            <span class="s1">)</span>
+            <span class="s0">return</span>
+        <span class="s0">assert </span><span class="s1">self.editable</span>
+        <span class="s0">assert </span><span class="s1">self.source_dir</span>
+        <span class="s0">if </span><span class="s1">self.link.scheme == </span><span class="s4">'file'</span><span class="s1">:</span>
+            <span class="s2"># Static paths don't get updated</span>
+            <span class="s0">return</span>
+        <span class="s0">assert </span><span class="s4">'+' </span><span class="s0">in </span><span class="s1">self.link.url</span><span class="s0">, </span><span class="s4">&quot;bad url: %r&quot; </span><span class="s1">% self.link.url</span>
+        <span class="s0">if not </span><span class="s1">self.update:</span>
+            <span class="s0">return</span>
+        <span class="s1">vc_type</span><span class="s0">, </span><span class="s1">url = self.link.url.split(</span><span class="s4">'+'</span><span class="s0">, </span><span class="s5">1</span><span class="s1">)</span>
+        <span class="s1">backend = vcs.get_backend(vc_type)</span>
+        <span class="s0">if </span><span class="s1">backend:</span>
+            <span class="s1">vcs_backend = backend(self.link.url)</span>
+            <span class="s0">if </span><span class="s1">obtain:</span>
+                <span class="s1">vcs_backend.obtain(self.source_dir)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">vcs_backend.export(self.source_dir)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">assert </span><span class="s5">0</span><span class="s0">, </span><span class="s1">(</span>
+                <span class="s4">'Unexpected version control type (in %s): %s'</span>
+                <span class="s1">% (self.link</span><span class="s0">, </span><span class="s1">vc_type))</span>
+
+    <span class="s2"># Top-level Actions</span>
+    <span class="s0">def </span><span class="s1">uninstall(self</span><span class="s0">, </span><span class="s1">auto_confirm=</span><span class="s0">False, </span><span class="s1">verbose=</span><span class="s0">False,</span>
+                  <span class="s1">use_user_site=</span><span class="s0">False</span><span class="s1">):</span>
+        <span class="s2"># type: (bool, bool, bool) -&gt; Optional[UninstallPathSet]</span>
+        <span class="s3">&quot;&quot;&quot; 
+        Uninstall the distribution currently satisfying this requirement. 
+ 
+        Prompts before removing or modifying files unless 
+        ``auto_confirm`` is True. 
+ 
+        Refuses to delete or modify files outside of ``sys.prefix`` - 
+        thus uninstallation within a virtual environment can only 
+        modify that virtual environment, even if the virtualenv is 
+        linked to global site-packages. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if not </span><span class="s1">self.check_if_exists(use_user_site):</span>
+            <span class="s1">logger.warning(</span><span class="s4">&quot;Skipping %s as it is not installed.&quot;</span><span class="s0">, </span><span class="s1">self.name)</span>
+            <span class="s0">return None</span>
+        <span class="s1">dist = self.satisfied_by </span><span class="s0">or </span><span class="s1">self.conflicts_with</span>
+
+        <span class="s1">uninstalled_pathset = UninstallPathSet.from_dist(dist)</span>
+        <span class="s1">uninstalled_pathset.remove(auto_confirm</span><span class="s0">, </span><span class="s1">verbose)</span>
+        <span class="s0">return </span><span class="s1">uninstalled_pathset</span>
+
+    <span class="s0">def </span><span class="s1">_clean_zip_name(self</span><span class="s0">, </span><span class="s1">name</span><span class="s0">, </span><span class="s1">prefix):  </span><span class="s2"># only used by archive.</span>
+        <span class="s0">assert </span><span class="s1">name.startswith(prefix + os.path.sep)</span><span class="s0">, </span><span class="s1">(</span>
+            <span class="s4">&quot;name %r doesn't start with prefix %r&quot; </span><span class="s1">% (name</span><span class="s0">, </span><span class="s1">prefix)</span>
+        <span class="s1">)</span>
+        <span class="s1">name = name[len(prefix) + </span><span class="s5">1</span><span class="s1">:]</span>
+        <span class="s1">name = name.replace(os.path.sep</span><span class="s0">, </span><span class="s4">'/'</span><span class="s1">)</span>
+        <span class="s0">return </span><span class="s1">name</span>
+
+    <span class="s0">def </span><span class="s1">_get_archive_name(self</span><span class="s0">, </span><span class="s1">path</span><span class="s0">, </span><span class="s1">parentdir</span><span class="s0">, </span><span class="s1">rootdir):</span>
+        <span class="s2"># type: (str, str, str) -&gt; str</span>
+        <span class="s1">path = os.path.join(parentdir</span><span class="s0">, </span><span class="s1">path)</span>
+        <span class="s1">name = self._clean_zip_name(path</span><span class="s0">, </span><span class="s1">rootdir)</span>
+        <span class="s0">return </span><span class="s1">self.name + </span><span class="s4">'/' </span><span class="s1">+ name</span>
+
+    <span class="s2"># TODO: Investigate if this should be kept in InstallRequirement</span>
+    <span class="s2">#       Seems to be used only when VCS + downloads</span>
+    <span class="s0">def </span><span class="s1">archive(self</span><span class="s0">, </span><span class="s1">build_dir):</span>
+        <span class="s2"># type: (str) -&gt; None</span>
+        <span class="s0">assert </span><span class="s1">self.source_dir</span>
+        <span class="s1">create_archive = </span><span class="s0">True</span>
+        <span class="s1">archive_name = </span><span class="s4">'%s-%s.zip' </span><span class="s1">% (self.name</span><span class="s0">, </span><span class="s1">self.metadata[</span><span class="s4">&quot;version&quot;</span><span class="s1">])</span>
+        <span class="s1">archive_path = os.path.join(build_dir</span><span class="s0">, </span><span class="s1">archive_name)</span>
+        <span class="s0">if </span><span class="s1">os.path.exists(archive_path):</span>
+            <span class="s1">response = ask_path_exists(</span>
+                <span class="s4">'The file %s exists. (i)gnore, (w)ipe, (b)ackup, (a)bort ' </span><span class="s1">%</span>
+                <span class="s1">display_path(archive_path)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">'i'</span><span class="s0">, </span><span class="s4">'w'</span><span class="s0">, </span><span class="s4">'b'</span><span class="s0">, </span><span class="s4">'a'</span><span class="s1">))</span>
+            <span class="s0">if </span><span class="s1">response == </span><span class="s4">'i'</span><span class="s1">:</span>
+                <span class="s1">create_archive = </span><span class="s0">False</span>
+            <span class="s0">elif </span><span class="s1">response == </span><span class="s4">'w'</span><span class="s1">:</span>
+                <span class="s1">logger.warning(</span><span class="s4">'Deleting %s'</span><span class="s0">, </span><span class="s1">display_path(archive_path))</span>
+                <span class="s1">os.remove(archive_path)</span>
+            <span class="s0">elif </span><span class="s1">response == </span><span class="s4">'b'</span><span class="s1">:</span>
+                <span class="s1">dest_file = backup_dir(archive_path)</span>
+                <span class="s1">logger.warning(</span>
+                    <span class="s4">'Backing up %s to %s'</span><span class="s0">,</span>
+                    <span class="s1">display_path(archive_path)</span><span class="s0">,</span>
+                    <span class="s1">display_path(dest_file)</span><span class="s0">,</span>
+                <span class="s1">)</span>
+                <span class="s1">shutil.move(archive_path</span><span class="s0">, </span><span class="s1">dest_file)</span>
+            <span class="s0">elif </span><span class="s1">response == </span><span class="s4">'a'</span><span class="s1">:</span>
+                <span class="s1">sys.exit(-</span><span class="s5">1</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">create_archive:</span>
+            <span class="s1">zip = zipfile.ZipFile(</span>
+                <span class="s1">archive_path</span><span class="s0">, </span><span class="s4">'w'</span><span class="s0">, </span><span class="s1">zipfile.ZIP_DEFLATED</span><span class="s0">,</span>
+                <span class="s1">allowZip64=</span><span class="s0">True</span>
+            <span class="s1">)</span>
+            <span class="s1">dir = os.path.normcase(os.path.abspath(self.setup_py_dir))</span>
+            <span class="s0">for </span><span class="s1">dirpath</span><span class="s0">, </span><span class="s1">dirnames</span><span class="s0">, </span><span class="s1">filenames </span><span class="s0">in </span><span class="s1">os.walk(dir):</span>
+                <span class="s0">if </span><span class="s4">'pip-egg-info' </span><span class="s0">in </span><span class="s1">dirnames:</span>
+                    <span class="s1">dirnames.remove(</span><span class="s4">'pip-egg-info'</span><span class="s1">)</span>
+                <span class="s0">for </span><span class="s1">dirname </span><span class="s0">in </span><span class="s1">dirnames:</span>
+                    <span class="s1">dir_arcname = self._get_archive_name(dirname</span><span class="s0">,</span>
+                                                         <span class="s1">parentdir=dirpath</span><span class="s0">,</span>
+                                                         <span class="s1">rootdir=dir)</span>
+                    <span class="s1">zipdir = zipfile.ZipInfo(dir_arcname + </span><span class="s4">'/'</span><span class="s1">)</span>
+                    <span class="s1">zipdir.external_attr = </span><span class="s5">0x1ED </span><span class="s1">&lt;&lt; </span><span class="s5">16  </span><span class="s2"># 0o755</span>
+                    <span class="s1">zip.writestr(zipdir</span><span class="s0">, </span><span class="s4">''</span><span class="s1">)</span>
+                <span class="s0">for </span><span class="s1">filename </span><span class="s0">in </span><span class="s1">filenames:</span>
+                    <span class="s0">if </span><span class="s1">filename == PIP_DELETE_MARKER_FILENAME:</span>
+                        <span class="s0">continue</span>
+                    <span class="s1">file_arcname = self._get_archive_name(filename</span><span class="s0">,</span>
+                                                          <span class="s1">parentdir=dirpath</span><span class="s0">,</span>
+                                                          <span class="s1">rootdir=dir)</span>
+                    <span class="s1">filename = os.path.join(dirpath</span><span class="s0">, </span><span class="s1">filename)</span>
+                    <span class="s1">zip.write(filename</span><span class="s0">, </span><span class="s1">file_arcname)</span>
+            <span class="s1">zip.close()</span>
+            <span class="s1">logger.info(</span><span class="s4">'Saved %s'</span><span class="s0">, </span><span class="s1">display_path(archive_path))</span>
+
+    <span class="s0">def </span><span class="s1">install(</span>
+        <span class="s1">self</span><span class="s0">,</span>
+        <span class="s1">install_options</span><span class="s0">,  </span><span class="s2"># type: List[str]</span>
+        <span class="s1">global_options=</span><span class="s0">None,  </span><span class="s2"># type: Optional[Sequence[str]]</span>
+        <span class="s1">root=</span><span class="s0">None,  </span><span class="s2"># type: Optional[str]</span>
+        <span class="s1">home=</span><span class="s0">None,  </span><span class="s2"># type: Optional[str]</span>
+        <span class="s1">prefix=</span><span class="s0">None,  </span><span class="s2"># type: Optional[str]</span>
+        <span class="s1">warn_script_location=</span><span class="s0">True,  </span><span class="s2"># type: bool</span>
+        <span class="s1">use_user_site=</span><span class="s0">False,  </span><span class="s2"># type: bool</span>
+        <span class="s1">pycompile=</span><span class="s0">True  </span><span class="s2"># type: bool</span>
+    <span class="s1">):</span>
+        <span class="s2"># type: (...) -&gt; None</span>
+        <span class="s1">global_options = global_options </span><span class="s0">if </span><span class="s1">global_options </span><span class="s0">is not None else </span><span class="s1">[]</span>
+        <span class="s0">if </span><span class="s1">self.editable:</span>
+            <span class="s1">self.install_editable(</span>
+                <span class="s1">install_options</span><span class="s0">, </span><span class="s1">global_options</span><span class="s0">, </span><span class="s1">prefix=prefix</span><span class="s0">,</span>
+            <span class="s1">)</span>
+            <span class="s0">return</span>
+        <span class="s0">if </span><span class="s1">self.is_wheel:</span>
+            <span class="s1">version = wheel.wheel_version(self.source_dir)</span>
+            <span class="s1">wheel.check_compatibility(version</span><span class="s0">, </span><span class="s1">self.name)</span>
+
+            <span class="s1">self.move_wheel_files(</span>
+                <span class="s1">self.source_dir</span><span class="s0">, </span><span class="s1">root=root</span><span class="s0">, </span><span class="s1">prefix=prefix</span><span class="s0">, </span><span class="s1">home=home</span><span class="s0">,</span>
+                <span class="s1">warn_script_location=warn_script_location</span><span class="s0">,</span>
+                <span class="s1">use_user_site=use_user_site</span><span class="s0">, </span><span class="s1">pycompile=pycompile</span><span class="s0">,</span>
+            <span class="s1">)</span>
+            <span class="s1">self.install_succeeded = </span><span class="s0">True</span>
+            <span class="s0">return</span>
+
+        <span class="s2"># Extend the list of global and install options passed on to</span>
+        <span class="s2"># the setup.py call with the ones from the requirements file.</span>
+        <span class="s2"># Options specified in requirements file override those</span>
+        <span class="s2"># specified on the command line, since the last option given</span>
+        <span class="s2"># to setup.py is the one that is used.</span>
+        <span class="s1">global_options = list(global_options) + \</span>
+            <span class="s1">self.options.get(</span><span class="s4">'global_options'</span><span class="s0">, </span><span class="s1">[])</span>
+        <span class="s1">install_options = list(install_options) + \</span>
+            <span class="s1">self.options.get(</span><span class="s4">'install_options'</span><span class="s0">, </span><span class="s1">[])</span>
+
+        <span class="s0">if </span><span class="s1">self.isolated:</span>
+            <span class="s2"># https://github.com/python/mypy/issues/1174</span>
+            <span class="s1">global_options = global_options + [</span><span class="s4">&quot;--no-user-cfg&quot;</span><span class="s1">]  </span><span class="s2"># type: ignore</span>
+
+        <span class="s0">with </span><span class="s1">TempDirectory(kind=</span><span class="s4">&quot;record&quot;</span><span class="s1">) </span><span class="s0">as </span><span class="s1">temp_dir:</span>
+            <span class="s1">record_filename = os.path.join(temp_dir.path</span><span class="s0">, </span><span class="s4">'install-record.txt'</span><span class="s1">)</span>
+            <span class="s1">install_args = self.get_install_args(</span>
+                <span class="s1">global_options</span><span class="s0">, </span><span class="s1">record_filename</span><span class="s0">, </span><span class="s1">root</span><span class="s0">, </span><span class="s1">prefix</span><span class="s0">, </span><span class="s1">pycompile</span><span class="s0">,</span>
+            <span class="s1">)</span>
+            <span class="s1">msg = </span><span class="s4">'Running setup.py install for %s' </span><span class="s1">% (self.name</span><span class="s0">,</span><span class="s1">)</span>
+            <span class="s0">with </span><span class="s1">open_spinner(msg) </span><span class="s0">as </span><span class="s1">spinner:</span>
+                <span class="s0">with </span><span class="s1">indent_log():</span>
+                    <span class="s0">with </span><span class="s1">self.build_env:</span>
+                        <span class="s1">call_subprocess(</span>
+                            <span class="s1">install_args + install_options</span><span class="s0">,</span>
+                            <span class="s1">cwd=self.setup_py_dir</span><span class="s0">,</span>
+                            <span class="s1">show_stdout=</span><span class="s0">False,</span>
+                            <span class="s1">spinner=spinner</span><span class="s0">,</span>
+                        <span class="s1">)</span>
+
+            <span class="s0">if not </span><span class="s1">os.path.exists(record_filename):</span>
+                <span class="s1">logger.debug(</span><span class="s4">'Record file %s not found'</span><span class="s0">, </span><span class="s1">record_filename)</span>
+                <span class="s0">return</span>
+            <span class="s1">self.install_succeeded = </span><span class="s0">True</span>
+
+            <span class="s0">def </span><span class="s1">prepend_root(path):</span>
+                <span class="s0">if </span><span class="s1">root </span><span class="s0">is None or not </span><span class="s1">os.path.isabs(path):</span>
+                    <span class="s0">return </span><span class="s1">path</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s0">return </span><span class="s1">change_root(root</span><span class="s0">, </span><span class="s1">path)</span>
+
+            <span class="s0">with </span><span class="s1">open(record_filename) </span><span class="s0">as </span><span class="s1">f:</span>
+                <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">f:</span>
+                    <span class="s1">directory = os.path.dirname(line)</span>
+                    <span class="s0">if </span><span class="s1">directory.endswith(</span><span class="s4">'.egg-info'</span><span class="s1">):</span>
+                        <span class="s1">egg_info_dir = prepend_root(directory)</span>
+                        <span class="s0">break</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">logger.warning(</span>
+                        <span class="s4">'Could not find .egg-info directory in install record'</span>
+                        <span class="s4">' for %s'</span><span class="s0">,</span>
+                        <span class="s1">self</span><span class="s0">,</span>
+                    <span class="s1">)</span>
+                    <span class="s2"># FIXME: put the record somewhere</span>
+                    <span class="s2"># FIXME: should this be an error?</span>
+                    <span class="s0">return</span>
+            <span class="s1">new_lines = []</span>
+            <span class="s0">with </span><span class="s1">open(record_filename) </span><span class="s0">as </span><span class="s1">f:</span>
+                <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">f:</span>
+                    <span class="s1">filename = line.strip()</span>
+                    <span class="s0">if </span><span class="s1">os.path.isdir(filename):</span>
+                        <span class="s1">filename += os.path.sep</span>
+                    <span class="s1">new_lines.append(</span>
+                        <span class="s1">os.path.relpath(prepend_root(filename)</span><span class="s0">, </span><span class="s1">egg_info_dir)</span>
+                    <span class="s1">)</span>
+            <span class="s1">new_lines.sort()</span>
+            <span class="s1">ensure_dir(egg_info_dir)</span>
+            <span class="s1">inst_files_path = os.path.join(egg_info_dir</span><span class="s0">, </span><span class="s4">'installed-files.txt'</span><span class="s1">)</span>
+            <span class="s0">with </span><span class="s1">open(inst_files_path</span><span class="s0">, </span><span class="s4">'w'</span><span class="s1">) </span><span class="s0">as </span><span class="s1">f:</span>
+                <span class="s1">f.write(</span><span class="s4">'</span><span class="s0">\n</span><span class="s4">'</span><span class="s1">.join(new_lines) + </span><span class="s4">'</span><span class="s0">\n</span><span class="s4">'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">get_install_args(</span>
+        <span class="s1">self</span><span class="s0">,</span>
+        <span class="s1">global_options</span><span class="s0">,  </span><span class="s2"># type: Sequence[str]</span>
+        <span class="s1">record_filename</span><span class="s0">,  </span><span class="s2"># type: str</span>
+        <span class="s1">root</span><span class="s0">,  </span><span class="s2"># type: Optional[str]</span>
+        <span class="s1">prefix</span><span class="s0">,  </span><span class="s2"># type: Optional[str]</span>
+        <span class="s1">pycompile  </span><span class="s2"># type: bool</span>
+    <span class="s1">):</span>
+        <span class="s2"># type: (...) -&gt; List[str]</span>
+        <span class="s1">install_args = [sys.executable</span><span class="s0">, </span><span class="s4">&quot;-u&quot;</span><span class="s1">]</span>
+        <span class="s1">install_args.append(</span><span class="s4">'-c'</span><span class="s1">)</span>
+        <span class="s1">install_args.append(SETUPTOOLS_SHIM % self.setup_py)</span>
+        <span class="s1">install_args += list(global_options) + \</span>
+            <span class="s1">[</span><span class="s4">'install'</span><span class="s0">, </span><span class="s4">'--record'</span><span class="s0">, </span><span class="s1">record_filename]</span>
+        <span class="s1">install_args += [</span><span class="s4">'--single-version-externally-managed'</span><span class="s1">]</span>
+
+        <span class="s0">if </span><span class="s1">root </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">install_args += [</span><span class="s4">'--root'</span><span class="s0">, </span><span class="s1">root]</span>
+        <span class="s0">if </span><span class="s1">prefix </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">install_args += [</span><span class="s4">'--prefix'</span><span class="s0">, </span><span class="s1">prefix]</span>
+
+        <span class="s0">if </span><span class="s1">pycompile:</span>
+            <span class="s1">install_args += [</span><span class="s4">&quot;--compile&quot;</span><span class="s1">]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">install_args += [</span><span class="s4">&quot;--no-compile&quot;</span><span class="s1">]</span>
+
+        <span class="s0">if </span><span class="s1">running_under_virtualenv():</span>
+            <span class="s1">py_ver_str = </span><span class="s4">'python' </span><span class="s1">+ sysconfig.get_python_version()</span>
+            <span class="s1">install_args += [</span><span class="s4">'--install-headers'</span><span class="s0">,</span>
+                             <span class="s1">os.path.join(sys.prefix</span><span class="s0">, </span><span class="s4">'include'</span><span class="s0">, </span><span class="s4">'site'</span><span class="s0">,</span>
+                                          <span class="s1">py_ver_str</span><span class="s0">, </span><span class="s1">self.name)]</span>
+
+        <span class="s0">return </span><span class="s1">install_args</span>
+</pre>
+</body>
+</html>

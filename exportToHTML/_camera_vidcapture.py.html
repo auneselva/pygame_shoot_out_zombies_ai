@@ -1,0 +1,155 @@
+<html>
+<head>
+<title>_camera_vidcapture.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_camera_vidcapture.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;pygame.camera.Camera implementation using the videocapture module for windows. 
+ 
+http://videocapture.sourceforge.net/ 
+ 
+Binary windows wheels: 
+  https://www.lfd.uci.edu/~gohlke/pythonlibs/#videocapture 
+&quot;&quot;&quot;</span>
+<span class="s2">import </span><span class="s1">pygame</span>
+
+<span class="s2">def </span><span class="s1">list_cameras():</span>
+    <span class="s0">&quot;&quot;&quot;Always only lists one camera. 
+ 
+    Functionality not supported in videocapture module. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">return </span><span class="s1">[</span><span class="s3">0</span><span class="s1">]</span>
+
+    <span class="s4"># this just cycles through all the cameras trying to open them</span>
+    <span class="s1">cameras = []</span>
+    <span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(</span><span class="s3">256</span><span class="s1">):</span>
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s1">c = Camera(x)</span>
+        <span class="s2">except</span><span class="s1">:</span>
+            <span class="s2">break</span>
+        <span class="s1">cameras.append(x)</span>
+
+    <span class="s2">return </span><span class="s1">cameras</span>
+
+<span class="s2">def </span><span class="s1">init():</span>
+    <span class="s2">global </span><span class="s1">vidcap</span>
+    <span class="s2">try</span><span class="s1">:</span>
+        <span class="s2">import </span><span class="s1">vidcap </span><span class="s2">as </span><span class="s1">vc</span>
+    <span class="s2">except </span><span class="s1">ImportError:</span>
+        <span class="s2">from </span><span class="s1">VideoCapture </span><span class="s2">import </span><span class="s1">vidcap </span><span class="s2">as </span><span class="s1">vc</span>
+    <span class="s1">vidcap = vc</span>
+
+<span class="s2">def </span><span class="s1">quit():</span>
+    <span class="s2">global </span><span class="s1">vidcap</span>
+    <span class="s2">pass</span>
+    <span class="s2">del </span><span class="s1">vidcap</span>
+
+
+<span class="s2">class </span><span class="s1">Camera:</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">device =</span><span class="s3">0</span><span class="s2">,</span>
+                       <span class="s1">size = (</span><span class="s3">640</span><span class="s2">,</span><span class="s3">480</span><span class="s1">)</span><span class="s2">,</span>
+                       <span class="s1">mode = </span><span class="s5">&quot;RGB&quot;</span><span class="s2">,</span>
+                       <span class="s1">show_video_window=</span><span class="s3">0</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;device:  VideoCapture enumerates the available video capture devices 
+                    on your system.  If you have more than one device, specify 
+                    the desired one here.  The device number starts from 0. 
+ 
+           show_video_window: 0 ... do not display a video window (the default) 
+                              1 ... display a video window 
+ 
+                            Mainly used for debugging, since the video window 
+                            can not be closed or moved around. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.dev = vidcap.new_Dev(device</span><span class="s2">, </span><span class="s1">show_video_window)</span>
+        <span class="s1">width</span><span class="s2">, </span><span class="s1">height = size</span>
+        <span class="s1">self.dev.setresolution(width</span><span class="s2">, </span><span class="s1">height)</span>
+
+    <span class="s2">def </span><span class="s1">display_capture_filter_properties(self):</span>
+        <span class="s0">&quot;&quot;&quot;Displays a dialog containing the property page of the capture filter. 
+ 
+        For VfW drivers you may find the option to select the resolution most 
+        likely here. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.dev.displaycapturefilterproperties()</span>
+
+    <span class="s2">def </span><span class="s1">display_capture_pin_properties(self):</span>
+        <span class="s0">&quot;&quot;&quot;Displays a dialog containing the property page of the capture pin. 
+ 
+        For WDM drivers you may find the option to select the resolution most 
+        likely here. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.dev.displaycapturepinproperties()</span>
+
+    <span class="s2">def </span><span class="s1">set_resolution(self</span><span class="s2">, </span><span class="s1">width</span><span class="s2">, </span><span class="s1">height):</span>
+        <span class="s0">&quot;&quot;&quot;Sets the capture resolution. (without dialog) 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.dev.setresolution(width</span><span class="s2">, </span><span class="s1">height)</span>
+
+    <span class="s2">def </span><span class="s1">get_buffer(self):</span>
+        <span class="s0">&quot;&quot;&quot;Returns a string containing the raw pixel data. 
+        &quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self.dev.getbuffer()</span>
+
+    <span class="s2">def </span><span class="s1">start(self):</span>
+        <span class="s0">&quot;&quot;&quot; Not implemented. 
+        &quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">set_controls(self</span><span class="s2">, </span><span class="s1">**kwargs):</span>
+        <span class="s0">&quot;&quot;&quot; Not implemented. 
+        &quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">stop(self):</span>
+        <span class="s0">&quot;&quot;&quot; Not implemented. 
+        &quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">get_image(self</span><span class="s2">, </span><span class="s1">dest_surf = </span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        &quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self.get_surface(dest_surf)</span>
+
+    <span class="s2">def </span><span class="s1">get_surface(self</span><span class="s2">, </span><span class="s1">dest_surf = </span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Returns a pygame Surface. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">abuffer</span><span class="s2">, </span><span class="s1">width</span><span class="s2">, </span><span class="s1">height = self.get_buffer()</span>
+        <span class="s2">if </span><span class="s1">abuffer:</span>
+            <span class="s1">surf = pygame.image.frombuffer(abuffer</span><span class="s2">, </span><span class="s1">(width</span><span class="s2">, </span><span class="s1">height)</span><span class="s2">, </span><span class="s5">&quot;RGB&quot;</span><span class="s1">)</span>
+
+            <span class="s4"># swap it from a BGR surface to an RGB surface.</span>
+            <span class="s1">r</span><span class="s2">,</span><span class="s1">g</span><span class="s2">,</span><span class="s1">b</span><span class="s2">,</span><span class="s1">a = surf.get_masks()</span>
+            <span class="s1">surf.set_masks((b</span><span class="s2">,</span><span class="s1">g</span><span class="s2">,</span><span class="s1">r</span><span class="s2">,</span><span class="s1">a))</span>
+
+            <span class="s1">r</span><span class="s2">,</span><span class="s1">g</span><span class="s2">,</span><span class="s1">b</span><span class="s2">,</span><span class="s1">a = surf.get_shifts()</span>
+            <span class="s1">surf.set_shifts((b</span><span class="s2">,</span><span class="s1">g</span><span class="s2">,</span><span class="s1">r</span><span class="s2">,</span><span class="s1">a))</span>
+
+            <span class="s1">surf = pygame.transform.flip(surf</span><span class="s2">, </span><span class="s3">0</span><span class="s2">,</span><span class="s3">1</span><span class="s1">)</span>
+
+            <span class="s4"># if there is a destination surface given, we blit onto that.</span>
+            <span class="s2">if </span><span class="s1">dest_surf:</span>
+                <span class="s1">dest_surf.blit(surf</span><span class="s2">, </span><span class="s1">(</span><span class="s3">0</span><span class="s2">,</span><span class="s3">0</span><span class="s1">))</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s1">dest_surf = surf</span>
+            <span class="s2">return </span><span class="s1">dest_surf</span>
+
+<span class="s2">if </span><span class="s1">__name__ == </span><span class="s5">&quot;__main__&quot;</span><span class="s1">:</span>
+    <span class="s2">import </span><span class="s1">pygame.examples.camera</span>
+
+    <span class="s1">pygame.camera.Camera = Camera</span>
+    <span class="s1">pygame.camera.list_cameras = list_cameras</span>
+    <span class="s1">pygame.examples.camera.main()</span>
+</pre>
+</body>
+</html>

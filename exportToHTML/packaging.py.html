@@ -1,0 +1,107 @@
+<html>
+<head>
+<title>packaging.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #629755; font-style: italic;}
+.s4 { color: #6a8759;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+packaging.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span>
+
+<span class="s0">import </span><span class="s1">logging</span>
+<span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">from </span><span class="s1">email.parser </span><span class="s0">import </span><span class="s1">FeedParser</span>
+
+<span class="s0">from </span><span class="s1">pip._vendor </span><span class="s0">import </span><span class="s1">pkg_resources</span>
+<span class="s0">from </span><span class="s1">pip._vendor.packaging </span><span class="s0">import </span><span class="s1">specifiers</span><span class="s0">, </span><span class="s1">version</span>
+
+<span class="s0">from </span><span class="s1">pip._internal </span><span class="s0">import </span><span class="s1">exceptions</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.misc </span><span class="s0">import </span><span class="s1">display_path</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.typing </span><span class="s0">import </span><span class="s1">MYPY_CHECK_RUNNING</span>
+
+<span class="s0">if </span><span class="s1">MYPY_CHECK_RUNNING:</span>
+    <span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Optional  </span><span class="s2"># noqa: F401</span>
+    <span class="s0">from </span><span class="s1">email.message </span><span class="s0">import </span><span class="s1">Message  </span><span class="s2"># noqa: F401</span>
+    <span class="s0">from </span><span class="s1">pip._vendor.pkg_resources </span><span class="s0">import </span><span class="s1">Distribution  </span><span class="s2"># noqa: F401</span>
+
+
+<span class="s1">logger = logging.getLogger(__name__)</span>
+
+
+<span class="s0">def </span><span class="s1">check_requires_python(requires_python):</span>
+    <span class="s2"># type: (Optional[str]) -&gt; bool</span>
+    <span class="s3">&quot;&quot;&quot; 
+    Check if the python version in use match the `requires_python` specifier. 
+ 
+    Returns `True` if the version of python in use matches the requirement. 
+    Returns `False` if the version of python in use does not matches the 
+    requirement. 
+ 
+    Raises an InvalidSpecifier if `requires_python` have an invalid format. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">if </span><span class="s1">requires_python </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s2"># The package provides no information</span>
+        <span class="s0">return True</span>
+    <span class="s1">requires_python_specifier = specifiers.SpecifierSet(requires_python)</span>
+
+    <span class="s2"># We only use major.minor.micro</span>
+    <span class="s1">python_version = version.parse(</span><span class="s4">'.'</span><span class="s1">.join(map(str</span><span class="s0">, </span><span class="s1">sys.version_info[:</span><span class="s5">3</span><span class="s1">])))</span>
+    <span class="s0">return </span><span class="s1">python_version </span><span class="s0">in </span><span class="s1">requires_python_specifier</span>
+
+
+<span class="s0">def </span><span class="s1">get_metadata(dist):</span>
+    <span class="s2"># type: (Distribution) -&gt; Message</span>
+    <span class="s0">if </span><span class="s1">(isinstance(dist</span><span class="s0">, </span><span class="s1">pkg_resources.DistInfoDistribution) </span><span class="s0">and</span>
+            <span class="s1">dist.has_metadata(</span><span class="s4">'METADATA'</span><span class="s1">)):</span>
+        <span class="s1">metadata = dist.get_metadata(</span><span class="s4">'METADATA'</span><span class="s1">)</span>
+    <span class="s0">elif </span><span class="s1">dist.has_metadata(</span><span class="s4">'PKG-INFO'</span><span class="s1">):</span>
+        <span class="s1">metadata = dist.get_metadata(</span><span class="s4">'PKG-INFO'</span><span class="s1">)</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s1">logger.warning(</span><span class="s4">&quot;No metadata found in %s&quot;</span><span class="s0">, </span><span class="s1">display_path(dist.location))</span>
+        <span class="s1">metadata = </span><span class="s4">''</span>
+
+    <span class="s1">feed_parser = FeedParser()</span>
+    <span class="s1">feed_parser.feed(metadata)</span>
+    <span class="s0">return </span><span class="s1">feed_parser.close()</span>
+
+
+<span class="s0">def </span><span class="s1">check_dist_requires_python(dist):</span>
+    <span class="s1">pkg_info_dict = get_metadata(dist)</span>
+    <span class="s1">requires_python = pkg_info_dict.get(</span><span class="s4">'Requires-Python'</span><span class="s1">)</span>
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s0">if not </span><span class="s1">check_requires_python(requires_python):</span>
+            <span class="s0">raise </span><span class="s1">exceptions.UnsupportedPythonVersion(</span>
+                <span class="s4">&quot;%s requires Python '%s' but the running Python is %s&quot; </span><span class="s1">% (</span>
+                    <span class="s1">dist.project_name</span><span class="s0">,</span>
+                    <span class="s1">requires_python</span><span class="s0">,</span>
+                    <span class="s4">'.'</span><span class="s1">.join(map(str</span><span class="s0">, </span><span class="s1">sys.version_info[:</span><span class="s5">3</span><span class="s1">]))</span><span class="s0">,</span><span class="s1">)</span>
+            <span class="s1">)</span>
+    <span class="s0">except </span><span class="s1">specifiers.InvalidSpecifier </span><span class="s0">as </span><span class="s1">e:</span>
+        <span class="s1">logger.warning(</span>
+            <span class="s4">&quot;Package %s has an invalid Requires-Python entry %s - %s&quot;</span><span class="s0">,</span>
+            <span class="s1">dist.project_name</span><span class="s0">, </span><span class="s1">requires_python</span><span class="s0">, </span><span class="s1">e</span><span class="s0">,</span>
+        <span class="s1">)</span>
+        <span class="s0">return</span>
+
+
+<span class="s0">def </span><span class="s1">get_installer(dist):</span>
+    <span class="s2"># type: (Distribution) -&gt; str</span>
+    <span class="s0">if </span><span class="s1">dist.has_metadata(</span><span class="s4">'INSTALLER'</span><span class="s1">):</span>
+        <span class="s0">for </span><span class="s1">line </span><span class="s0">in </span><span class="s1">dist.get_metadata_lines(</span><span class="s4">'INSTALLER'</span><span class="s1">):</span>
+            <span class="s0">if </span><span class="s1">line.strip():</span>
+                <span class="s0">return </span><span class="s1">line.strip()</span>
+    <span class="s0">return </span><span class="s4">''</span>
+</pre>
+</body>
+</html>

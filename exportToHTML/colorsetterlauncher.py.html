@@ -1,0 +1,135 @@
+<html>
+<head>
+<title>colorsetterlauncher.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+colorsetterlauncher.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">thorpy.elements.clickable </span><span class="s0">import </span><span class="s1">Clickable</span>
+<span class="s0">from </span><span class="s1">thorpy.elements.colorsetter </span><span class="s0">import </span><span class="s1">ColorSetter</span><span class="s0">, </span><span class="s1">get_example_element</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">constants</span><span class="s0">, </span><span class="s1">parameters</span><span class="s0">, </span><span class="s1">style</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.reaction </span><span class="s0">import </span><span class="s1">Reaction</span><span class="s0">, </span><span class="s1">ConstantReaction</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.launchers </span><span class="s0">import </span><span class="s1">launcher </span><span class="s0">as </span><span class="s1">launchmod</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.storage </span><span class="s0">import </span><span class="s1">store</span>
+<span class="s0">from </span><span class="s1">thorpy.elements.element </span><span class="s0">import </span><span class="s1">Element</span>
+
+<span class="s1">DONE</span><span class="s0">, </span><span class="s1">CANCEL</span><span class="s0">, </span><span class="s1">CLICK_QUIT = launchmod.DONE</span><span class="s0">, </span><span class="s1">launchmod.CANCEL</span><span class="s0">, </span><span class="s1">launchmod.CLICK_QUIT</span>
+
+
+<span class="s0">class </span><span class="s1">ColorSetterLauncher(Clickable):</span>
+
+    <span class="s1">@staticmethod</span>
+    <span class="s0">def </span><span class="s1">make(colorsetter</span><span class="s0">,</span>
+             <span class="s1">text=</span><span class="s2">&quot;&quot;</span><span class="s0">,</span>
+             <span class="s1">show_select=</span><span class="s0">True,</span>
+             <span class="s1">click_cancel=</span><span class="s0">False</span><span class="s1">):</span>
+        <span class="s1">cs = ColorSetterLauncher(colorsetter</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">show_select</span><span class="s0">, </span><span class="s1">click_cancel</span><span class="s0">,</span>
+                                    <span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">cs.finish()</span>
+        <span class="s0">return </span><span class="s1">cs</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">colorsetter</span><span class="s0">,</span>
+                 <span class="s1">text=</span><span class="s2">&quot;&quot;</span><span class="s0">,</span>
+                 <span class="s1">show_select=</span><span class="s0">True,</span>
+                 <span class="s1">click_cancel=</span><span class="s0">False,</span>
+                 <span class="s1">finish=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s1">self.text = text</span>
+        <span class="s1">self.show_select = show_select</span>
+        <span class="s1">self.click_cancel = click_cancel</span>
+        <span class="s0">if not </span><span class="s1">isinstance(colorsetter</span><span class="s0">, </span><span class="s1">ColorSetter):</span>
+            <span class="s1">self.colorsetter = ColorSetter.make(self.text</span><span class="s0">, </span><span class="s1">value=colorsetter)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.colorsetter = colorsetter</span>
+        <span class="s1">self.old_color = self.colorsetter.get_value()</span>
+        <span class="s1">self.launched = launchmod.make_ok_cancel_box([self.colorsetter]</span><span class="s0">, </span><span class="s2">&quot;Ok&quot;</span><span class="s0">, </span><span class="s2">&quot;Cancel&quot;</span><span class="s1">) </span><span class="s3">#!!! text</span>
+        <span class="s1">self.launcher = </span><span class="s0">None</span>
+        <span class="s1">self.e_color = get_example_element(self.colorsetter.get_color()</span><span class="s0">, </span><span class="s1">(</span><span class="s4">20</span><span class="s0">,</span><span class="s4">20</span><span class="s1">))</span>
+        <span class="s1">self.e_text = Element(self.text</span><span class="s0">,</span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">self.e_text.set_style(</span><span class="s2">&quot;text&quot;</span><span class="s1">)</span>
+        <span class="s1">self.e_text.finish()</span>
+        <span class="s1">self.unlaunch_func = </span><span class="s0">None</span>
+        <span class="s1">Clickable.__init__(self</span><span class="s0">, </span><span class="s1">elements=[self.e_text</span><span class="s0">, </span><span class="s1">self.e_color]</span><span class="s0">,</span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">finish:</span>
+            <span class="s1">self.finish()</span>
+
+    <span class="s0">def </span><span class="s1">finish(self):</span>
+        <span class="s1">Clickable.finish(self)</span>
+<span class="s3">##        self.e_color.stick_to(self, &quot;right&quot;, &quot;right&quot;)</span>
+<span class="s3">##        self.e_color.move((-2,0))</span>
+        <span class="s1">store(self</span><span class="s0">, </span><span class="s1">mode=</span><span class="s2">&quot;h&quot;</span><span class="s1">)</span>
+        <span class="s1">self.fit_children()</span>
+        <span class="s1">self._set_launcher()</span>
+
+
+    <span class="s0">def </span><span class="s1">get_value(self):</span>
+        <span class="s0">return </span><span class="s1">self.colorsetter.get_value()</span>
+
+    <span class="s0">def </span><span class="s1">set_value(self</span><span class="s0">, </span><span class="s1">value):</span>
+        <span class="s1">self.colorsetter.set_value(value)</span>
+        <span class="s1">self.refresh()</span>
+
+    <span class="s0">def </span><span class="s1">refresh(self):</span>
+        <span class="s1">color = self.colorsetter.get_value()</span>
+        <span class="s1">self.e_color.get_elements()[</span><span class="s4">0</span><span class="s1">].set_main_color(color)</span>
+        <span class="s1">self.old_color = color</span>
+
+    <span class="s0">def </span><span class="s1">_set_launcher(self):</span>
+        <span class="s1">launcher = launchmod.Launcher(self.launched</span><span class="s0">, </span><span class="s1">launching=self)</span>
+        <span class="s1">reac_enter = ConstantReaction(constants.THORPY_EVENT</span><span class="s0">,</span>
+                             <span class="s1">launcher.launch</span><span class="s0">,</span>
+                             <span class="s1">{</span><span class="s2">&quot;id&quot;</span><span class="s1">: constants.EVENT_UNPRESS</span><span class="s0">, </span><span class="s2">&quot;el&quot;</span><span class="s1">:self})</span>
+<span class="s3">##                             reac_name=&quot;reac_launch&quot;)</span>
+        <span class="s1">reac_done = ConstantReaction(constants.THORPY_EVENT</span><span class="s0">,</span>
+                             <span class="s1">self.unlaunch</span><span class="s0">,</span>
+                             <span class="s1">{</span><span class="s2">&quot;id&quot;</span><span class="s1">: constants.EVENT_DONE</span><span class="s0">, </span><span class="s2">&quot;el&quot;</span><span class="s1">:self.launched})</span>
+<span class="s3">##                             reac_name=&quot;reac_done&quot;)</span>
+        <span class="s1">reac_cancel = ConstantReaction(constants.THORPY_EVENT</span><span class="s0">,</span>
+                         <span class="s1">self._unlaunch_cancel</span><span class="s0">,</span>
+                         <span class="s1">{</span><span class="s2">&quot;id&quot;</span><span class="s1">: constants.EVENT_CANCEL</span><span class="s0">, </span><span class="s2">&quot;el&quot;</span><span class="s1">:self.launched})</span>
+<span class="s3">##                         reac_name=&quot;reac_cancel&quot;)</span>
+        <span class="s0">if </span><span class="s1">self.click_cancel:</span>
+            <span class="s1">reac_click_cancel = Reaction(parameters.MOUSEBUTTONUP</span><span class="s0">,</span>
+                                    <span class="s1">self._unlaunch_click_cancel</span><span class="s0">,</span>
+                                    <span class="s1">params={</span><span class="s2">&quot;launcher&quot;</span><span class="s1">:launcher})</span>
+<span class="s3">##                                    reac_name=&quot;reac_cancel&quot;)</span>
+            <span class="s1">self.launched.add_reaction(reac_click_cancel)</span>
+        <span class="s1">self.launched.add_reaction(reac_cancel)</span>
+        <span class="s1">self.add_reaction(reac_enter)</span>
+        <span class="s1">self.launched.add_reaction(reac_done)</span>
+        <span class="s1">self.launcher = launcher</span>
+
+    <span class="s0">def </span><span class="s1">_unlaunch_cancel(self</span><span class="s0">, </span><span class="s1">what=CANCEL):</span>
+        <span class="s1">self.colorsetter.set_value(self.old_color)</span>
+        <span class="s1">self.launcher.unlaunch(what)</span>
+
+    <span class="s0">def </span><span class="s1">_unlaunch_click_cancel(event</span><span class="s0">, </span><span class="s1">launcher):</span>
+        <span class="s0">if not </span><span class="s1">launcher.launched.collide(event.pos):</span>
+            <span class="s1">self._unlaunch_cancel(CLICK_QUIT)</span>
+
+    <span class="s0">def </span><span class="s1">default_unlaunch(self):</span>
+        <span class="s1">self.refresh()</span>
+        <span class="s1">self.launcher.unlaunch(DONE)</span>
+        <span class="s3">##            self._file_element.set_text(text,</span>
+<span class="s3">##                          size=(self.file_width, self.get_fus_rect().h),</span>
+<span class="s3">##                          cut=True)</span>
+
+    <span class="s0">def </span><span class="s1">unlaunch(self):</span>
+        <span class="s0">if not </span><span class="s1">self.unlaunch_func:</span>
+            <span class="s1">self.default_unlaunch()</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.unlaunch_func()</span>
+</pre>
+</body>
+</html>

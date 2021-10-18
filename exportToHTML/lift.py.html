@@ -1,0 +1,184 @@
+<html>
+<head>
+<title>lift.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #629755; font-style: italic;}
+.s4 { color: #6897bb;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+lift.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">thorpy.elements.ghost </span><span class="s0">import </span><span class="s1">Ghost</span>
+<span class="s0">from </span><span class="s1">thorpy.elements._sliderutils._shifters </span><span class="s0">import </span><span class="s1">Plus</span><span class="s0">, </span><span class="s1">Minus</span>
+<span class="s0">from </span><span class="s1">thorpy.elements.slider </span><span class="s0">import </span><span class="s1">SliderY</span>
+<span class="s0">from </span><span class="s1">thorpy.elements._sliderutils._dragger </span><span class="s0">import </span><span class="s1">DraggerLiftY</span><span class="s0">, </span><span class="s1">DraggerDirViewerY</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.reaction </span><span class="s0">import </span><span class="s1">ConstantReaction</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">constants</span><span class="s0">, </span><span class="s1">functions</span><span class="s0">, </span><span class="s1">parameters</span><span class="s0">, </span><span class="s1">style</span><span class="s0">, </span><span class="s1">painterstyle</span>
+
+
+<span class="s0">class </span><span class="s1">LiftY(SliderY):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">link</span><span class="s0">,</span>
+                 <span class="s1">text=</span><span class="s2">&quot;&quot;</span><span class="s0">,</span>
+                 <span class="s1">elements=</span><span class="s0">None,</span>
+                 <span class="s1">dragsize=style.LIFT_DRAG_SIZE</span><span class="s0">,</span>
+                 <span class="s1">buttonsize=style.LIFT_BUTTON_SIZE</span><span class="s0">,</span>
+                 <span class="s1">normal_params=</span><span class="s0">None,</span>
+                 <span class="s1">finish=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s3">&quot;&quot;&quot;&lt;link&gt; is the element affected by the lift&quot;&quot;&quot;</span>
+        <span class="s1">dragsize = style.LIFT_DRAG_SIZE </span><span class="s0">if </span><span class="s1">dragsize </span><span class="s0">is None else </span><span class="s1">dragsize</span>
+        <span class="s1">buttonsize=style.LIFT_BUTTON_SIZE </span><span class="s0">if </span><span class="s1">buttonsize </span><span class="s0">is None else </span><span class="s1">buttonsize</span>
+        <span class="s1">link_h = link.get_fus_size()[</span><span class="s4">1</span><span class="s1">]  </span><span class="s5"># get height of the linked element</span>
+        <span class="s5"># set maxval to link height !!!! not link_h, but link_h - self_h</span>
+        <span class="s1">limvals = (</span><span class="s4">0</span><span class="s0">, </span><span class="s1">link_h)</span>
+        <span class="s1">surplus_h = self._get_theo_size(buttonsize</span><span class="s0">, </span><span class="s1">dragsize</span><span class="s0">, </span><span class="s1">link_h</span><span class="s0">,</span>
+                                       <span class="s1">surplus=</span><span class="s0">True</span><span class="s1">)[</span><span class="s4">1</span><span class="s1">]</span>
+        <span class="s1">length = link.get_fus_size()[</span><span class="s4">1</span><span class="s1">] - surplus_h  </span><span class="s5"># compute proper height</span>
+        <span class="s1">super(LiftY</span><span class="s0">, </span><span class="s1">self).__init__(length</span><span class="s0">, </span><span class="s1">limvals</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">elements</span><span class="s0">,</span>
+                                    <span class="s1">normal_params</span><span class="s0">,</span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">self._add_buttons()</span>
+        <span class="s1">self._linked = link</span>
+        <span class="s1">self.finish()</span>
+        <span class="s1">e_right = link.get_fus_rect().right</span>
+        <span class="s1">l_width = self.get_fus_size()[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">x = e_right - l_width - style.LIFT_MARGINS[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">y = link.get_fus_rect().top + style.LIFT_MARGINS[</span><span class="s4">1</span><span class="s1">]</span>
+        <span class="s1">self.set_topleft((x</span><span class="s0">, </span><span class="s1">y))</span>
+        <span class="s1">self._drag_element.place_at(self.limvals[</span><span class="s4">0</span><span class="s1">])</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_wheel(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s0">if </span><span class="s1">self.active_wheel:</span>
+            <span class="s0">if </span><span class="s1">self.father.collide(event.pos</span><span class="s0">, </span><span class="s1">self.father.current_state_key):</span>
+                <span class="s1">self._drag_element.shift(parameters.WHEEL_LIFT_SHIFT)</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_unwheel(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s0">if </span><span class="s1">self.active_wheel:</span>
+            <span class="s0">if </span><span class="s1">self.father.collide(event.pos</span><span class="s0">, </span><span class="s1">self.father.current_state_key):</span>
+                <span class="s1">self._drag_element.shift(-parameters.WHEEL_LIFT_SHIFT)</span>
+
+    <span class="s0">def </span><span class="s1">get_value(self):</span>
+        <span class="s0">return </span><span class="s1">int(SliderY.get_value(self))</span>
+
+    <span class="s0">def </span><span class="s1">finish(self):</span>
+        <span class="s1">SliderY.finish(self)</span>
+        <span class="s1">self._finish_add()</span>
+
+    <span class="s0">def </span><span class="s1">misc_refresh(self):</span>
+        <span class="s1">SliderY.misc_refresh(self)</span>
+        <span class="s1">self._refresh_limvals()</span>
+
+    <span class="s0">def </span><span class="s1">_refresh_limvals(self</span><span class="s0">, </span><span class="s1">fact=</span><span class="s4">1.</span><span class="s1">):</span>
+        <span class="s1">linked_family = fact * self._linked.get_family_rect().height</span>
+        <span class="s1">selfh = self.get_fus_size()[</span><span class="s4">1</span><span class="s1">]</span>
+        <span class="s1">uplim = max(</span><span class="s4">1</span><span class="s0">, </span><span class="s1">linked_family - selfh)</span>
+        <span class="s1">self.limvals = (</span><span class="s4">0</span><span class="s0">, </span><span class="s1">uplim)</span>
+
+    <span class="s0">def </span><span class="s1">_setup(self</span><span class="s0">, </span><span class="s1">width=</span><span class="s0">None, </span><span class="s1">dragsize=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s0">if </span><span class="s1">width </span><span class="s0">is None</span><span class="s1">: width = style.LIFT_BUTTON_SIZE[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s0">if </span><span class="s1">dragsize </span><span class="s0">is None</span><span class="s1">: dragsize = style.LIFT_DRAG_SIZE</span>
+        <span class="s1">self._drag_element = DraggerLiftY(self)</span>
+        <span class="s1">self._height = width</span>
+        <span class="s1">painter = functions.obtain_valid_painter(</span>
+            <span class="s1">painterstyle.DEF_PAINTER</span><span class="s0">,</span>
+            <span class="s1">pressed=</span><span class="s0">True,</span>
+            <span class="s1">color=style.DEF_COLOR2</span><span class="s0">,</span>
+            <span class="s1">size=(</span>
+                <span class="s1">width</span><span class="s0">,</span>
+                <span class="s1">self._length +</span>
+                <span class="s1">dragsize[</span><span class="s4">1</span><span class="s1">] +</span>
+                <span class="s1">style.LIFT_MARGINS[</span><span class="s4">1</span><span class="s1">] +</span>
+                <span class="s4">1</span><span class="s1">))</span>
+        <span class="s1">self.set_painter(painter)</span>
+        <span class="s1">self._drag_element.set_painter(</span>
+            <span class="s1">painterstyle.DEF_PAINTER(</span>
+                <span class="s1">size=dragsize)</span><span class="s0">,</span>
+            <span class="s1">autopress=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">self._drag_element.set_center((self.get_fus_center()[</span><span class="s4">0</span><span class="s1">]</span><span class="s0">, None</span><span class="s1">))</span>
+        <span class="s0">except </span><span class="s1">AttributeError:  </span><span class="s5"># state is ghost state, and has no fusionner</span>
+            <span class="s1">self._drag_element.set_center((self.get_ghost_center()[</span><span class="s4">0</span><span class="s1">]</span><span class="s0">, None</span><span class="s1">))</span>
+        <span class="s1">self._drag_element.set_free(y=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">Ghost.fit_children(self)</span>
+
+    <span class="s0">def </span><span class="s1">_add_buttons(self</span><span class="s0">, </span><span class="s1">size=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">size = style.SMALL_SIZE </span><span class="s0">if </span><span class="s1">size </span><span class="s0">is None else </span><span class="s1">size</span>
+        <span class="s1">self._plus = Plus()</span>
+        <span class="s1">self._minus = Minus()</span>
+        <span class="s1">self._plus.finish()</span>
+        <span class="s1">self._minus.finish()</span>
+        <span class="s1">self._plus.drag = self._drag_element</span>
+        <span class="s1">self._minus.drag = self._drag_element</span>
+        <span class="s1">reac_plus_time = ConstantReaction(constants.THORPY_EVENT</span><span class="s0">,</span>
+                                     <span class="s1">self._plus._reaction_time</span><span class="s0">,</span>
+                                     <span class="s1">{</span><span class="s2">&quot;id&quot;</span><span class="s1">:constants.EVENT_TIME}</span><span class="s0">,</span>
+                                     <span class="s1">reac_name=constants.REAC_MOUSE_REPEAT)</span>
+        <span class="s1">self.add_reaction(reac_plus_time)</span>
+        <span class="s1">reac_minus_time = ConstantReaction(constants.THORPY_EVENT</span><span class="s0">,</span>
+                                     <span class="s1">self._minus._reaction_time</span><span class="s0">,</span>
+                                     <span class="s1">{</span><span class="s2">&quot;id&quot;</span><span class="s1">:constants.EVENT_TIME}</span><span class="s0">,</span>
+                                     <span class="s1">reac_name=constants.REAC_MOUSE_REPEAT+</span><span class="s4">0.1</span><span class="s1">)</span>
+        <span class="s1">self.add_reaction(reac_minus_time)</span>
+        <span class="s1">self.add_elements([self._plus</span><span class="s0">, </span><span class="s1">self._minus])</span>
+        <span class="s5"># reactions to mouse press:</span>
+        <span class="s1">reac_pluspress2 = ConstantReaction(constants.THORPY_EVENT</span><span class="s0">,</span>
+                                       <span class="s1">self._drag_element.shift</span><span class="s0">,</span>
+                                       <span class="s1">{</span><span class="s2">&quot;el&quot;</span><span class="s1">: self._plus</span><span class="s0">,</span>
+                                        <span class="s2">&quot;id&quot;</span><span class="s1">: constants.EVENT_PRESS}</span><span class="s0">,</span>
+                                       <span class="s1">{</span><span class="s2">&quot;sign&quot;</span><span class="s1">:parameters.CLICK_LIFT_SHIFT}</span><span class="s0">,</span>
+                                       <span class="s1">reac_name=constants.REAC_PRESSED2)</span>
+        <span class="s1">self.add_reaction(reac_pluspress2)</span>
+        <span class="s1">reac_minuspress2 = ConstantReaction(constants.THORPY_EVENT</span><span class="s0">,</span>
+                                    <span class="s1">self._drag_element.shift</span><span class="s0">,</span>
+                                    <span class="s1">{</span><span class="s2">&quot;el&quot;</span><span class="s1">: self._minus</span><span class="s0">,</span>
+                                     <span class="s2">&quot;id&quot;</span><span class="s1">: constants.EVENT_PRESS}</span><span class="s0">,</span>
+                                    <span class="s1">{</span><span class="s2">&quot;sign&quot;</span><span class="s1">:-parameters.CLICK_LIFT_SHIFT}</span><span class="s0">,</span>
+                                    <span class="s1">reac_name=constants.REAC_PRESSED2+</span><span class="s4">0.1</span><span class="s1">)</span>
+        <span class="s1">self.add_reaction(reac_minuspress2)</span>
+
+    <span class="s0">def </span><span class="s1">_finish_add(self</span><span class="s0">, </span><span class="s1">size=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">size = style.LIFT_BUTTON_SIZE </span><span class="s0">if </span><span class="s1">size </span><span class="s0">is None else </span><span class="s1">size</span>
+        <span class="s1">rect = self.get_fus_rect()</span>
+        <span class="s1">pos = (rect.centerx</span><span class="s0">, </span><span class="s1">rect.bottom + style.BUTTON_MARGINS[</span><span class="s4">1</span><span class="s1">] + size[</span><span class="s4">1</span><span class="s1">]/</span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self._minus.set_center(pos)</span>
+        <span class="s1">pos = (rect.centerx</span><span class="s0">, </span><span class="s1">rect.top - style.BUTTON_MARGINS[</span><span class="s4">1</span><span class="s1">] - size[</span><span class="s4">1</span><span class="s1">]/</span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self._plus.set_center(pos)</span>
+        <span class="s1">Ghost.fit_children(self)</span>
+        <span class="s1">self._add_buttons_reactions()</span>
+
+
+<span class="s0">class </span><span class="s1">LiftDirViewerY(LiftY):</span>
+
+    <span class="s0">def </span><span class="s1">_setup(self</span><span class="s0">, </span><span class="s1">width=</span><span class="s0">None, </span><span class="s1">dragsize=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">width = style.LIFT_BUTTON_SIZE[</span><span class="s4">0</span><span class="s1">] </span><span class="s0">if </span><span class="s1">width </span><span class="s0">is None else </span><span class="s1">width</span>
+        <span class="s1">dragsize = style.LIFT_DRAG_SIZE </span><span class="s0">if </span><span class="s1">dragsize </span><span class="s0">is None else </span><span class="s1">dragsize</span>
+        <span class="s1">self._drag_element = DraggerDirViewerY(self)</span>
+        <span class="s1">self._height = width</span>
+        <span class="s1">painter = functions.obtain_valid_painter(</span>
+            <span class="s1">painterstyle.DEF_PAINTER</span><span class="s0">,</span>
+            <span class="s1">color=style.DEF_COLOR2</span><span class="s0">,</span>
+            <span class="s1">pressed=</span><span class="s0">True,</span>
+            <span class="s1">size=(width</span><span class="s0">,</span>
+                  <span class="s1">self._length + dragsize[</span><span class="s4">1</span><span class="s1">] + style.LIFT_MARGINS[</span><span class="s4">1</span><span class="s1">] + </span><span class="s4">1</span><span class="s1">))</span>
+        <span class="s1">self.set_painter(painter)</span>
+        <span class="s1">self._drag_element.set_painter(painterstyle.DEF_PAINTER(size=dragsize)</span><span class="s0">,</span>
+                                       <span class="s1">autopress=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">self.current_state.ghost_rect.height = self._length</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">self._drag_element.set_center((self.get_fus_center()[</span><span class="s4">0</span><span class="s1">]</span><span class="s0">, None</span><span class="s1">))</span>
+        <span class="s0">except </span><span class="s1">AttributeError:  </span><span class="s5"># state is ghost state, and has no fusionner</span>
+            <span class="s1">self._drag_element.set_center((self.get_ghost_center()[</span><span class="s4">0</span><span class="s1">]</span><span class="s0">, None</span><span class="s1">))</span>
+        <span class="s1">self._drag_element.set_free(y=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">Ghost.fit_children(self)</span>
+</pre>
+</body>
+</html>

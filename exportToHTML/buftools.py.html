@@ -1,0 +1,576 @@
+<html>
+<head>
+<title>buftools.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6a8759;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+buftools.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Module pygame.tests.test_utils.array 
+ 
+Export the Exporter and Importer classes. 
+ 
+Class Exporter has configurable shape and strides. Exporter objects 
+provide a convient target for unit tests on Pygame objects and functions that 
+import a new buffer interface. 
+ 
+Class Importer imports a buffer interface with the given PyBUF_* flags. 
+It returns NULL Py_buffer fields as None. The shape, strides, and suboffsets 
+arrays are returned as tuples of ints. All Py_buffer field properties are 
+read-only. This class is useful in comparing exported buffer interfaces 
+with the actual request. The simular Python builtin memoryview currently 
+does not support configurable PyBUF_* flags. 
+ 
+This module contains its own unit tests. When Pygame is installed, these tests 
+can be run with the following command line statement: 
+ 
+python -m pygame.tests.test_utils.array 
+ 
+&quot;&quot;&quot;</span>
+<span class="s2">import </span><span class="s1">pygame</span>
+<span class="s2">if not </span><span class="s1">pygame.HAVE_NEWBUF:</span>
+    <span class="s1">emsg = </span><span class="s3">&quot;This Pygame build does not support the new buffer protocol&quot;</span>
+    <span class="s2">raise </span><span class="s1">ImportError(emsg)</span>
+<span class="s2">import </span><span class="s1">pygame.newbuffer</span>
+<span class="s2">from </span><span class="s1">pygame.newbuffer </span><span class="s2">import </span><span class="s1">(PyBUF_SIMPLE</span><span class="s2">, </span><span class="s1">PyBUF_FORMAT</span><span class="s2">, </span><span class="s1">PyBUF_ND</span><span class="s2">,</span>
+                              <span class="s1">PyBUF_WRITABLE</span><span class="s2">, </span><span class="s1">PyBUF_STRIDES</span><span class="s2">, </span><span class="s1">PyBUF_C_CONTIGUOUS</span><span class="s2">,</span>
+                              <span class="s1">PyBUF_F_CONTIGUOUS</span><span class="s2">, </span><span class="s1">PyBUF_ANY_CONTIGUOUS</span><span class="s2">,</span>
+                              <span class="s1">PyBUF_INDIRECT</span><span class="s2">, </span><span class="s1">PyBUF_STRIDED</span><span class="s2">, </span><span class="s1">PyBUF_STRIDED_RO</span><span class="s2">,</span>
+                              <span class="s1">PyBUF_RECORDS</span><span class="s2">, </span><span class="s1">PyBUF_RECORDS_RO</span><span class="s2">, </span><span class="s1">PyBUF_FULL</span><span class="s2">,</span>
+                              <span class="s1">PyBUF_FULL_RO</span><span class="s2">, </span><span class="s1">PyBUF_CONTIG</span><span class="s2">, </span><span class="s1">PyBUF_CONTIG_RO)</span>
+
+<span class="s2">import </span><span class="s1">unittest</span>
+<span class="s2">import </span><span class="s1">sys</span>
+<span class="s2">import </span><span class="s1">ctypes</span>
+<span class="s2">import </span><span class="s1">operator</span>
+<span class="s2">try</span><span class="s1">:</span>
+    <span class="s1">reduce</span>
+<span class="s2">except </span><span class="s1">NameError:</span>
+    <span class="s2">from </span><span class="s1">functools </span><span class="s2">import </span><span class="s1">reduce</span>
+
+<span class="s1">__all__ = [</span><span class="s3">&quot;Exporter&quot;</span><span class="s2">, </span><span class="s3">&quot;Importer&quot;</span><span class="s1">]</span>
+
+<span class="s2">try</span><span class="s1">:</span>
+    <span class="s1">ctypes.c_ssize_t</span>
+<span class="s2">except </span><span class="s1">AttributeError:</span>
+    <span class="s1">void_p_sz = ctypes.sizeof(ctypes.c_void_p)</span>
+    <span class="s2">if </span><span class="s1">ctypes.sizeof(ctypes.c_short) == void_p_sz:</span>
+        <span class="s1">ctypes.c_ssize_t = ctypes.c_short</span>
+    <span class="s2">elif </span><span class="s1">ctypes.sizeof(ctypes.c_int) == void_p_sz:</span>
+        <span class="s1">ctypes.c_ssize_t = ctypes.c_int</span>
+    <span class="s2">elif </span><span class="s1">ctypes.sizeof(ctypes.c_long) == void_p_sz:</span>
+        <span class="s1">ctypes.c_ssize_t = ctypes.c_long</span>
+    <span class="s2">elif </span><span class="s1">ctypes.sizeof(ctypes.c_longlong) == void_p_sz:</span>
+        <span class="s1">ctypes.c_ssize_t = ctypes.c_longlong</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s2">raise </span><span class="s1">RuntimeError(</span><span class="s3">&quot;Cannot set c_ssize_t: sizeof(void *) is %i&quot; </span><span class="s1">%</span>
+                           <span class="s1">void_p_sz)</span>
+
+<span class="s2">def </span><span class="s1">_prop_get(fn):</span>
+    <span class="s2">return </span><span class="s1">property(fn)</span>
+
+<span class="s2">class </span><span class="s1">Exporter(pygame.newbuffer.BufferMixin):</span>
+    <span class="s0">&quot;&quot;&quot;An object that exports a multi-dimension new buffer interface 
+ 
+       The only array operation this type supports is to export a buffer. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">prefixes = {</span><span class="s3">'@'</span><span class="s1">: </span><span class="s3">''</span><span class="s2">, </span><span class="s3">'='</span><span class="s1">: </span><span class="s3">'='</span><span class="s2">, </span><span class="s3">'&lt;'</span><span class="s1">: </span><span class="s3">'='</span><span class="s2">, </span><span class="s3">'&gt;'</span><span class="s1">: </span><span class="s3">'='</span><span class="s2">, </span><span class="s3">'!'</span><span class="s1">: </span><span class="s3">'='</span><span class="s2">,</span>
+                <span class="s3">'2'</span><span class="s1">: </span><span class="s3">'2'</span><span class="s2">, </span><span class="s3">'3'</span><span class="s1">: </span><span class="s3">'3'</span><span class="s2">, </span><span class="s3">'4'</span><span class="s1">: </span><span class="s3">'4'</span><span class="s2">, </span><span class="s3">'5'</span><span class="s1">: </span><span class="s3">'5'</span><span class="s2">,</span>
+                <span class="s3">'6'</span><span class="s1">: </span><span class="s3">'6'</span><span class="s2">, </span><span class="s3">'7'</span><span class="s1">: </span><span class="s3">'7'</span><span class="s2">, </span><span class="s3">'8'</span><span class="s1">: </span><span class="s3">'8'</span><span class="s2">, </span><span class="s3">'9'</span><span class="s1">: </span><span class="s3">'9'</span><span class="s1">}</span>
+    <span class="s1">types = {</span><span class="s3">'c'</span><span class="s1">: ctypes.c_char</span><span class="s2">, </span><span class="s3">'b'</span><span class="s1">: ctypes.c_byte</span><span class="s2">, </span><span class="s3">'B'</span><span class="s1">: ctypes.c_ubyte</span><span class="s2">,</span>
+             <span class="s3">'=c'</span><span class="s1">: ctypes.c_int8</span><span class="s2">, </span><span class="s3">'=b'</span><span class="s1">: ctypes.c_int8</span><span class="s2">, </span><span class="s3">'=B'</span><span class="s1">: ctypes.c_uint8</span><span class="s2">,</span>
+             <span class="s3">'?'</span><span class="s1">: ctypes.c_bool</span><span class="s2">, </span><span class="s3">'=?'</span><span class="s1">: ctypes.c_int8</span><span class="s2">,</span>
+             <span class="s3">'h'</span><span class="s1">: ctypes.c_short</span><span class="s2">, </span><span class="s3">'H'</span><span class="s1">: ctypes.c_ushort</span><span class="s2">,</span>
+             <span class="s3">'=h'</span><span class="s1">: ctypes.c_int16</span><span class="s2">, </span><span class="s3">'=H'</span><span class="s1">: ctypes.c_uint16</span><span class="s2">,</span>
+             <span class="s3">'i'</span><span class="s1">: ctypes.c_int</span><span class="s2">, </span><span class="s3">'I'</span><span class="s1">: ctypes.c_uint</span><span class="s2">,</span>
+             <span class="s3">'=i'</span><span class="s1">: ctypes.c_int32</span><span class="s2">, </span><span class="s3">'=I'</span><span class="s1">: ctypes.c_uint32</span><span class="s2">,</span>
+             <span class="s3">'l'</span><span class="s1">: ctypes.c_long</span><span class="s2">, </span><span class="s3">'L'</span><span class="s1">: ctypes.c_ulong</span><span class="s2">,</span>
+             <span class="s3">'=l'</span><span class="s1">: ctypes.c_int32</span><span class="s2">, </span><span class="s3">'=L'</span><span class="s1">: ctypes.c_uint32</span><span class="s2">,</span>
+             <span class="s3">'q'</span><span class="s1">: ctypes.c_longlong</span><span class="s2">, </span><span class="s3">'Q'</span><span class="s1">: ctypes.c_ulonglong</span><span class="s2">,</span>
+             <span class="s3">'=q'</span><span class="s1">: ctypes.c_int64</span><span class="s2">, </span><span class="s3">'=Q'</span><span class="s1">: ctypes.c_uint64</span><span class="s2">,</span>
+             <span class="s3">'f'</span><span class="s1">: ctypes.c_float</span><span class="s2">, </span><span class="s3">'d'</span><span class="s1">: ctypes.c_double</span><span class="s2">,</span>
+             <span class="s3">'P'</span><span class="s1">: ctypes.c_void_p</span><span class="s2">,</span>
+             <span class="s3">'x'</span><span class="s1">: ctypes.c_ubyte * </span><span class="s4">1</span><span class="s2">,</span>
+             <span class="s3">'2x'</span><span class="s1">: ctypes.c_ubyte * </span><span class="s4">2</span><span class="s2">,</span>
+             <span class="s3">'3x'</span><span class="s1">: ctypes.c_ubyte * </span><span class="s4">3</span><span class="s2">,</span>
+             <span class="s3">'4x'</span><span class="s1">: ctypes.c_ubyte * </span><span class="s4">4</span><span class="s2">,</span>
+             <span class="s3">'5x'</span><span class="s1">: ctypes.c_ubyte * </span><span class="s4">5</span><span class="s2">,</span>
+             <span class="s3">'6x'</span><span class="s1">: ctypes.c_ubyte * </span><span class="s4">6</span><span class="s2">,</span>
+             <span class="s3">'7x'</span><span class="s1">: ctypes.c_ubyte * </span><span class="s4">7</span><span class="s2">,</span>
+             <span class="s3">'8x'</span><span class="s1">: ctypes.c_ubyte * </span><span class="s4">8</span><span class="s2">,</span>
+             <span class="s3">'9x'</span><span class="s1">: ctypes.c_ubyte * </span><span class="s4">9</span><span class="s1">}</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">,</span>
+                 <span class="s1">shape</span><span class="s2">,</span>
+                 <span class="s1">format=</span><span class="s2">None,</span>
+                 <span class="s1">strides=</span><span class="s2">None,</span>
+                 <span class="s1">readonly=</span><span class="s2">None,</span>
+                 <span class="s1">itemsize=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">format </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">format = </span><span class="s3">'B'</span>
+        <span class="s2">if </span><span class="s1">readonly </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">readonly = </span><span class="s2">False</span>
+        <span class="s1">prefix = </span><span class="s3">''</span>
+        <span class="s1">typecode = </span><span class="s3">''</span>
+        <span class="s1">i = </span><span class="s4">0</span>
+        <span class="s2">if </span><span class="s1">i &lt; len(format):</span>
+            <span class="s2">try</span><span class="s1">:</span>
+                <span class="s1">prefix = self.prefixes[format[i]]</span>
+                <span class="s1">i += </span><span class="s4">1</span>
+            <span class="s2">except </span><span class="s1">LookupError:</span>
+                <span class="s2">pass</span>
+        <span class="s2">if </span><span class="s1">i &lt; len(format) </span><span class="s2">and </span><span class="s1">format[i] == </span><span class="s3">'1'</span><span class="s1">:</span>
+            <span class="s1">i += </span><span class="s4">1</span>
+        <span class="s2">if </span><span class="s1">i == len(format) - </span><span class="s4">1</span><span class="s1">:</span>
+            <span class="s1">typecode = format[i]</span>
+        <span class="s2">if </span><span class="s1">itemsize </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">try</span><span class="s1">:</span>
+                <span class="s1">itemsize = ctypes.sizeof(self.types[prefix + typecode])</span>
+            <span class="s2">except </span><span class="s1">KeyError:</span>
+                <span class="s2">raise </span><span class="s1">ValueError(</span><span class="s3">&quot;Unknown item format '&quot; </span><span class="s1">+ format + </span><span class="s3">&quot;'&quot;</span><span class="s1">)</span>
+        <span class="s1">self.readonly = bool(readonly)</span>
+        <span class="s1">self.format = format</span>
+        <span class="s1">self._format = ctypes.create_string_buffer(format.encode(</span><span class="s3">'latin_1'</span><span class="s1">))</span>
+        <span class="s1">self.ndim = len(shape)</span>
+        <span class="s1">self.itemsize = itemsize</span>
+        <span class="s1">self.len = reduce(operator.mul</span><span class="s2">, </span><span class="s1">shape</span><span class="s2">, </span><span class="s4">1</span><span class="s1">) * self.itemsize</span>
+        <span class="s1">self.shape = tuple(shape)</span>
+        <span class="s1">self._shape = (ctypes.c_ssize_t * self.ndim)(*self.shape)</span>
+        <span class="s2">if </span><span class="s1">strides </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">self._strides = (ctypes.c_ssize_t * self.ndim)()</span>
+            <span class="s1">self._strides[self.ndim - </span><span class="s4">1</span><span class="s1">] = itemsize</span>
+            <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(self.ndim - </span><span class="s4">1</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">):</span>
+                <span class="s1">self._strides[i - </span><span class="s4">1</span><span class="s1">] = self.shape[i] * self._strides[i]</span>
+            <span class="s1">self.strides = tuple(self._strides)</span>
+        <span class="s2">elif </span><span class="s1">len(strides) == self.ndim:</span>
+            <span class="s1">self.strides = tuple(strides)</span>
+            <span class="s1">self._strides = (ctypes.c_ssize_t * self.ndim)(*self.strides)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">raise </span><span class="s1">ValueError(</span><span class="s3">&quot;Mismatch in length of strides and shape&quot;</span><span class="s1">)</span>
+        <span class="s1">buflen =  max(d * abs(s) </span><span class="s2">for </span><span class="s1">d</span><span class="s2">, </span><span class="s1">s </span><span class="s2">in </span><span class="s1">zip(self.shape</span><span class="s2">, </span><span class="s1">self.strides))</span>
+        <span class="s1">self.buflen = buflen</span>
+        <span class="s1">self._buf = (ctypes.c_ubyte * buflen)()</span>
+        <span class="s1">offset = sum((d - </span><span class="s4">1</span><span class="s1">) * abs(s)</span>
+                     <span class="s2">for </span><span class="s1">d</span><span class="s2">, </span><span class="s1">s </span><span class="s2">in </span><span class="s1">zip(self.shape</span><span class="s2">, </span><span class="s1">self.strides) </span><span class="s2">if </span><span class="s1">s &lt; </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.buf = ctypes.addressof(self._buf) + offset</span>
+
+    <span class="s2">def </span><span class="s1">buffer_info(self):</span>
+        <span class="s2">return </span><span class="s1">(addressof(self.buffer)</span><span class="s2">, </span><span class="s1">self.shape[</span><span class="s4">0</span><span class="s1">])</span>
+
+    <span class="s2">def </span><span class="s1">tobytes(self):</span>
+        <span class="s2">return </span><span class="s1">cast(self.buffer</span><span class="s2">, </span><span class="s1">POINTER(c_char))[</span><span class="s4">0</span><span class="s1">:self._len]</span>
+
+    <span class="s2">def </span><span class="s1">__len__(self):</span>
+        <span class="s2">return </span><span class="s1">self.shape[</span><span class="s4">0</span><span class="s1">]</span>
+
+    <span class="s2">def </span><span class="s1">_get_buffer(self</span><span class="s2">, </span><span class="s1">view</span><span class="s2">, </span><span class="s1">flags):</span>
+        <span class="s2">from </span><span class="s1">ctypes </span><span class="s2">import </span><span class="s1">addressof</span>
+        <span class="s2">if </span><span class="s1">(flags &amp; PyBUF_WRITABLE) == PyBUF_WRITABLE </span><span class="s2">and </span><span class="s1">self.readonly:</span>
+            <span class="s2">raise </span><span class="s1">BufferError(</span><span class="s3">&quot;buffer is read-only&quot;</span><span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">((flags &amp; PyBUF_C_CONTIGUOUS) == PyBUF_C_CONTIGUOUS </span><span class="s2">and</span>
+            <span class="s2">not </span><span class="s1">self.is_contiguous(</span><span class="s3">'C'</span><span class="s1">)):</span>
+            <span class="s2">raise </span><span class="s1">BufferError(</span><span class="s3">&quot;data is not C contiguous&quot;</span><span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">((flags &amp; PyBUF_F_CONTIGUOUS) == PyBUF_F_CONTIGUOUS </span><span class="s2">and</span>
+            <span class="s2">not </span><span class="s1">self.is_contiguous(</span><span class="s3">'F'</span><span class="s1">)):</span>
+            <span class="s2">raise </span><span class="s1">BufferError(</span><span class="s3">&quot;data is not F contiguous&quot;</span><span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">((flags &amp; PyBUF_ANY_CONTIGUOUS) == PyBUF_ANY_CONTIGUOUS </span><span class="s2">and</span>
+            <span class="s2">not </span><span class="s1">self.is_contiguous(</span><span class="s3">'A'</span><span class="s1">)):</span>
+            <span class="s2">raise </span><span class="s1">BufferError(</span><span class="s3">&quot;data is not contiguous&quot;</span><span class="s1">)</span>
+        <span class="s1">view.buf = self.buf</span>
+        <span class="s1">view.readonly = self.readonly</span>
+        <span class="s1">view.len = self.len</span>
+        <span class="s2">if </span><span class="s1">flags | PyBUF_WRITABLE == PyBUF_WRITABLE:</span>
+            <span class="s1">view.ndim = </span><span class="s4">0</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">view.ndim = self.ndim</span>
+        <span class="s1">view.itemsize = self.itemsize</span>
+        <span class="s2">if </span><span class="s1">(flags &amp; PyBUF_FORMAT) == PyBUF_FORMAT:</span>
+            <span class="s1">view.format = addressof(self._format)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">view.format = </span><span class="s2">None</span>
+        <span class="s2">if </span><span class="s1">(flags &amp; PyBUF_ND) == PyBUF_ND:</span>
+            <span class="s1">view.shape = addressof(self._shape)</span>
+        <span class="s2">elif </span><span class="s1">self.is_contiguous(</span><span class="s3">'C'</span><span class="s1">):</span>
+            <span class="s1">view.shape = </span><span class="s2">None</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">raise </span><span class="s1">BufferError(</span>
+                <span class="s3">&quot;shape required for {} dimensional data&quot;</span><span class="s1">.format(self.ndim))</span>
+        <span class="s2">if </span><span class="s1">(flags &amp; PyBUF_STRIDES) == PyBUF_STRIDES:</span>
+            <span class="s1">view.strides = ctypes.addressof(self._strides)</span>
+        <span class="s2">elif </span><span class="s1">view.shape </span><span class="s2">is None or </span><span class="s1">self.is_contiguous(</span><span class="s3">'C'</span><span class="s1">):</span>
+            <span class="s1">view.strides = </span><span class="s2">None</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">raise </span><span class="s1">BufferError(</span><span class="s3">&quot;strides required for none C contiguous data&quot;</span><span class="s1">)</span>
+        <span class="s1">view.suboffsets = </span><span class="s2">None</span>
+        <span class="s1">view.internal = </span><span class="s2">None</span>
+        <span class="s1">view.obj = self</span>
+
+    <span class="s2">def </span><span class="s1">is_contiguous(self</span><span class="s2">, </span><span class="s1">fortran):</span>
+        <span class="s2">if </span><span class="s1">fortran </span><span class="s2">in </span><span class="s3">&quot;CA&quot;</span><span class="s1">:</span>
+            <span class="s2">if </span><span class="s1">self.strides[-</span><span class="s4">1</span><span class="s1">] == self.itemsize:</span>
+                <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(self.ndim - </span><span class="s4">1</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">):</span>
+                    <span class="s2">if </span><span class="s1">self.strides[i - </span><span class="s4">1</span><span class="s1">] != self.shape[i] * self.strides[i]:</span>
+                        <span class="s2">break</span>
+                <span class="s2">else</span><span class="s1">:</span>
+                    <span class="s2">return True</span>
+        <span class="s2">if </span><span class="s1">fortran </span><span class="s2">in </span><span class="s3">&quot;FA&quot;</span><span class="s1">:</span>
+            <span class="s2">if </span><span class="s1">self.strides[</span><span class="s4">0</span><span class="s1">] == self.itemsize:</span>
+                <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(</span><span class="s4">0</span><span class="s2">, </span><span class="s1">self.ndim - </span><span class="s4">1</span><span class="s1">):</span>
+                    <span class="s2">if </span><span class="s1">self.strides[i + </span><span class="s4">1</span><span class="s1">] != self.shape[i] * self.strides[i]:</span>
+                        <span class="s2">break</span>
+                <span class="s2">else</span><span class="s1">:</span>
+                    <span class="s2">return True</span>
+        <span class="s2">return False</span>
+
+
+<span class="s2">class </span><span class="s1">Importer(object):</span>
+    <span class="s0">&quot;&quot;&quot;An object that imports a new buffer interface 
+ 
+       The fields of the Py_buffer C struct are exposed by identically 
+       named Importer read-only properties. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">obj</span><span class="s2">, </span><span class="s1">flags):</span>
+        <span class="s1">self._view = pygame.newbuffer.Py_buffer()</span>
+        <span class="s1">self._view.get_buffer(obj</span><span class="s2">, </span><span class="s1">flags)</span>
+    <span class="s1">@property</span>
+    <span class="s2">def </span><span class="s1">obj(self):</span>
+        <span class="s0">&quot;&quot;&quot;return object or None for NULL field&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self._view.obj</span>
+    <span class="s1">@property</span>
+    <span class="s2">def </span><span class="s1">buf(self):</span>
+        <span class="s0">&quot;&quot;&quot;return int or None for NULL field&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self._view.buf</span>
+    <span class="s1">@property</span>
+    <span class="s2">def </span><span class="s1">len(self):</span>
+        <span class="s0">&quot;&quot;&quot;return int&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self._view.len</span>
+    <span class="s1">@property</span>
+    <span class="s2">def </span><span class="s1">readonly(self):</span>
+        <span class="s0">&quot;&quot;&quot;return bool&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self._view.readonly</span>
+    <span class="s1">@property</span>
+    <span class="s2">def </span><span class="s1">format(self):</span>
+        <span class="s0">&quot;&quot;&quot;return bytes or None for NULL field&quot;&quot;&quot;</span>
+        <span class="s1">format_addr = self._view.format</span>
+        <span class="s2">if </span><span class="s1">format_addr </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">return None</span>
+        <span class="s2">return </span><span class="s1">ctypes.cast(format_addr</span><span class="s2">, </span><span class="s1">ctypes.c_char_p).value.decode(</span><span class="s3">'ascii'</span><span class="s1">)</span>
+    <span class="s1">@property</span>
+    <span class="s2">def </span><span class="s1">itemsize(self):</span>
+        <span class="s0">&quot;&quot;&quot;return int&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self._view.itemsize</span>
+    <span class="s1">@property</span>
+    <span class="s2">def </span><span class="s1">ndim(self):</span>
+        <span class="s0">&quot;&quot;&quot;return int&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self._view.ndim</span>
+    <span class="s1">@property</span>
+    <span class="s2">def </span><span class="s1">shape(self):</span>
+        <span class="s0">&quot;&quot;&quot;return int tuple or None for NULL field&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self._to_ssize_tuple(self._view.shape)</span>
+    <span class="s1">@property</span>
+    <span class="s2">def </span><span class="s1">strides(self):</span>
+        <span class="s0">&quot;&quot;&quot;return int tuple or None for NULL field&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self._to_ssize_tuple(self._view.strides)</span>
+    <span class="s1">@property</span>
+    <span class="s2">def </span><span class="s1">suboffsets(self):</span>
+        <span class="s0">&quot;&quot;&quot;return int tuple or None for NULL field&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self._to_ssize_tuple(self._view.suboffsets)</span>
+    <span class="s1">@property</span>
+    <span class="s2">def </span><span class="s1">internal(self):</span>
+        <span class="s0">&quot;&quot;&quot;return int or None for NULL field&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self._view.internal</span>
+
+    <span class="s2">def </span><span class="s1">_to_ssize_tuple(self</span><span class="s2">, </span><span class="s1">addr):</span>
+        <span class="s2">from </span><span class="s1">ctypes </span><span class="s2">import </span><span class="s1">cast</span><span class="s2">, </span><span class="s1">POINTER</span><span class="s2">, </span><span class="s1">c_ssize_t</span>
+
+        <span class="s2">if </span><span class="s1">addr </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">return None</span>
+        <span class="s2">return </span><span class="s1">tuple(cast(addr</span><span class="s2">, </span><span class="s1">POINTER(c_ssize_t))[</span><span class="s4">0</span><span class="s1">:self._view.ndim])</span>
+
+
+<span class="s2">class </span><span class="s1">ExporterTest(unittest.TestCase):</span>
+    <span class="s0">&quot;&quot;&quot;Class Exporter unit tests&quot;&quot;&quot;</span>
+    <span class="s2">def </span><span class="s1">test_formats(self):</span>
+        <span class="s1">char_sz = ctypes.sizeof(ctypes.c_char)</span>
+        <span class="s1">short_sz = ctypes.sizeof(ctypes.c_short)</span>
+        <span class="s1">int_sz = ctypes.sizeof(ctypes.c_int)</span>
+        <span class="s1">long_sz = ctypes.sizeof(ctypes.c_long)</span>
+        <span class="s1">longlong_sz = ctypes.sizeof(ctypes.c_longlong)</span>
+        <span class="s1">float_sz = ctypes.sizeof(ctypes.c_float)</span>
+        <span class="s1">double_sz = ctypes.sizeof(ctypes.c_double)</span>
+        <span class="s1">voidp_sz = ctypes.sizeof(ctypes.c_void_p)</span>
+        <span class="s1">bool_sz = ctypes.sizeof(ctypes.c_bool)</span>
+
+        <span class="s1">self.check_args(</span><span class="s4">0</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'B'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'b'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'B'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'c'</span><span class="s2">, </span><span class="s1">(char_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">char_sz</span><span class="s2">, </span><span class="s1">char_sz</span><span class="s2">, </span><span class="s1">char_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'h'</span><span class="s2">, </span><span class="s1">(short_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">short_sz</span><span class="s2">, </span><span class="s1">short_sz</span><span class="s2">, </span><span class="s1">short_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'H'</span><span class="s2">, </span><span class="s1">(short_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">short_sz</span><span class="s2">, </span><span class="s1">short_sz</span><span class="s2">, </span><span class="s1">short_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'i'</span><span class="s2">, </span><span class="s1">(int_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">int_sz</span><span class="s2">, </span><span class="s1">int_sz</span><span class="s2">, </span><span class="s1">int_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'I'</span><span class="s2">, </span><span class="s1">(int_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">int_sz</span><span class="s2">, </span><span class="s1">int_sz</span><span class="s2">, </span><span class="s1">int_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'l'</span><span class="s2">, </span><span class="s1">(long_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">long_sz</span><span class="s2">, </span><span class="s1">long_sz</span><span class="s2">, </span><span class="s1">long_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'L'</span><span class="s2">, </span><span class="s1">(long_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">long_sz</span><span class="s2">, </span><span class="s1">long_sz</span><span class="s2">, </span><span class="s1">long_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'q'</span><span class="s2">, </span><span class="s1">(longlong_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">,</span>
+                        <span class="s1">longlong_sz</span><span class="s2">, </span><span class="s1">longlong_sz</span><span class="s2">, </span><span class="s1">longlong_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'Q'</span><span class="s2">, </span><span class="s1">(longlong_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">,</span>
+                        <span class="s1">longlong_sz</span><span class="s2">, </span><span class="s1">longlong_sz</span><span class="s2">, </span><span class="s1">longlong_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'f'</span><span class="s2">, </span><span class="s1">(float_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">float_sz</span><span class="s2">, </span><span class="s1">float_sz</span><span class="s2">, </span><span class="s1">float_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'d'</span><span class="s2">, </span><span class="s1">(double_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">,</span>
+                        <span class="s1">double_sz</span><span class="s2">, </span><span class="s1">double_sz</span><span class="s2">, </span><span class="s1">double_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'P'</span><span class="s2">, </span><span class="s1">(voidp_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">voidp_sz</span><span class="s2">, </span><span class="s1">voidp_sz</span><span class="s2">, </span><span class="s1">voidp_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'?'</span><span class="s2">, </span><span class="s1">(bool_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">bool_sz</span><span class="s2">, </span><span class="s1">bool_sz</span><span class="s2">, </span><span class="s1">bool_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@b'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@B'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@c'</span><span class="s2">, </span><span class="s1">(char_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">char_sz</span><span class="s2">, </span><span class="s1">char_sz</span><span class="s2">, </span><span class="s1">char_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@h'</span><span class="s2">, </span><span class="s1">(short_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">,</span>
+                        <span class="s1">short_sz</span><span class="s2">, </span><span class="s1">short_sz</span><span class="s2">, </span><span class="s1">short_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@H'</span><span class="s2">, </span><span class="s1">(short_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">,</span>
+                        <span class="s1">short_sz</span><span class="s2">, </span><span class="s1">short_sz</span><span class="s2">, </span><span class="s1">short_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@i'</span><span class="s2">, </span><span class="s1">(int_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">int_sz</span><span class="s2">, </span><span class="s1">int_sz</span><span class="s2">, </span><span class="s1">int_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@I'</span><span class="s2">, </span><span class="s1">(int_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">int_sz</span><span class="s2">, </span><span class="s1">int_sz</span><span class="s2">, </span><span class="s1">int_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@l'</span><span class="s2">, </span><span class="s1">(long_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">long_sz</span><span class="s2">, </span><span class="s1">long_sz</span><span class="s2">, </span><span class="s1">long_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@L'</span><span class="s2">, </span><span class="s1">(long_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">long_sz</span><span class="s2">, </span><span class="s1">long_sz</span><span class="s2">, </span><span class="s1">long_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@q'</span><span class="s2">,</span>
+             <span class="s1">(longlong_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">longlong_sz</span><span class="s2">, </span><span class="s1">longlong_sz</span><span class="s2">, </span><span class="s1">longlong_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@Q'</span><span class="s2">, </span><span class="s1">(longlong_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">,</span>
+                        <span class="s1">longlong_sz</span><span class="s2">, </span><span class="s1">longlong_sz</span><span class="s2">, </span><span class="s1">longlong_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@f'</span><span class="s2">, </span><span class="s1">(float_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">,</span>
+                        <span class="s1">float_sz</span><span class="s2">, </span><span class="s1">float_sz</span><span class="s2">, </span><span class="s1">float_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@d'</span><span class="s2">, </span><span class="s1">(double_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">,</span>
+                        <span class="s1">double_sz</span><span class="s2">, </span><span class="s1">double_sz</span><span class="s2">, </span><span class="s1">double_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'@?'</span><span class="s2">, </span><span class="s1">(bool_sz</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">bool_sz</span><span class="s2">, </span><span class="s1">bool_sz</span><span class="s2">, </span><span class="s1">bool_sz)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=b'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=B'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=c'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=H'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=i'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">4</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=I'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">4</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=l'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">4</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=L'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">4</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=q'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">8</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=Q'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">8</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=?'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'&lt;h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'&gt;h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'!h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'&lt;q'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">8</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'&gt;q'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">8</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'!q'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">8</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'1x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'2x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'3x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">3</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">3</span><span class="s2">, </span><span class="s4">3</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'4x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">4</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'5x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">5</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">5</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'6x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">6</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">6</span><span class="s2">, </span><span class="s4">6</span><span class="s2">, </span><span class="s4">6</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'7x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">7</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">7</span><span class="s2">, </span><span class="s4">7</span><span class="s2">, </span><span class="s4">7</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'8x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">8</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'9x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">9</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">9</span><span class="s2">, </span><span class="s4">9</span><span class="s2">, </span><span class="s4">9</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'1h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=1h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">''</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'W'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'^Q'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=W'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=f'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=d'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'&lt;f'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'&lt;d'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'&gt;f'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'&gt;d'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'!f'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'!d'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'0x'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'11x'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Exporter</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'BB'</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_strides(self):</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">10</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s4">20</span><span class="s2">, </span><span class="s4">20</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">5</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">6</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span><span class="s2">, </span><span class="s4">30</span><span class="s2">, </span><span class="s4">30</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">7</span><span class="s2">, </span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">30</span><span class="s2">, </span><span class="s4">10</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span><span class="s2">, </span><span class="s4">210</span><span class="s2">, </span><span class="s4">210</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">(</span><span class="s4">13</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">11</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">330</span><span class="s2">, </span><span class="s4">66</span><span class="s2">, </span><span class="s4">6</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span><span class="s2">, </span><span class="s4">4290</span><span class="s2">, </span><span class="s4">4290</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s2">, </span><span class="s1">(</span><span class="s4">7</span><span class="s2">, </span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">14</span><span class="s2">, </span><span class="s4">42</span><span class="s1">)</span><span class="s2">, </span><span class="s4">210</span><span class="s2">, </span><span class="s4">210</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s2">, </span><span class="s1">(</span><span class="s4">7</span><span class="s2">, </span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">16</span><span class="s2">, </span><span class="s4">48</span><span class="s1">)</span><span class="s2">, </span><span class="s4">210</span><span class="s2">, </span><span class="s4">240</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s2">, </span><span class="s1">(</span><span class="s4">13</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">11</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">440</span><span class="s2">, </span><span class="s4">88</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span><span class="s2">, </span><span class="s4">4290</span><span class="s2">, </span><span class="s4">5720</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s2">, </span><span class="s1">(</span><span class="s4">7</span><span class="s2">, </span><span class="s4">5</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'3x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">15</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span><span class="s2">, </span><span class="s4">105</span><span class="s2">, </span><span class="s4">105</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s2">, </span><span class="s1">(</span><span class="s4">7</span><span class="s2">, </span><span class="s4">5</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'3x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">3</span><span class="s2">, </span><span class="s4">21</span><span class="s1">)</span><span class="s2">, </span><span class="s4">105</span><span class="s2">, </span><span class="s4">105</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s2">, </span><span class="s1">(</span><span class="s4">7</span><span class="s2">, </span><span class="s4">5</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'3x'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">3</span><span class="s2">, </span><span class="s4">24</span><span class="s1">)</span><span class="s2">, </span><span class="s4">105</span><span class="s2">, </span><span class="s4">120</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_readonly(self):</span>
+        <span class="s1">a = Exporter((</span><span class="s4">2</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'h'</span><span class="s2">, </span><span class="s1">readonly=</span><span class="s2">True</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(a.readonly)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">PyBUF_STRIDED_RO)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">PyBUF_STRIDED)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">PyBUF_STRIDED_RO)</span>
+
+    <span class="s2">def </span><span class="s1">test_is_contiguous(self):</span>
+        <span class="s1">a = Exporter((</span><span class="s4">10</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s3">'C'</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s3">'F'</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s3">'A'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">10</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s3">'C'</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s3">'A'</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s3">'F'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">13</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">11</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">330</span><span class="s2">, </span><span class="s4">66</span><span class="s2">, </span><span class="s4">6</span><span class="s2">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s3">'C'</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s3">'A'</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s3">'F'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">10</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">20</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s3">'F'</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s3">'A'</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s3">'C'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">13</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">11</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">26</span><span class="s2">, </span><span class="s4">130</span><span class="s2">, </span><span class="s4">1430</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s3">'F'</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s3">'A'</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s3">'C'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">2</span><span class="s2">, </span><span class="s4">11</span><span class="s2">, </span><span class="s4">6</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">576</span><span class="s2">, </span><span class="s4">48</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s3">'A'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">2</span><span class="s2">, </span><span class="s4">11</span><span class="s2">, </span><span class="s4">6</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">2</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">48</span><span class="s2">, </span><span class="s4">288</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s3">'A'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">3</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">16</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">4</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s3">'A'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">3</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">4</span><span class="s2">, </span><span class="s4">12</span><span class="s2">, </span><span class="s4">24</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s3">'A'</span><span class="s1">))</span>
+
+    <span class="s2">def </span><span class="s1">test_PyBUF_flags(self):</span>
+        <span class="s1">a = Exporter((</span><span class="s4">10</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'d'</span><span class="s1">)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">PyBUF_SIMPLE)</span>
+        <span class="s1">self.assertTrue(b.obj </span><span class="s2">is </span><span class="s1">a)</span>
+        <span class="s1">self.assertTrue(b.format </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">a.len)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s1">a.itemsize)</span>
+        <span class="s1">self.assertTrue(b.shape </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.strides </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.internal </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">PyBUF_WRITABLE)</span>
+        <span class="s1">self.assertTrue(b.obj </span><span class="s2">is </span><span class="s1">a)</span>
+        <span class="s1">self.assertTrue(b.format </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">a.len)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s1">a.itemsize)</span>
+        <span class="s1">self.assertTrue(b.shape </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.strides </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.internal </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">PyBUF_ND)</span>
+        <span class="s1">self.assertTrue(b.obj </span><span class="s2">is </span><span class="s1">a)</span>
+        <span class="s1">self.assertTrue(b.format </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">a.len)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s1">a.itemsize)</span>
+        <span class="s1">self.assertEqual(b.shape</span><span class="s2">, </span><span class="s1">a.shape)</span>
+        <span class="s1">self.assertTrue(b.strides </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.internal </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">a = Exporter((</span><span class="s4">5</span><span class="s2">, </span><span class="s4">10</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">24</span><span class="s2">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">PyBUF_STRIDES)</span>
+        <span class="s1">self.assertTrue(b.obj </span><span class="s2">is </span><span class="s1">a)</span>
+        <span class="s1">self.assertTrue(b.format </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">a.len)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s1">a.itemsize)</span>
+        <span class="s1">self.assertEqual(b.shape</span><span class="s2">, </span><span class="s1">a.shape)</span>
+        <span class="s1">self.assertEqual(b.strides</span><span class="s2">, </span><span class="s1">a.strides)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.internal </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">PyBUF_FULL)</span>
+        <span class="s1">self.assertTrue(b.obj </span><span class="s2">is </span><span class="s1">a)</span>
+        <span class="s1">self.assertEqual(b.format</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">a.len)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s1">a.itemsize)</span>
+        <span class="s1">self.assertEqual(b.shape</span><span class="s2">, </span><span class="s1">a.shape)</span>
+        <span class="s1">self.assertEqual(b.strides</span><span class="s2">, </span><span class="s1">a.strides)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.internal </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">PyBUF_SIMPLE)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">PyBUF_WRITABLE)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">PyBUF_ND)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">PyBUF_C_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">PyBUF_F_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">PyBUF_ANY_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">PyBUF_CONTIG)</span>
+
+    <span class="s2">def </span><span class="s1">test_negative_strides(self):</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s2">, </span><span class="s1">(</span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'B'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">20</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s4">60</span><span class="s2">, </span><span class="s4">60</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s2">, </span><span class="s1">(</span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'B'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">20</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s4">45</span><span class="s2">, </span><span class="s4">60</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s2">, </span><span class="s1">(</span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'B'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">20</span><span class="s2">, </span><span class="s1">-</span><span class="s4">4</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s4">60</span><span class="s2">, </span><span class="s4">60</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">16</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s2">, </span><span class="s1">(</span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'B'</span><span class="s2">, </span><span class="s1">(-</span><span class="s4">20</span><span class="s2">, </span><span class="s1">-</span><span class="s4">4</span><span class="s2">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s4">60</span><span class="s2">, </span><span class="s4">60</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">59</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s2">, </span><span class="s1">(</span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'B'</span><span class="s2">, </span><span class="s1">(-</span><span class="s4">20</span><span class="s2">, </span><span class="s1">-</span><span class="s4">4</span><span class="s2">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">)</span><span class="s2">, </span><span class="s4">45</span><span class="s2">, </span><span class="s4">60</span><span class="s2">, </span><span class="s4">1</span><span class="s2">, </span><span class="s4">58</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_attributes(self):</span>
+        <span class="s1">a = Exporter((</span><span class="s4">13</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">11</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">(</span><span class="s4">440</span><span class="s2">, </span><span class="s4">88</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(a.ndim</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a.itemsize</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(a.readonly)</span>
+        <span class="s1">self.assertEqual(a.shape</span><span class="s2">, </span><span class="s1">(</span><span class="s4">13</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">11</span><span class="s2">, </span><span class="s4">3</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(a.format</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a.strides</span><span class="s2">, </span><span class="s1">(</span><span class="s4">440</span><span class="s2">, </span><span class="s4">88</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(a.len</span><span class="s2">, </span><span class="s4">4290</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a.buflen</span><span class="s2">, </span><span class="s4">5720</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a.buf</span><span class="s2">, </span><span class="s1">ctypes.addressof(a._buf))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">8</span><span class="s2">,</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(a.ndim</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a.itemsize</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(a.readonly)</span>
+        <span class="s1">self.assertEqual(a.shape</span><span class="s2">, </span><span class="s1">(</span><span class="s4">8</span><span class="s2">,</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(a.format</span><span class="s2">, </span><span class="s3">'B'</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(isinstance(a.strides</span><span class="s2">, </span><span class="s1">tuple))</span>
+        <span class="s1">self.assertEqual(a.strides</span><span class="s2">, </span><span class="s1">(</span><span class="s4">1</span><span class="s2">,</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(a.len</span><span class="s2">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a.buflen</span><span class="s2">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">a = Exporter([</span><span class="s4">13</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">11</span><span class="s2">, </span><span class="s4">3</span><span class="s1">]</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s1">[</span><span class="s4">440</span><span class="s2">, </span><span class="s4">88</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">2</span><span class="s1">])</span>
+        <span class="s1">self.assertTrue(isinstance(a.shape</span><span class="s2">, </span><span class="s1">tuple))</span>
+        <span class="s1">self.assertTrue(isinstance(a.strides</span><span class="s2">, </span><span class="s1">tuple))</span>
+        <span class="s1">self.assertEqual(a.shape</span><span class="s2">, </span><span class="s1">(</span><span class="s4">13</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">11</span><span class="s2">, </span><span class="s4">3</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(a.strides</span><span class="s2">, </span><span class="s1">(</span><span class="s4">440</span><span class="s2">, </span><span class="s4">88</span><span class="s2">, </span><span class="s4">8</span><span class="s2">, </span><span class="s4">2</span><span class="s1">))</span>
+
+    <span class="s2">def </span><span class="s1">test_itemsize(self):</span>
+        <span class="s1">exp = Exporter((</span><span class="s4">4</span><span class="s2">, </span><span class="s4">5</span><span class="s1">)</span><span class="s2">, </span><span class="s1">format=</span><span class="s3">'B'</span><span class="s2">, </span><span class="s1">itemsize=</span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">imp = Importer(exp</span><span class="s2">, </span><span class="s1">PyBUF_RECORDS)</span>
+        <span class="s1">self.assertEqual(imp.itemsize</span><span class="s2">, </span><span class="s4">8</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(imp.format</span><span class="s2">, </span><span class="s3">'B'</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(imp.strides</span><span class="s2">, </span><span class="s1">(</span><span class="s4">40</span><span class="s2">, </span><span class="s4">8</span><span class="s1">))</span>
+        <span class="s1">exp = Exporter((</span><span class="s4">4</span><span class="s2">, </span><span class="s4">5</span><span class="s1">)</span><span class="s2">, </span><span class="s1">format=</span><span class="s3">'weird'</span><span class="s2">, </span><span class="s1">itemsize=</span><span class="s4">5</span><span class="s1">)</span>
+        <span class="s1">imp = Importer(exp</span><span class="s2">, </span><span class="s1">PyBUF_RECORDS)</span>
+        <span class="s1">self.assertEqual(imp.itemsize</span><span class="s2">, </span><span class="s4">5</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(imp.format</span><span class="s2">, </span><span class="s3">'weird'</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(imp.strides</span><span class="s2">, </span><span class="s1">(</span><span class="s4">25</span><span class="s2">, </span><span class="s4">5</span><span class="s1">))</span>
+
+    <span class="s2">def </span><span class="s1">check_args(self</span><span class="s2">, </span><span class="s1">call_flags</span><span class="s2">,</span>
+                   <span class="s1">shape</span><span class="s2">, </span><span class="s1">format</span><span class="s2">, </span><span class="s1">strides</span><span class="s2">, </span><span class="s1">length</span><span class="s2">, </span><span class="s1">bufsize</span><span class="s2">, </span><span class="s1">itemsize</span><span class="s2">,</span>
+                   <span class="s1">offset=</span><span class="s4">0</span><span class="s1">):</span>
+        <span class="s1">format_arg = format </span><span class="s2">if </span><span class="s1">call_flags &amp; </span><span class="s4">1 </span><span class="s2">else None</span>
+        <span class="s1">strides_arg = strides </span><span class="s2">if </span><span class="s1">call_flags &amp; </span><span class="s4">2 </span><span class="s2">else None</span>
+        <span class="s1">a = Exporter(shape</span><span class="s2">, </span><span class="s1">format_arg</span><span class="s2">, </span><span class="s1">strides_arg)</span>
+        <span class="s1">self.assertEqual(a.buflen</span><span class="s2">, </span><span class="s1">bufsize)</span>
+        <span class="s1">self.assertEqual(a.buf</span><span class="s2">, </span><span class="s1">ctypes.addressof(a._buf) + offset)</span>
+        <span class="s1">m = Importer(a</span><span class="s2">, </span><span class="s1">PyBUF_RECORDS_RO)</span>
+        <span class="s1">self.assertEqual(m.buf</span><span class="s2">, </span><span class="s1">a.buf)</span>
+        <span class="s1">self.assertEqual(m.len</span><span class="s2">, </span><span class="s1">length)</span>
+        <span class="s1">self.assertEqual(m.format</span><span class="s2">, </span><span class="s1">format)</span>
+        <span class="s1">self.assertEqual(m.itemsize</span><span class="s2">, </span><span class="s1">itemsize)</span>
+        <span class="s1">self.assertEqual(m.shape</span><span class="s2">, </span><span class="s1">shape)</span>
+        <span class="s1">self.assertEqual(m.strides</span><span class="s2">, </span><span class="s1">strides)</span>
+
+
+<span class="s2">if </span><span class="s1">__name__ == </span><span class="s3">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

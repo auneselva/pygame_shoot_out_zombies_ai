@@ -1,0 +1,844 @@
+<html>
+<head>
+<title>midi.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #cc7832;}
+.s4 { color: #6a8759;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+midi.py</font>
+</center></td></tr></table>
+<pre><span class="s0">#!/usr/bin/env python</span>
+
+<span class="s2">&quot;&quot;&quot;Contains an example of midi input, and a separate example of midi output. 
+ 
+By default it runs the output example. 
+python midi.py --output 
+python midi.py --input 
+ 
+&quot;&quot;&quot;</span>
+
+<span class="s3">import </span><span class="s1">sys</span>
+<span class="s3">import </span><span class="s1">os</span>
+
+<span class="s3">import </span><span class="s1">pygame</span>
+<span class="s3">import </span><span class="s1">pygame.midi</span>
+<span class="s3">from </span><span class="s1">pygame.locals </span><span class="s3">import </span><span class="s1">*</span>
+
+<span class="s3">try</span><span class="s1">:  </span><span class="s0"># Ensure set available for output example</span>
+    <span class="s1">set</span>
+<span class="s3">except </span><span class="s1">NameError:</span>
+    <span class="s3">from </span><span class="s1">sets </span><span class="s3">import </span><span class="s1">Set </span><span class="s3">as </span><span class="s1">set</span>
+
+
+<span class="s3">def </span><span class="s1">print_device_info():</span>
+    <span class="s1">pygame.midi.init()</span>
+    <span class="s1">_print_device_info()</span>
+    <span class="s1">pygame.midi.quit()</span>
+
+<span class="s3">def </span><span class="s1">_print_device_info():</span>
+    <span class="s3">for </span><span class="s1">i </span><span class="s3">in </span><span class="s1">range( pygame.midi.get_count() ):</span>
+        <span class="s1">r = pygame.midi.get_device_info(i)</span>
+        <span class="s1">(interf</span><span class="s3">, </span><span class="s1">name</span><span class="s3">, </span><span class="s1">input</span><span class="s3">, </span><span class="s1">output</span><span class="s3">, </span><span class="s1">opened) = r</span>
+
+        <span class="s1">in_out = </span><span class="s4">&quot;&quot;</span>
+        <span class="s3">if </span><span class="s1">input:</span>
+            <span class="s1">in_out = </span><span class="s4">&quot;(input)&quot;</span>
+        <span class="s3">if </span><span class="s1">output:</span>
+            <span class="s1">in_out = </span><span class="s4">&quot;(output)&quot;</span>
+
+        <span class="s1">print (</span><span class="s4">&quot;%2i: interface :%s:, name :%s:, opened :%s:  %s&quot; </span><span class="s1">%</span>
+               <span class="s1">(i</span><span class="s3">, </span><span class="s1">interf</span><span class="s3">, </span><span class="s1">name</span><span class="s3">, </span><span class="s1">opened</span><span class="s3">, </span><span class="s1">in_out))</span>
+        
+
+
+
+<span class="s3">def </span><span class="s1">input_main(device_id = </span><span class="s3">None</span><span class="s1">):</span>
+    <span class="s1">pygame.init()</span>
+    <span class="s1">pygame.fastevent.init()</span>
+    <span class="s1">event_get = pygame.fastevent.get</span>
+    <span class="s1">event_post = pygame.fastevent.post</span>
+
+    <span class="s1">pygame.midi.init()</span>
+
+    <span class="s1">_print_device_info()</span>
+
+
+    <span class="s3">if </span><span class="s1">device_id </span><span class="s3">is None</span><span class="s1">:</span>
+        <span class="s1">input_id = pygame.midi.get_default_input_id()</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s1">input_id = device_id</span>
+
+    <span class="s1">print (</span><span class="s4">&quot;using input_id :%s:&quot; </span><span class="s1">% input_id)</span>
+    <span class="s1">i = pygame.midi.Input( input_id )</span>
+
+    <span class="s1">pygame.display.set_mode((</span><span class="s5">1</span><span class="s3">,</span><span class="s5">1</span><span class="s1">))</span>
+
+
+
+    <span class="s1">going = </span><span class="s3">True</span>
+    <span class="s3">while </span><span class="s1">going:</span>
+        <span class="s1">events = event_get()</span>
+        <span class="s3">for </span><span class="s1">e </span><span class="s3">in </span><span class="s1">events:</span>
+            <span class="s3">if </span><span class="s1">e.type </span><span class="s3">in </span><span class="s1">[QUIT]:</span>
+                <span class="s1">going = </span><span class="s3">False</span>
+            <span class="s3">if </span><span class="s1">e.type </span><span class="s3">in </span><span class="s1">[KEYDOWN]:</span>
+                <span class="s1">going = </span><span class="s3">False</span>
+            <span class="s3">if </span><span class="s1">e.type </span><span class="s3">in </span><span class="s1">[pygame.midi.MIDIIN]:</span>
+                <span class="s1">print (e)</span>
+
+        <span class="s3">if </span><span class="s1">i.poll():</span>
+            <span class="s1">midi_events = i.read(</span><span class="s5">10</span><span class="s1">)</span>
+            <span class="s0"># convert them into pygame events.</span>
+            <span class="s1">midi_evs = pygame.midi.midis2events(midi_events</span><span class="s3">, </span><span class="s1">i.device_id)</span>
+
+            <span class="s3">for </span><span class="s1">m_e </span><span class="s3">in </span><span class="s1">midi_evs:</span>
+                <span class="s1">event_post( m_e )</span>
+
+    <span class="s3">del </span><span class="s1">i</span>
+    <span class="s1">pygame.midi.quit()</span>
+
+
+
+<span class="s3">def </span><span class="s1">output_main(device_id = </span><span class="s3">None</span><span class="s1">):</span>
+    <span class="s2">&quot;&quot;&quot;Execute a musical keyboard example for the Church Organ instrument 
+ 
+    This is a piano keyboard example, with a two octave keyboard, starting at 
+    note F3. Left mouse down over a key starts a note, left up stops it. The 
+    notes are also mapped to the computer keyboard keys, assuming an American 
+    English PC keyboard (sorry everyone else, but I don't know if I can map to 
+    absolute key position instead of value.) The white keys are on the second 
+    row, TAB to BACKSLASH, starting with note F3. The black keys map to the top 
+    row, '1' to BACKSPACE, starting with F#3. 'r' is middle C. Close the 
+    window or press ESCAPE to quit the program. Key velocity (note 
+    amplitude) varies vertically on the keyboard image, with minimum velocity 
+    at the top of a key and maximum velocity at bottom. 
+ 
+    Default Midi output, no device_id given, is to the default output device 
+    for the computer. 
+     
+    &quot;&quot;&quot;</span>
+
+    <span class="s0"># A note to new pygamers:</span>
+    <span class="s0">#</span>
+    <span class="s0"># All the midi module stuff is in this function. It is unnecessary to</span>
+    <span class="s0"># understand how the keyboard display works to appreciate how midi</span>
+    <span class="s0"># messages are sent.</span>
+
+    <span class="s0"># The keyboard is drawn by a Keyboard instance. This instance maps Midi</span>
+    <span class="s0"># notes to musical keyboard keys. A regions surface maps window position</span>
+    <span class="s0"># to (Midi note, velocity) pairs. A key_mapping dictionary does the same</span>
+    <span class="s0"># for computer keyboard keys. Midi sound is controlled with direct method</span>
+    <span class="s0"># calls to a pygame.midi.Output instance.</span>
+    <span class="s0">#</span>
+    <span class="s0"># Things to consider when using pygame.midi:</span>
+    <span class="s0">#</span>
+    <span class="s0"># 1) Initialize the midi module with a to pygame.midi.init().</span>
+    <span class="s0"># 2) Create a midi.Output instance for the desired output device port.</span>
+    <span class="s0"># 3) Select instruments with set_instrument() method calls.</span>
+    <span class="s0"># 4) Play notes with note_on() and note_off() method calls.</span>
+    <span class="s0"># 5) Call pygame.midi.Quit() when finished. Though the midi module tries</span>
+    <span class="s0">#    to ensure that midi is properly shut down, it is best to do it</span>
+    <span class="s0">#    explicitly. A try/finally statement is the safest way to do this.</span>
+    <span class="s0">#</span>
+    <span class="s1">GRAND_PIANO = </span><span class="s5">0</span>
+    <span class="s1">CHURCH_ORGAN = </span><span class="s5">19</span>
+
+    <span class="s1">instrument = CHURCH_ORGAN</span>
+    <span class="s0">#instrument = GRAND_PIANO</span>
+    <span class="s1">start_note = </span><span class="s5">53  </span><span class="s0"># F3 (white key note), start_note != 0</span>
+    <span class="s1">n_notes = </span><span class="s5">24  </span><span class="s0"># Two octaves (14 white keys)</span>
+    
+    <span class="s1">bg_color = Color(</span><span class="s4">'slategray'</span><span class="s1">)</span>
+
+    <span class="s1">key_mapping = make_key_mapping([K_TAB</span><span class="s3">, </span><span class="s1">K_1</span><span class="s3">, </span><span class="s1">K_q</span><span class="s3">, </span><span class="s1">K_2</span><span class="s3">, </span><span class="s1">K_w</span><span class="s3">, </span><span class="s1">K_3</span><span class="s3">, </span><span class="s1">K_e</span><span class="s3">, </span><span class="s1">K_r</span><span class="s3">,</span>
+                                    <span class="s1">K_5</span><span class="s3">, </span><span class="s1">K_t</span><span class="s3">, </span><span class="s1">K_6</span><span class="s3">, </span><span class="s1">K_y</span><span class="s3">, </span><span class="s1">K_u</span><span class="s3">, </span><span class="s1">K_8</span><span class="s3">, </span><span class="s1">K_i</span><span class="s3">, </span><span class="s1">K_9</span><span class="s3">,</span>
+                                    <span class="s1">K_o</span><span class="s3">, </span><span class="s1">K_0</span><span class="s3">, </span><span class="s1">K_p</span><span class="s3">, </span><span class="s1">K_LEFTBRACKET</span><span class="s3">, </span><span class="s1">K_EQUALS</span><span class="s3">,</span>
+                                    <span class="s1">K_RIGHTBRACKET</span><span class="s3">, </span><span class="s1">K_BACKSPACE</span><span class="s3">, </span><span class="s1">K_BACKSLASH]</span><span class="s3">,</span>
+                                   <span class="s1">start_note)</span>
+    
+
+
+    <span class="s1">pygame.init()</span>
+    <span class="s1">pygame.midi.init()</span>
+
+    <span class="s1">_print_device_info()</span>
+
+    <span class="s3">if </span><span class="s1">device_id </span><span class="s3">is None</span><span class="s1">:</span>
+        <span class="s1">port = pygame.midi.get_default_output_id()</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s1">port = device_id</span>
+
+    <span class="s1">print (</span><span class="s4">&quot;using output_id :%s:&quot; </span><span class="s1">% port)</span>
+
+
+
+    <span class="s1">midi_out = pygame.midi.Output(port</span><span class="s3">, </span><span class="s5">0</span><span class="s1">)</span>
+    <span class="s3">try</span><span class="s1">:</span>
+        <span class="s1">midi_out.set_instrument(instrument)</span>
+        <span class="s1">keyboard = Keyboard(start_note</span><span class="s3">, </span><span class="s1">n_notes)</span>
+
+        <span class="s1">screen = pygame.display.set_mode(keyboard.rect.size)</span>
+        <span class="s1">screen.fill(bg_color)</span>
+        <span class="s1">pygame.display.flip()</span>
+
+        <span class="s1">background = pygame.Surface(screen.get_size())</span>
+        <span class="s1">background.fill(bg_color)</span>
+        <span class="s1">dirty_rects = []</span>
+        <span class="s1">keyboard.draw(screen</span><span class="s3">, </span><span class="s1">background</span><span class="s3">, </span><span class="s1">dirty_rects)</span>
+        <span class="s1">pygame.display.update(dirty_rects)</span>
+
+        <span class="s1">regions = pygame.Surface(screen.get_size())  </span><span class="s0"># initial color (0,0,0)</span>
+        <span class="s1">keyboard.map_regions(regions)</span>
+
+        <span class="s1">pygame.event.set_blocked(MOUSEMOTION)</span>
+        <span class="s1">repeat = </span><span class="s5">1</span>
+        <span class="s1">mouse_note = </span><span class="s5">0</span>
+        <span class="s1">on_notes = set()</span>
+        <span class="s3">while </span><span class="s5">1</span><span class="s1">:</span>
+            <span class="s1">update_rects = </span><span class="s3">None</span>
+            <span class="s1">e = pygame.event.wait()</span>
+            <span class="s3">if </span><span class="s1">e.type == pygame.MOUSEBUTTONDOWN:</span>
+                <span class="s1">mouse_note</span><span class="s3">, </span><span class="s1">velocity</span><span class="s3">, </span><span class="s1">__</span><span class="s3">, </span><span class="s1">__  = regions.get_at(e.pos)</span>
+                <span class="s3">if </span><span class="s1">mouse_note </span><span class="s3">and </span><span class="s1">mouse_note </span><span class="s3">not in </span><span class="s1">on_notes:</span>
+                    <span class="s1">keyboard.key_down(mouse_note)</span>
+                    <span class="s1">midi_out.note_on(mouse_note</span><span class="s3">, </span><span class="s1">velocity)</span>
+                    <span class="s1">on_notes.add(mouse_note)</span>
+                <span class="s3">else</span><span class="s1">:</span>
+                    <span class="s1">mouse_note = </span><span class="s5">0</span>
+            <span class="s3">elif </span><span class="s1">e.type == pygame.MOUSEBUTTONUP:</span>
+                <span class="s3">if </span><span class="s1">mouse_note:</span>
+                    <span class="s1">midi_out.note_off(mouse_note)</span>
+                    <span class="s1">keyboard.key_up(mouse_note)</span>
+                    <span class="s1">on_notes.remove(mouse_note)</span>
+                    <span class="s1">mouse_note = </span><span class="s5">0</span>
+            <span class="s3">elif </span><span class="s1">e.type == pygame.QUIT:</span>
+                <span class="s3">break</span>
+            <span class="s3">elif </span><span class="s1">e.type == pygame.KEYDOWN:</span>
+                <span class="s3">if </span><span class="s1">e.key == pygame.K_ESCAPE:</span>
+                    <span class="s3">break</span>
+                <span class="s3">try</span><span class="s1">:</span>
+                    <span class="s1">note</span><span class="s3">, </span><span class="s1">velocity = key_mapping[e.key]</span>
+                <span class="s3">except </span><span class="s1">KeyError:</span>
+                    <span class="s3">pass</span>
+                <span class="s3">else</span><span class="s1">:</span>
+                    <span class="s3">if </span><span class="s1">note </span><span class="s3">not in </span><span class="s1">on_notes:</span>
+                        <span class="s1">keyboard.key_down(note)</span>
+                        <span class="s1">midi_out.note_on(note</span><span class="s3">, </span><span class="s1">velocity)</span>
+                        <span class="s1">on_notes.add(note)</span>
+            <span class="s3">elif </span><span class="s1">e.type == pygame.KEYUP:</span>
+                <span class="s3">try</span><span class="s1">:</span>
+                    <span class="s1">note</span><span class="s3">, </span><span class="s1">__ = key_mapping[e.key]</span>
+                <span class="s3">except </span><span class="s1">KeyError:</span>
+                    <span class="s3">pass</span>
+                <span class="s3">else</span><span class="s1">:</span>
+                    <span class="s3">if </span><span class="s1">note </span><span class="s3">in </span><span class="s1">on_notes </span><span class="s3">and </span><span class="s1">note != mouse_note:</span>
+                        <span class="s1">keyboard.key_up(note)</span>
+                        <span class="s1">midi_out.note_off(note</span><span class="s3">, </span><span class="s5">0</span><span class="s1">)</span>
+                        <span class="s1">on_notes.remove(note)</span>
+
+            <span class="s1">dirty_rects = []</span>
+            <span class="s1">keyboard.draw(screen</span><span class="s3">, </span><span class="s1">background</span><span class="s3">, </span><span class="s1">dirty_rects)</span>
+            <span class="s1">pygame.display.update(dirty_rects)</span>
+    <span class="s3">finally</span><span class="s1">:</span>
+        <span class="s3">del </span><span class="s1">midi_out</span>
+        <span class="s1">pygame.midi.quit()</span>
+
+<span class="s3">def </span><span class="s1">make_key_mapping(key_list</span><span class="s3">, </span><span class="s1">start_note):</span>
+    <span class="s2">&quot;&quot;&quot;Return a dictionary of (note, velocity) by computer keyboard key code&quot;&quot;&quot;</span>
+    
+    <span class="s1">mapping = {}</span>
+    <span class="s3">for </span><span class="s1">i </span><span class="s3">in </span><span class="s1">range(len(key_list)):</span>
+        <span class="s1">mapping[key_list[i]] = (start_note + i</span><span class="s3">, </span><span class="s5">127</span><span class="s1">)</span>
+    <span class="s3">return </span><span class="s1">mapping</span>
+
+<span class="s3">class </span><span class="s1">NullKey(object):</span>
+    <span class="s2">&quot;&quot;&quot;A dummy key that ignores events passed to it by other keys 
+ 
+    A NullKey instance is the left key instance used by default 
+    for the left most keyboard key. 
+ 
+    &quot;&quot;&quot;</span>
+    
+    <span class="s3">def </span><span class="s1">_right_white_down(self):</span>
+        <span class="s3">pass</span>
+
+    <span class="s3">def </span><span class="s1">_right_white_up(self):</span>
+        <span class="s3">pass</span>
+
+    <span class="s3">def </span><span class="s1">_right_black_down(self):</span>
+        <span class="s3">pass</span>
+
+    <span class="s3">def </span><span class="s1">_right_black_up(self):</span>
+        <span class="s3">pass</span>
+
+<span class="s1">null_key = NullKey()</span>
+
+<span class="s3">def </span><span class="s1">key_class(updates</span><span class="s3">, </span><span class="s1">image_strip</span><span class="s3">, </span><span class="s1">image_rects</span><span class="s3">, </span><span class="s1">is_white_key=</span><span class="s3">True</span><span class="s1">):</span>
+    <span class="s2">&quot;&quot;&quot;Return a keyboard key widget class 
+ 
+    Arguments: 
+    updates - a set into which a key instance adds itself if it needs 
+        redrawing. 
+    image_strip - The surface containing the images of all key states. 
+    image_rects - A list of Rects giving the regions within image_strip that 
+        are relevant to this key class. 
+    is_white_key (default True) - Set false if this is a black key. 
+ 
+    This function automates the creation of a key widget class for the 
+    three basic key types. A key has two basic states, up or down ( 
+    depressed). Corresponding up and down images are drawn for each 
+    of these two states. But to give the illusion of depth, a key 
+    may have shadows cast upon it by the adjacent keys to its right. 
+    These shadows change depending on the up/down state of the key and 
+    its neighbors. So a key may support multiple images and states 
+    depending on the shadows. A key type is determined by the length 
+    of image_rects and the value of is_white. 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0"># Naming convention: Variables used by the Key class as part of a</span>
+    <span class="s0"># closure start with 'c_'.</span>
+
+    <span class="s0"># State logic and shadows:</span>
+    <span class="s0">#</span>
+    <span class="s0"># A key may cast a shadow upon the key to its left. A black key casts a</span>
+    <span class="s0"># shadow on an adjacent white key. The shadow changes depending of whether</span>
+    <span class="s0"># the black or white key is depressed. A white key casts a shadow on the</span>
+    <span class="s0"># white key to its left if it is up and the left key is down. Therefore</span>
+    <span class="s0"># a keys state, and image it will draw, is determined entirely by its</span>
+    <span class="s0"># itself and the key immediately adjacent to it on the right. A white key</span>
+    <span class="s0"># is always assumed to have an adjacent white key.</span>
+    <span class="s0">#</span>
+    <span class="s0"># There can be up to eight key states, representing all permutations</span>
+    <span class="s0"># of the three fundamental states of self up/down, adjacent white</span>
+    <span class="s0"># right up/down, adjacent black up/down.</span>
+    <span class="s0"># </span>
+    <span class="s1">down_state_none = </span><span class="s5">0</span>
+    <span class="s1">down_state_self = </span><span class="s5">1</span>
+    <span class="s1">down_state_white = down_state_self &lt;&lt; </span><span class="s5">1</span>
+    <span class="s1">down_state_self_white = down_state_self | down_state_white</span>
+    <span class="s1">down_state_black = down_state_white &lt;&lt; </span><span class="s5">1</span>
+    <span class="s1">down_state_self_black = down_state_self | down_state_black</span>
+    <span class="s1">down_state_white_black = down_state_white | down_state_black</span>
+    <span class="s1">down_state_all = down_state_self | down_state_white_black</span>
+
+    <span class="s0"># Some values used in the class.</span>
+    <span class="s0">#</span>
+    <span class="s1">c_down_state_initial = down_state_none</span>
+    <span class="s1">c_down_state_rect_initial = image_rects[</span><span class="s5">0</span><span class="s1">]</span>
+    <span class="s1">c_down_state_self = down_state_self</span>
+    <span class="s1">c_updates = updates</span>
+    <span class="s1">c_image_strip = image_strip</span>
+    <span class="s1">c_width</span><span class="s3">, </span><span class="s1">c_height = image_rects[</span><span class="s5">0</span><span class="s1">].size</span>
+
+    <span class="s0"># A key propagates its up/down state change to the adjacent white key on</span>
+    <span class="s0"># the left by calling the adjacent key's _right_black_down or</span>
+    <span class="s0"># _right_white_down method. </span>
+    <span class="s0">#</span>
+    <span class="s3">if </span><span class="s1">is_white_key:</span>
+        <span class="s1">key_color = </span><span class="s4">'white'</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s1">key_color = </span><span class="s4">'black'</span>
+    <span class="s1">c_notify_down_method = </span><span class="s4">&quot;_right_%s_down&quot; </span><span class="s1">% key_color</span>
+    <span class="s1">c_notify_up_method = </span><span class="s4">&quot;_right_%s_up&quot; </span><span class="s1">% key_color</span>
+
+    <span class="s0"># Images:</span>
+    <span class="s0">#</span>
+    <span class="s0"># A black key only needs two images, for the up and down states. Its</span>
+    <span class="s0"># appearance is unaffected by the adjacent keys to its right, which cast no</span>
+    <span class="s0"># shadows upon it.</span>
+    <span class="s0">#</span>
+    <span class="s0"># A white key with a no adjacent black to its right only needs three</span>
+    <span class="s0"># images, for self up, self down, and both self and adjacent white down.</span>
+    <span class="s0">#</span>
+    <span class="s0"># A white key with both a black and white key to its right needs six</span>
+    <span class="s0"># images: self up, self up and adjacent black down, self down, self and</span>
+    <span class="s0"># adjacent white down, self and adjacent black down, and all three down.</span>
+    <span class="s0">#</span>
+    <span class="s0"># Each 'c_event' dictionary maps the current key state to a new key state,</span>
+    <span class="s0"># along with corresponding image, for the related event. If no redrawing</span>
+    <span class="s0"># is required for the state change then the image rect is simply None.</span>
+    <span class="s0"># </span>
+    <span class="s1">c_event_down = {down_state_none: (down_state_self</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">1</span><span class="s1">])}</span>
+    <span class="s1">c_event_up = {down_state_self: (down_state_none</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">0</span><span class="s1">])}</span>
+    <span class="s1">c_event_right_white_down = {</span>
+        <span class="s1">down_state_none: (down_state_none</span><span class="s3">, None</span><span class="s1">)</span><span class="s3">,</span>
+        <span class="s1">down_state_self: (down_state_self</span><span class="s3">, None</span><span class="s1">)}</span>
+    <span class="s1">c_event_right_white_up = c_event_right_white_down.copy()</span>
+    <span class="s1">c_event_right_black_down = c_event_right_white_down.copy()</span>
+    <span class="s1">c_event_right_black_up = c_event_right_white_down.copy()</span>
+    <span class="s3">if </span><span class="s1">len(image_rects) &gt; </span><span class="s5">2</span><span class="s1">:</span>
+        <span class="s1">c_event_down[down_state_white] = (</span>
+            <span class="s1">down_state_self_white</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">2</span><span class="s1">])</span>
+        <span class="s1">c_event_up[down_state_self_white] = (down_state_white</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">0</span><span class="s1">])</span>
+        <span class="s1">c_event_right_white_down[down_state_none] = (down_state_white</span><span class="s3">, None</span><span class="s1">)</span>
+        <span class="s1">c_event_right_white_down[down_state_self] = (</span>
+            <span class="s1">down_state_self_white</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">2</span><span class="s1">])</span>
+        <span class="s1">c_event_right_white_up[down_state_white] = (down_state_none</span><span class="s3">, None</span><span class="s1">)</span>
+        <span class="s1">c_event_right_white_up[down_state_self_white] = (</span>
+            <span class="s1">down_state_self</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">1</span><span class="s1">])</span>
+        <span class="s1">c_event_right_black_down[down_state_white] = (</span>
+            <span class="s1">down_state_white</span><span class="s3">, None</span><span class="s1">)</span>
+        <span class="s1">c_event_right_black_down[down_state_self_white] = (</span>
+            <span class="s1">down_state_self_white</span><span class="s3">, None</span><span class="s1">)</span>
+        <span class="s1">c_event_right_black_up[down_state_white] = (</span>
+            <span class="s1">down_state_white</span><span class="s3">, None</span><span class="s1">)</span>
+        <span class="s1">c_event_right_black_up[down_state_self_white] = (</span>
+            <span class="s1">down_state_self_white</span><span class="s3">, None</span><span class="s1">)</span>
+    <span class="s3">if </span><span class="s1">len(image_rects) &gt; </span><span class="s5">3</span><span class="s1">:</span>
+        <span class="s1">c_event_down[down_state_black] = (</span>
+            <span class="s1">down_state_self_black</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">4</span><span class="s1">])</span>
+        <span class="s1">c_event_down[down_state_white_black] = (down_state_all</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">5</span><span class="s1">])</span>
+        <span class="s1">c_event_up[down_state_self_black] = (down_state_black</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">3</span><span class="s1">])</span>
+        <span class="s1">c_event_up[down_state_all] = (down_state_white_black</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">3</span><span class="s1">])</span>
+        <span class="s1">c_event_right_white_down[down_state_black] = (</span>
+            <span class="s1">down_state_white_black</span><span class="s3">, None</span><span class="s1">)</span>
+        <span class="s1">c_event_right_white_down[down_state_self_black] = (</span>
+            <span class="s1">down_state_all</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">5</span><span class="s1">])</span>
+        <span class="s1">c_event_right_white_up[down_state_white_black] = (</span>
+            <span class="s1">down_state_black</span><span class="s3">, None</span><span class="s1">)</span>
+        <span class="s1">c_event_right_white_up[down_state_all] = (</span>
+            <span class="s1">down_state_self_black</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">4</span><span class="s1">])</span>
+        <span class="s1">c_event_right_black_down[down_state_none] = (</span>
+            <span class="s1">down_state_black</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">3</span><span class="s1">])</span>
+        <span class="s1">c_event_right_black_down[down_state_self] = (</span>
+            <span class="s1">down_state_self_black</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">4</span><span class="s1">])</span>
+        <span class="s1">c_event_right_black_down[down_state_white] = (</span>
+            <span class="s1">down_state_white_black</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">3</span><span class="s1">])</span>
+        <span class="s1">c_event_right_black_down[down_state_self_white] = (</span>
+            <span class="s1">down_state_all</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">5</span><span class="s1">])</span>
+        <span class="s1">c_event_right_black_up[down_state_black] = (</span>
+            <span class="s1">down_state_none</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">0</span><span class="s1">])</span>
+        <span class="s1">c_event_right_black_up[down_state_self_black] = (</span>
+            <span class="s1">down_state_self</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">1</span><span class="s1">])</span>
+        <span class="s1">c_event_right_black_up[down_state_white_black] = (</span>
+            <span class="s1">down_state_white</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">0</span><span class="s1">])</span>
+        <span class="s1">c_event_right_black_up[down_state_all] = (</span>
+            <span class="s1">down_state_self_white</span><span class="s3">, </span><span class="s1">image_rects[</span><span class="s5">2</span><span class="s1">])</span>
+
+
+    <span class="s3">class </span><span class="s1">Key(object):</span>
+        <span class="s2">&quot;&quot;&quot;A key widget, maintains key state and draws the key's image 
+ 
+        Constructor arguments: 
+        ident - A unique key identifier. Any immutable type suitable as a key. 
+        posn - The location of the key on the display surface. 
+        key_left - Optional, the adjacent white key to the left. Changes in 
+            up and down state are propagated to that key. 
+ 
+        A key has an associated position and state. Related to state is the 
+        image drawn. State changes are managed with method calls, one method 
+        per event type. The up and down event methods are public. Other 
+        internal methods are for passing on state changes to the key_left 
+        key instance. 
+ 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">is_white = is_white_key</span>
+
+        <span class="s3">def </span><span class="s1">__init__(self</span><span class="s3">, </span><span class="s1">ident</span><span class="s3">, </span><span class="s1">posn</span><span class="s3">, </span><span class="s1">key_left = </span><span class="s3">None</span><span class="s1">):</span>
+            <span class="s2">&quot;&quot;&quot;Return a new Key instance 
+ 
+            The initial state is up, with all adjacent keys to the right also 
+            up. 
+ 
+            &quot;&quot;&quot;</span>
+            <span class="s3">if </span><span class="s1">key_left </span><span class="s3">is None</span><span class="s1">:</span>
+                <span class="s1">key_left = null_key</span>
+            <span class="s1">rect = Rect(posn[</span><span class="s5">0</span><span class="s1">]</span><span class="s3">, </span><span class="s1">posn[</span><span class="s5">1</span><span class="s1">]</span><span class="s3">, </span><span class="s1">c_width</span><span class="s3">, </span><span class="s1">c_height)</span>
+            <span class="s1">self.rect = rect</span>
+            <span class="s1">self._state = c_down_state_initial</span>
+            <span class="s1">self._source_rect = c_down_state_rect_initial</span>
+            <span class="s1">self._ident = ident</span>
+            <span class="s1">self._hash = hash(ident)</span>
+            <span class="s1">self._notify_down = getattr(key_left</span><span class="s3">, </span><span class="s1">c_notify_down_method)</span>
+            <span class="s1">self._notify_up = getattr(key_left</span><span class="s3">, </span><span class="s1">c_notify_up_method)</span>
+            <span class="s1">self._key_left = key_left</span>
+            <span class="s1">self._background_rect = Rect(rect.left</span><span class="s3">, </span><span class="s1">rect.bottom - </span><span class="s5">10</span><span class="s3">,</span>
+                                         <span class="s1">c_width</span><span class="s3">, </span><span class="s5">10</span><span class="s1">)</span>
+            <span class="s1">c_updates.add(self)</span>
+
+        <span class="s3">def </span><span class="s1">down(self):</span>
+            <span class="s2">&quot;&quot;&quot;Signal that this key has been depressed (is down)&quot;&quot;&quot;</span>
+            
+            <span class="s1">self._state</span><span class="s3">, </span><span class="s1">source_rect = c_event_down[self._state]</span>
+            <span class="s3">if </span><span class="s1">source_rect </span><span class="s3">is not None</span><span class="s1">:</span>
+                <span class="s1">self._source_rect = source_rect</span>
+                <span class="s1">c_updates.add(self)</span>
+                <span class="s1">self._notify_down()</span>
+
+        <span class="s3">def </span><span class="s1">up(self):</span>
+            <span class="s2">&quot;&quot;&quot;Signal that this key has been released (is up)&quot;&quot;&quot;</span>
+            
+            <span class="s1">self._state</span><span class="s3">, </span><span class="s1">source_rect = c_event_up[self._state]</span>
+            <span class="s3">if </span><span class="s1">source_rect </span><span class="s3">is not None</span><span class="s1">:</span>
+                <span class="s1">self._source_rect = source_rect</span>
+                <span class="s1">c_updates.add(self)</span>
+                <span class="s1">self._notify_up()</span>
+
+        <span class="s3">def </span><span class="s1">_right_white_down(self):</span>
+            <span class="s2">&quot;&quot;&quot;Signal that the adjacent white key has been depressed 
+ 
+            This method is for internal propagation of events between 
+            key instances. 
+ 
+            &quot;&quot;&quot;</span>
+            
+            <span class="s1">self._state</span><span class="s3">, </span><span class="s1">source_rect = c_event_right_white_down[self._state]</span>
+            <span class="s3">if </span><span class="s1">source_rect </span><span class="s3">is not None</span><span class="s1">:</span>
+                <span class="s1">self._source_rect = source_rect</span>
+                <span class="s1">c_updates.add(self)</span>
+
+        <span class="s3">def </span><span class="s1">_right_white_up(self):</span>
+            <span class="s2">&quot;&quot;&quot;Signal that the adjacent white key has been released 
+ 
+            This method is for internal propagation of events between 
+            key instances. 
+ 
+            &quot;&quot;&quot;</span>
+            
+            <span class="s1">self._state</span><span class="s3">, </span><span class="s1">source_rect = c_event_right_white_up[self._state]</span>
+            <span class="s3">if </span><span class="s1">source_rect </span><span class="s3">is not None</span><span class="s1">:</span>
+                <span class="s1">self._source_rect = source_rect</span>
+                <span class="s1">c_updates.add(self)</span>
+
+        <span class="s3">def </span><span class="s1">_right_black_down(self):</span>
+            <span class="s2">&quot;&quot;&quot;Signal that the adjacent black key has been depressed 
+ 
+            This method is for internal propagation of events between 
+            key instances. 
+ 
+            &quot;&quot;&quot;</span>
+
+            <span class="s1">self._state</span><span class="s3">, </span><span class="s1">source_rect = c_event_right_black_down[self._state]</span>
+            <span class="s3">if </span><span class="s1">source_rect </span><span class="s3">is not None</span><span class="s1">:</span>
+                <span class="s1">self._source_rect = source_rect</span>
+                <span class="s1">c_updates.add(self)</span>
+
+        <span class="s3">def </span><span class="s1">_right_black_up(self):</span>
+            <span class="s2">&quot;&quot;&quot;Signal that the adjacent black key has been released 
+ 
+            This method is for internal propagation of events between 
+            key instances. 
+ 
+            &quot;&quot;&quot;</span>
+
+            <span class="s1">self._state</span><span class="s3">, </span><span class="s1">source_rect = c_event_right_black_up[self._state]</span>
+            <span class="s3">if </span><span class="s1">source_rect </span><span class="s3">is not None</span><span class="s1">:</span>
+                <span class="s1">self._source_rect = source_rect</span>
+                <span class="s1">c_updates.add(self)</span>
+
+        <span class="s3">def </span><span class="s1">__eq__(self</span><span class="s3">, </span><span class="s1">other):</span>
+            <span class="s2">&quot;&quot;&quot;True if same identifiers&quot;&quot;&quot;</span>
+            
+            <span class="s3">return </span><span class="s1">self._ident == other._ident</span>
+
+        <span class="s3">def </span><span class="s1">__hash__(self):</span>
+            <span class="s2">&quot;&quot;&quot;Return the immutable hash value&quot;&quot;&quot;</span>
+            
+            <span class="s3">return </span><span class="s1">self._hash</span>
+
+        <span class="s3">def </span><span class="s1">__str__(self):</span>
+            <span class="s2">&quot;&quot;&quot;Return the key's identifier and position as a string&quot;&quot;&quot;</span>
+            
+            <span class="s3">return </span><span class="s1">(</span><span class="s4">&quot;&lt;Key %s at (%d, %d)&gt;&quot; </span><span class="s1">%</span>
+                    <span class="s1">(self._ident</span><span class="s3">, </span><span class="s1">self.rect.top</span><span class="s3">, </span><span class="s1">self.rect.left))</span>
+
+        <span class="s3">def </span><span class="s1">draw(self</span><span class="s3">, </span><span class="s1">surf</span><span class="s3">, </span><span class="s1">background</span><span class="s3">, </span><span class="s1">dirty_rects):</span>
+            <span class="s2">&quot;&quot;&quot;Redraw the key on the surface surf 
+ 
+            The background is redrawn. The altered region is added to the 
+            dirty_rects list. 
+ 
+            &quot;&quot;&quot;</span>
+            
+            <span class="s1">surf.blit(background</span><span class="s3">, </span><span class="s1">self._background_rect</span><span class="s3">, </span><span class="s1">self._background_rect)</span>
+            <span class="s1">surf.blit(c_image_strip</span><span class="s3">, </span><span class="s1">self.rect</span><span class="s3">, </span><span class="s1">self._source_rect)</span>
+            <span class="s1">dirty_rects.append(self.rect)</span>
+
+    <span class="s3">return </span><span class="s1">Key</span>
+
+<span class="s3">def </span><span class="s1">key_images():</span>
+    <span class="s2">&quot;&quot;&quot;Return a keyboard keys image strip and a mapping of image locations 
+ 
+    The return tuple is a surface and a dictionary of rects mapped to key 
+    type. 
+ 
+    This function encapsulates the constants relevant to the keyboard image 
+    file. There are five key types. One is the black key. The other four 
+    white keys are determined by the proximity of the black keys. The plain 
+    white key has no black key adjacent to it. A white-left and white-right 
+    key has a black key to the left or right of it respectively. A white-center 
+    key has a black key on both sides. A key may have up to six related 
+    images depending on the state of adjacent keys to its right. 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">my_dir = os.path.split(os.path.abspath(__file__))[</span><span class="s5">0</span><span class="s1">]</span>
+    <span class="s1">strip_file = os.path.join(my_dir</span><span class="s3">, </span><span class="s4">'data'</span><span class="s3">, </span><span class="s4">'midikeys.png'</span><span class="s1">)</span>
+    <span class="s1">white_key_width = </span><span class="s5">42</span>
+    <span class="s1">white_key_height = </span><span class="s5">160</span>
+    <span class="s1">black_key_width = </span><span class="s5">22</span>
+    <span class="s1">black_key_height = </span><span class="s5">94</span>
+    <span class="s1">strip = pygame.image.load(strip_file)</span>
+    <span class="s1">names = [</span>
+        <span class="s4">'black none'</span><span class="s3">, </span><span class="s4">'black self'</span><span class="s3">,</span>
+        <span class="s4">'white none'</span><span class="s3">, </span><span class="s4">'white self'</span><span class="s3">, </span><span class="s4">'white self-white'</span><span class="s3">,</span>
+        <span class="s4">'white-left none'</span><span class="s3">, </span><span class="s4">'white-left self'</span><span class="s3">, </span><span class="s4">'white-left black'</span><span class="s3">,</span>
+        <span class="s4">'white-left self-black'</span><span class="s3">, </span><span class="s4">'white-left self-white'</span><span class="s3">, </span><span class="s4">'white-left all'</span><span class="s3">,</span>
+        <span class="s4">'white-center none'</span><span class="s3">, </span><span class="s4">'white-center self'</span><span class="s3">,</span>
+        <span class="s4">'white-center black'</span><span class="s3">, </span><span class="s4">'white-center self-black'</span><span class="s3">,</span>
+        <span class="s4">'white-center self-white'</span><span class="s3">, </span><span class="s4">'white-center all'</span><span class="s3">,</span>
+        <span class="s4">'white-right none'</span><span class="s3">, </span><span class="s4">'white-right self'</span><span class="s3">, </span><span class="s4">'white-right self-white'</span><span class="s1">]</span>
+    <span class="s1">rects = {}</span>
+    <span class="s3">for </span><span class="s1">i </span><span class="s3">in </span><span class="s1">range(</span><span class="s5">2</span><span class="s1">):</span>
+        <span class="s1">rects[names[i]] = Rect(i * white_key_width</span><span class="s3">, </span><span class="s5">0</span><span class="s3">,</span>
+                               <span class="s1">black_key_width</span><span class="s3">, </span><span class="s1">black_key_height)</span>
+    <span class="s3">for </span><span class="s1">i </span><span class="s3">in </span><span class="s1">range(</span><span class="s5">2</span><span class="s3">, </span><span class="s1">len(names)):</span>
+        <span class="s1">rects[names[i]] = Rect(i * white_key_width</span><span class="s3">, </span><span class="s5">0</span><span class="s3">,</span>
+                               <span class="s1">white_key_width</span><span class="s3">, </span><span class="s1">white_key_height)</span>
+    <span class="s3">return </span><span class="s1">strip</span><span class="s3">, </span><span class="s1">rects</span>
+
+<span class="s3">class </span><span class="s1">Keyboard(object):</span>
+    <span class="s2">&quot;&quot;&quot;Musical keyboard widget 
+ 
+    Constructor arguments: 
+    start_note: midi note value of the starting note on the keyboard. 
+    n_notes: number of notes (keys) on the keyboard. 
+ 
+    A Keyboard instance draws the musical keyboard and maintains the state of 
+    all the keyboard keys. Individual keys can be in a down (depressed) or 
+    up (released) state. 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">_image_strip</span><span class="s3">, </span><span class="s1">_rects = key_images()</span>
+
+    <span class="s1">white_key_width</span><span class="s3">, </span><span class="s1">white_key_height = _rects[</span><span class="s4">'white none'</span><span class="s1">].size</span>
+    <span class="s1">black_key_width</span><span class="s3">, </span><span class="s1">black_key_height = _rects[</span><span class="s4">'black none'</span><span class="s1">].size</span>
+
+    <span class="s1">_updates = set()</span>
+
+    <span class="s0"># There are five key classes, representing key shape:</span>
+    <span class="s0"># black key (BlackKey), plain white key (WhiteKey), white key to the left</span>
+    <span class="s0"># of a black key (WhiteKeyLeft), white key between two black keys</span>
+    <span class="s0"># (WhiteKeyCenter), and white key to the right of a black key</span>
+    <span class="s0"># (WhiteKeyRight).</span>
+    <span class="s1">BlackKey = key_class(_updates</span><span class="s3">,</span>
+                         <span class="s1">_image_strip</span><span class="s3">,</span>
+                         <span class="s1">[_rects[</span><span class="s4">'black none'</span><span class="s1">]</span><span class="s3">, </span><span class="s1">_rects[</span><span class="s4">'black self'</span><span class="s1">]]</span><span class="s3">,</span>
+                         <span class="s3">False</span><span class="s1">)</span>
+    <span class="s1">WhiteKey = key_class(_updates</span><span class="s3">,</span>
+                         <span class="s1">_image_strip</span><span class="s3">,</span>
+                         <span class="s1">[_rects[</span><span class="s4">'white none'</span><span class="s1">]</span><span class="s3">,</span>
+                          <span class="s1">_rects[</span><span class="s4">'white self'</span><span class="s1">]</span><span class="s3">,</span>
+                          <span class="s1">_rects[</span><span class="s4">'white self-white'</span><span class="s1">]])</span>
+    <span class="s1">WhiteKeyLeft = key_class(_updates</span><span class="s3">,</span>
+                             <span class="s1">_image_strip</span><span class="s3">,</span>
+                             <span class="s1">[_rects[</span><span class="s4">'white-left none'</span><span class="s1">]</span><span class="s3">,</span>
+                              <span class="s1">_rects[</span><span class="s4">'white-left self'</span><span class="s1">]</span><span class="s3">,</span>
+                              <span class="s1">_rects[</span><span class="s4">'white-left self-white'</span><span class="s1">]</span><span class="s3">,</span>
+                              <span class="s1">_rects[</span><span class="s4">'white-left black'</span><span class="s1">]</span><span class="s3">,</span>
+                              <span class="s1">_rects[</span><span class="s4">'white-left self-black'</span><span class="s1">]</span><span class="s3">,</span>
+                              <span class="s1">_rects[</span><span class="s4">'white-left all'</span><span class="s1">]])</span>
+    <span class="s1">WhiteKeyCenter = key_class(_updates</span><span class="s3">,</span>
+                               <span class="s1">_image_strip</span><span class="s3">,</span>
+                               <span class="s1">[_rects[</span><span class="s4">'white-center none'</span><span class="s1">]</span><span class="s3">,</span>
+                                <span class="s1">_rects[</span><span class="s4">'white-center self'</span><span class="s1">]</span><span class="s3">,</span>
+                                <span class="s1">_rects[</span><span class="s4">'white-center self-white'</span><span class="s1">]</span><span class="s3">,</span>
+                                <span class="s1">_rects[</span><span class="s4">'white-center black'</span><span class="s1">]</span><span class="s3">,</span>
+                                <span class="s1">_rects[</span><span class="s4">'white-center self-black'</span><span class="s1">]</span><span class="s3">,</span>
+                                <span class="s1">_rects[</span><span class="s4">'white-center all'</span><span class="s1">]])</span>
+    <span class="s1">WhiteKeyRight = key_class(_updates</span><span class="s3">,</span>
+                              <span class="s1">_image_strip</span><span class="s3">,</span>
+                              <span class="s1">[_rects[</span><span class="s4">'white-right none'</span><span class="s1">]</span><span class="s3">,</span>
+                               <span class="s1">_rects[</span><span class="s4">'white-right self'</span><span class="s1">]</span><span class="s3">,</span>
+                               <span class="s1">_rects[</span><span class="s4">'white-right self-white'</span><span class="s1">]])</span>
+
+    <span class="s3">def </span><span class="s1">__init__(self</span><span class="s3">, </span><span class="s1">start_note</span><span class="s3">, </span><span class="s1">n_notes):</span>
+        <span class="s2">&quot;&quot;&quot;Return a new Keyboard instance with n_note keys&quot;&quot;&quot;</span>
+
+        <span class="s1">self._start_note = start_note</span>
+        <span class="s1">self._end_note = start_note + n_notes - </span><span class="s5">1</span>
+        <span class="s1">self._add_keys()</span>
+
+    <span class="s3">def </span><span class="s1">_add_keys(self):</span>
+        <span class="s2">&quot;&quot;&quot;Populate the keyboard with key instances 
+ 
+        Set the _keys and rect attributes. 
+         
+        &quot;&quot;&quot;</span>
+
+        <span class="s0"># Keys are entered in a list, where index is Midi note. Since there are</span>
+        <span class="s0"># only 128 possible Midi notes the list length is managable. Unassigned</span>
+        <span class="s0"># note positions should never be accessed, so are set None to ensure</span>
+        <span class="s0"># the bug is quickly detected.</span>
+        <span class="s0">#</span>
+        <span class="s1">key_map = [</span><span class="s3">None</span><span class="s1">] * </span><span class="s5">128</span>
+
+        <span class="s1">start_note = self._start_note</span>
+        <span class="s1">end_note = self._end_note</span>
+        <span class="s1">black_offset = self.black_key_width // </span><span class="s5">2</span>
+        <span class="s1">prev_white_key = </span><span class="s3">None</span>
+        <span class="s1">x = y = </span><span class="s5">0</span>
+        <span class="s3">if </span><span class="s1">is_white_key(start_note):</span>
+            <span class="s1">is_prev_white = </span><span class="s3">True</span>
+        <span class="s3">else</span><span class="s1">:</span>
+            <span class="s1">x += black_offset</span>
+            <span class="s1">is_prev_white = </span><span class="s3">False</span>
+        <span class="s3">for </span><span class="s1">note </span><span class="s3">in </span><span class="s1">range(start_note</span><span class="s3">, </span><span class="s1">end_note + </span><span class="s5">1</span><span class="s1">):</span>
+            <span class="s1">ident = note  </span><span class="s0"># For now notes uniquely identify keyboard keys.</span>
+            <span class="s3">if </span><span class="s1">is_white_key(note):</span>
+                <span class="s3">if </span><span class="s1">is_prev_white:</span>
+                    <span class="s3">if </span><span class="s1">note == end_note </span><span class="s3">or </span><span class="s1">is_white_key(note + </span><span class="s5">1</span><span class="s1">):</span>
+                        <span class="s1">key = self.WhiteKey(ident</span><span class="s3">, </span><span class="s1">(x</span><span class="s3">, </span><span class="s1">y)</span><span class="s3">, </span><span class="s1">prev_white_key)</span>
+                    <span class="s3">else</span><span class="s1">:</span>
+                        <span class="s1">key = self.WhiteKeyLeft(ident</span><span class="s3">, </span><span class="s1">(x</span><span class="s3">, </span><span class="s1">y)</span><span class="s3">, </span><span class="s1">prev_white_key)</span>
+                <span class="s3">else</span><span class="s1">:</span>
+                    <span class="s3">if </span><span class="s1">note == end_note </span><span class="s3">or </span><span class="s1">is_white_key(note + </span><span class="s5">1</span><span class="s1">):</span>
+                        <span class="s1">key = self.WhiteKeyRight(ident</span><span class="s3">, </span><span class="s1">(x</span><span class="s3">, </span><span class="s1">y)</span><span class="s3">, </span><span class="s1">prev_white_key)</span>
+                    <span class="s3">else</span><span class="s1">:</span>
+                        <span class="s1">key = self.WhiteKeyCenter(ident</span><span class="s3">,</span>
+                                                  <span class="s1">(x</span><span class="s3">, </span><span class="s1">y)</span><span class="s3">,</span>
+                                                  <span class="s1">prev_white_key)</span>
+                <span class="s1">is_prev_white = </span><span class="s3">True</span>
+                <span class="s1">x += self.white_key_width</span>
+                <span class="s1">prev_white_key = key</span>
+            <span class="s3">else</span><span class="s1">:</span>
+                <span class="s1">key = self.BlackKey(ident</span><span class="s3">,</span>
+                                    <span class="s1">(x - black_offset</span><span class="s3">, </span><span class="s1">y)</span><span class="s3">,</span>
+                                    <span class="s1">prev_white_key)</span>
+                <span class="s1">is_prev_white = </span><span class="s3">False</span>
+            <span class="s1">key_map[note] = key</span>
+        <span class="s1">self._keys = key_map</span>
+
+        <span class="s1">kb_width = key_map[self._end_note].rect.right</span>
+        <span class="s1">kb_height = self.white_key_height</span>
+        <span class="s1">self.rect = Rect(</span><span class="s5">0</span><span class="s3">, </span><span class="s5">0</span><span class="s3">, </span><span class="s1">kb_width</span><span class="s3">, </span><span class="s1">kb_height)</span>
+
+    <span class="s3">def </span><span class="s1">map_regions(self</span><span class="s3">, </span><span class="s1">regions):</span>
+        <span class="s2">&quot;&quot;&quot;Draw the key regions onto surface regions. 
+ 
+        Regions must have at least 3 byte pixels. Each pixel of the keyboard 
+        rectangle is set to the color (note, velocity, 0). The regions surface 
+        must be at least as large as (0, 0, self.rect.left, self.rect.bottom) 
+ 
+        &quot;&quot;&quot;</span>
+
+        <span class="s0"># First draw the white key regions. Then add the overlapping</span>
+        <span class="s0"># black key regions.</span>
+        <span class="s0">#</span>
+        <span class="s1">cutoff = self.black_key_height</span>
+        <span class="s1">black_keys = []</span>
+        <span class="s3">for </span><span class="s1">note </span><span class="s3">in </span><span class="s1">range(self._start_note</span><span class="s3">, </span><span class="s1">self._end_note + </span><span class="s5">1</span><span class="s1">):</span>
+            <span class="s1">key = self._keys[note]</span>
+            <span class="s3">if </span><span class="s1">key.is_white:</span>
+                <span class="s1">fill_region(regions</span><span class="s3">, </span><span class="s1">note</span><span class="s3">, </span><span class="s1">key.rect</span><span class="s3">, </span><span class="s1">cutoff)</span>
+            <span class="s3">else</span><span class="s1">:</span>
+                <span class="s1">black_keys.append((note</span><span class="s3">, </span><span class="s1">key))</span>
+        <span class="s3">for </span><span class="s1">note</span><span class="s3">, </span><span class="s1">key </span><span class="s3">in </span><span class="s1">black_keys:</span>
+            <span class="s1">fill_region(regions</span><span class="s3">, </span><span class="s1">note</span><span class="s3">, </span><span class="s1">key.rect</span><span class="s3">, </span><span class="s1">cutoff)</span>
+
+    <span class="s3">def </span><span class="s1">draw(self</span><span class="s3">, </span><span class="s1">surf</span><span class="s3">, </span><span class="s1">background</span><span class="s3">, </span><span class="s1">dirty_rects):</span>
+        <span class="s2">&quot;&quot;&quot;Redraw all altered keyboard keys&quot;&quot;&quot;</span>
+        
+        <span class="s1">changed_keys = self._updates</span>
+        <span class="s3">while </span><span class="s1">changed_keys:</span>
+            <span class="s1">changed_keys.pop().draw(surf</span><span class="s3">, </span><span class="s1">background</span><span class="s3">, </span><span class="s1">dirty_rects)</span>
+
+    <span class="s3">def </span><span class="s1">key_down(self</span><span class="s3">, </span><span class="s1">note):</span>
+        <span class="s2">&quot;&quot;&quot;Signal a key down event for note&quot;&quot;&quot;</span>
+
+        <span class="s1">self._keys[note].down()</span>
+
+    <span class="s3">def </span><span class="s1">key_up(self</span><span class="s3">, </span><span class="s1">note):</span>
+        <span class="s2">&quot;&quot;&quot;Signal a key up event for note&quot;&quot;&quot;</span>
+
+        <span class="s1">self._keys[note].up()</span>
+
+<span class="s3">def </span><span class="s1">fill_region(regions</span><span class="s3">, </span><span class="s1">note</span><span class="s3">, </span><span class="s1">rect</span><span class="s3">, </span><span class="s1">cutoff):</span>
+    <span class="s2">&quot;&quot;&quot;Fill the region defined by rect with a (note, velocity, 0) color 
+ 
+    The velocity varies from a small value at the top of the region to 
+    127 at the bottom. The vertical region 0 to cutoff is split into 
+    three parts, with velocities 42, 84 and 127. Everything below cutoff 
+    has velocity 127. 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">x</span><span class="s3">, </span><span class="s1">y</span><span class="s3">, </span><span class="s1">width</span><span class="s3">, </span><span class="s1">height = rect</span>
+    <span class="s3">if </span><span class="s1">cutoff </span><span class="s3">is None</span><span class="s1">:</span>
+        <span class="s1">cutoff = height</span>
+    <span class="s1">delta_height = cutoff // </span><span class="s5">3</span>
+    <span class="s1">regions.fill((note</span><span class="s3">, </span><span class="s5">42</span><span class="s3">, </span><span class="s5">0</span><span class="s1">)</span><span class="s3">,</span>
+                 <span class="s1">(x</span><span class="s3">, </span><span class="s1">y</span><span class="s3">, </span><span class="s1">width</span><span class="s3">, </span><span class="s1">delta_height))</span>
+    <span class="s1">regions.fill((note</span><span class="s3">, </span><span class="s5">84</span><span class="s3">, </span><span class="s5">0</span><span class="s1">)</span><span class="s3">,</span>
+                 <span class="s1">(x</span><span class="s3">, </span><span class="s1">y + delta_height</span><span class="s3">, </span><span class="s1">width</span><span class="s3">, </span><span class="s1">delta_height))</span>
+    <span class="s1">regions.fill((note</span><span class="s3">, </span><span class="s5">127</span><span class="s3">, </span><span class="s5">0</span><span class="s1">)</span><span class="s3">,</span>
+                 <span class="s1">(x</span><span class="s3">, </span><span class="s1">y + </span><span class="s5">2 </span><span class="s1">* delta_height</span><span class="s3">, </span><span class="s1">width</span><span class="s3">, </span><span class="s1">height - </span><span class="s5">2 </span><span class="s1">* delta_height))</span>
+    
+<span class="s3">def </span><span class="s1">is_white_key(note):</span>
+    <span class="s2">&quot;&quot;&quot;True if note is represented by a white key&quot;&quot;&quot;</span>
+    
+    <span class="s1">key_pattern = [</span><span class="s3">True, False, True, True, False, True,</span>
+                   <span class="s3">False, True, True, False, True, False</span><span class="s1">]</span>
+    <span class="s3">return </span><span class="s1">key_pattern[(note - </span><span class="s5">21</span><span class="s1">) % len(key_pattern)]</span>
+
+
+<span class="s3">def </span><span class="s1">usage():</span>
+    <span class="s1">print (</span><span class="s4">&quot;--input [device_id] : Midi message logger&quot;</span><span class="s1">)</span>
+    <span class="s1">print (</span><span class="s4">&quot;--output [device_id] : Midi piano keyboard&quot;</span><span class="s1">)</span>
+    <span class="s1">print (</span><span class="s4">&quot;--list : list available midi devices&quot;</span><span class="s1">)</span>
+
+<span class="s3">def </span><span class="s1">main(mode=</span><span class="s4">'output'</span><span class="s3">, </span><span class="s1">device_id=</span><span class="s3">None</span><span class="s1">):</span>
+    <span class="s2">&quot;&quot;&quot;Run a Midi example 
+ 
+    Arguments: 
+    mode - if 'output' run a midi keyboard output example 
+              'input' run a midi event logger input example 
+              'list' list available midi devices 
+           (default 'output') 
+    device_id - midi device number; if None then use the default midi input or 
+                output device for the system 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s3">if </span><span class="s1">mode == </span><span class="s4">'input'</span><span class="s1">:</span>
+        <span class="s1">input_main(device_id)</span>
+    <span class="s3">elif </span><span class="s1">mode == </span><span class="s4">'output'</span><span class="s1">:</span>
+        <span class="s1">output_main(device_id)</span>
+    <span class="s3">elif </span><span class="s1">mode == </span><span class="s4">'list'</span><span class="s1">:</span>
+        <span class="s1">print_device_info()</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s3">raise </span><span class="s1">ValueError(</span><span class="s4">&quot;Unknown mode option '%s'&quot; </span><span class="s1">% mode)</span>
+                
+<span class="s3">if </span><span class="s1">__name__ == </span><span class="s4">'__main__'</span><span class="s1">:</span>
+
+    <span class="s3">try</span><span class="s1">:</span>
+        <span class="s1">device_id = int( sys.argv[-</span><span class="s5">1</span><span class="s1">] )</span>
+    <span class="s3">except</span><span class="s1">:</span>
+        <span class="s1">device_id = </span><span class="s3">None</span>
+
+    <span class="s3">if </span><span class="s4">&quot;--input&quot; </span><span class="s3">in </span><span class="s1">sys.argv </span><span class="s3">or </span><span class="s4">&quot;-i&quot; </span><span class="s3">in </span><span class="s1">sys.argv:</span>
+
+        <span class="s1">input_main(device_id)</span>
+
+    <span class="s3">elif </span><span class="s4">&quot;--output&quot; </span><span class="s3">in </span><span class="s1">sys.argv </span><span class="s3">or </span><span class="s4">&quot;-o&quot; </span><span class="s3">in </span><span class="s1">sys.argv:</span>
+        <span class="s1">output_main(device_id)</span>
+    <span class="s3">elif </span><span class="s4">&quot;--list&quot; </span><span class="s3">in </span><span class="s1">sys.argv </span><span class="s3">or </span><span class="s4">&quot;-l&quot; </span><span class="s3">in </span><span class="s1">sys.argv:</span>
+        <span class="s1">print_device_info()</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s1">usage()</span>
+</pre>
+</body>
+</html>

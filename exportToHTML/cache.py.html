@@ -1,0 +1,246 @@
+<html>
+<head>
+<title>cache.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #808080;}
+.s4 { color: #6a8759;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+cache.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Cache Management 
+&quot;&quot;&quot;</span>
+
+<span class="s2">import </span><span class="s1">errno</span>
+<span class="s2">import </span><span class="s1">hashlib</span>
+<span class="s2">import </span><span class="s1">logging</span>
+<span class="s2">import </span><span class="s1">os</span>
+
+<span class="s2">from </span><span class="s1">pip._vendor.packaging.utils </span><span class="s2">import </span><span class="s1">canonicalize_name</span>
+
+<span class="s2">from </span><span class="s1">pip._internal.download </span><span class="s2">import </span><span class="s1">path_to_url</span>
+<span class="s2">from </span><span class="s1">pip._internal.models.link </span><span class="s2">import </span><span class="s1">Link</span>
+<span class="s2">from </span><span class="s1">pip._internal.utils.compat </span><span class="s2">import </span><span class="s1">expanduser</span>
+<span class="s2">from </span><span class="s1">pip._internal.utils.temp_dir </span><span class="s2">import </span><span class="s1">TempDirectory</span>
+<span class="s2">from </span><span class="s1">pip._internal.utils.typing </span><span class="s2">import </span><span class="s1">MYPY_CHECK_RUNNING</span>
+<span class="s2">from </span><span class="s1">pip._internal.wheel </span><span class="s2">import </span><span class="s1">InvalidWheelFilename</span><span class="s2">, </span><span class="s1">Wheel</span>
+
+<span class="s2">if </span><span class="s1">MYPY_CHECK_RUNNING:</span>
+    <span class="s2">from </span><span class="s1">typing </span><span class="s2">import </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Set</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Any  </span><span class="s3"># noqa: F401</span>
+    <span class="s2">from </span><span class="s1">pip._internal.index </span><span class="s2">import </span><span class="s1">FormatControl  </span><span class="s3"># noqa: F401</span>
+
+<span class="s1">logger = logging.getLogger(__name__)</span>
+
+
+<span class="s2">class </span><span class="s1">Cache(object):</span>
+    <span class="s0">&quot;&quot;&quot;An abstract class - provides cache directories for data from links 
+ 
+ 
+        :param cache_dir: The root of the cache. 
+        :param format_control: An object of FormatControl class to limit 
+            binaries being read from the cache. 
+        :param allowed_formats: which formats of files the cache should store. 
+            ('binary' and 'source' are the only allowed values) 
+    &quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">cache_dir</span><span class="s2">, </span><span class="s1">format_control</span><span class="s2">, </span><span class="s1">allowed_formats):</span>
+        <span class="s3"># type: (str, FormatControl, Set[str]) -&gt; None</span>
+        <span class="s1">super(Cache</span><span class="s2">, </span><span class="s1">self).__init__()</span>
+        <span class="s1">self.cache_dir = expanduser(cache_dir) </span><span class="s2">if </span><span class="s1">cache_dir </span><span class="s2">else None</span>
+        <span class="s1">self.format_control = format_control</span>
+        <span class="s1">self.allowed_formats = allowed_formats</span>
+
+        <span class="s1">_valid_formats = {</span><span class="s4">&quot;source&quot;</span><span class="s2">, </span><span class="s4">&quot;binary&quot;</span><span class="s1">}</span>
+        <span class="s2">assert </span><span class="s1">self.allowed_formats.union(_valid_formats) == _valid_formats</span>
+
+    <span class="s2">def </span><span class="s1">_get_cache_path_parts(self</span><span class="s2">, </span><span class="s1">link):</span>
+        <span class="s3"># type: (Link) -&gt; List[str]</span>
+        <span class="s0">&quot;&quot;&quot;Get parts of part that must be os.path.joined with cache_dir 
+        &quot;&quot;&quot;</span>
+
+        <span class="s3"># We want to generate an url to use as our cache key, we don't want to</span>
+        <span class="s3"># just re-use the URL because it might have other items in the fragment</span>
+        <span class="s3"># and we don't care about those.</span>
+        <span class="s1">key_parts = [link.url_without_fragment]</span>
+        <span class="s2">if </span><span class="s1">link.hash_name </span><span class="s2">is not None and </span><span class="s1">link.hash </span><span class="s2">is not None</span><span class="s1">:</span>
+            <span class="s1">key_parts.append(</span><span class="s4">&quot;=&quot;</span><span class="s1">.join([link.hash_name</span><span class="s2">, </span><span class="s1">link.hash]))</span>
+        <span class="s1">key_url = </span><span class="s4">&quot;#&quot;</span><span class="s1">.join(key_parts)</span>
+
+        <span class="s3"># Encode our key url with sha224, we'll use this because it has similar</span>
+        <span class="s3"># security properties to sha256, but with a shorter total output (and</span>
+        <span class="s3"># thus less secure). However the differences don't make a lot of</span>
+        <span class="s3"># difference for our use case here.</span>
+        <span class="s1">hashed = hashlib.sha224(key_url.encode()).hexdigest()</span>
+
+        <span class="s3"># We want to nest the directories some to prevent having a ton of top</span>
+        <span class="s3"># level directories where we might run out of sub directories on some</span>
+        <span class="s3"># FS.</span>
+        <span class="s1">parts = [hashed[:</span><span class="s5">2</span><span class="s1">]</span><span class="s2">, </span><span class="s1">hashed[</span><span class="s5">2</span><span class="s1">:</span><span class="s5">4</span><span class="s1">]</span><span class="s2">, </span><span class="s1">hashed[</span><span class="s5">4</span><span class="s1">:</span><span class="s5">6</span><span class="s1">]</span><span class="s2">, </span><span class="s1">hashed[</span><span class="s5">6</span><span class="s1">:]]</span>
+
+        <span class="s2">return </span><span class="s1">parts</span>
+
+    <span class="s2">def </span><span class="s1">_get_candidates(self</span><span class="s2">, </span><span class="s1">link</span><span class="s2">, </span><span class="s1">package_name):</span>
+        <span class="s3"># type: (Link, Optional[str]) -&gt; List[Any]</span>
+        <span class="s1">can_not_cache = (</span>
+            <span class="s2">not </span><span class="s1">self.cache_dir </span><span class="s2">or</span>
+            <span class="s2">not </span><span class="s1">package_name </span><span class="s2">or</span>
+            <span class="s2">not </span><span class="s1">link</span>
+        <span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">can_not_cache:</span>
+            <span class="s2">return </span><span class="s1">[]</span>
+
+        <span class="s1">canonical_name = canonicalize_name(package_name)</span>
+        <span class="s1">formats = self.format_control.get_allowed_formats(</span>
+            <span class="s1">canonical_name</span>
+        <span class="s1">)</span>
+        <span class="s2">if not </span><span class="s1">self.allowed_formats.intersection(formats):</span>
+            <span class="s2">return </span><span class="s1">[]</span>
+
+        <span class="s1">root = self.get_path_for_link(link)</span>
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s1">os.listdir(root)</span>
+        <span class="s2">except </span><span class="s1">OSError </span><span class="s2">as </span><span class="s1">err:</span>
+            <span class="s2">if </span><span class="s1">err.errno </span><span class="s2">in </span><span class="s1">{errno.ENOENT</span><span class="s2">, </span><span class="s1">errno.ENOTDIR}:</span>
+                <span class="s2">return </span><span class="s1">[]</span>
+            <span class="s2">raise</span>
+
+    <span class="s2">def </span><span class="s1">get_path_for_link(self</span><span class="s2">, </span><span class="s1">link):</span>
+        <span class="s3"># type: (Link) -&gt; str</span>
+        <span class="s0">&quot;&quot;&quot;Return a directory to store cached items in for link. 
+        &quot;&quot;&quot;</span>
+        <span class="s2">raise </span><span class="s1">NotImplementedError()</span>
+
+    <span class="s2">def </span><span class="s1">get(self</span><span class="s2">, </span><span class="s1">link</span><span class="s2">, </span><span class="s1">package_name):</span>
+        <span class="s3"># type: (Link, Optional[str]) -&gt; Link</span>
+        <span class="s0">&quot;&quot;&quot;Returns a link to a cached item if it exists, otherwise returns the 
+        passed link. 
+        &quot;&quot;&quot;</span>
+        <span class="s2">raise </span><span class="s1">NotImplementedError()</span>
+
+    <span class="s2">def </span><span class="s1">_link_for_candidate(self</span><span class="s2">, </span><span class="s1">link</span><span class="s2">, </span><span class="s1">candidate):</span>
+        <span class="s3"># type: (Link, str) -&gt; Link</span>
+        <span class="s1">root = self.get_path_for_link(link)</span>
+        <span class="s1">path = os.path.join(root</span><span class="s2">, </span><span class="s1">candidate)</span>
+
+        <span class="s2">return </span><span class="s1">Link(path_to_url(path))</span>
+
+    <span class="s2">def </span><span class="s1">cleanup(self):</span>
+        <span class="s3"># type: () -&gt; None</span>
+        <span class="s2">pass</span>
+
+
+<span class="s2">class </span><span class="s1">SimpleWheelCache(Cache):</span>
+    <span class="s0">&quot;&quot;&quot;A cache of wheels for future installs. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">cache_dir</span><span class="s2">, </span><span class="s1">format_control):</span>
+        <span class="s3"># type: (str, FormatControl) -&gt; None</span>
+        <span class="s1">super(SimpleWheelCache</span><span class="s2">, </span><span class="s1">self).__init__(</span>
+            <span class="s1">cache_dir</span><span class="s2">, </span><span class="s1">format_control</span><span class="s2">, </span><span class="s1">{</span><span class="s4">&quot;binary&quot;</span><span class="s1">}</span>
+        <span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">get_path_for_link(self</span><span class="s2">, </span><span class="s1">link):</span>
+        <span class="s3"># type: (Link) -&gt; str</span>
+        <span class="s0">&quot;&quot;&quot;Return a directory to store cached wheels for link 
+ 
+        Because there are M wheels for any one sdist, we provide a directory 
+        to cache them in, and then consult that directory when looking up 
+        cache hits. 
+ 
+        We only insert things into the cache if they have plausible version 
+        numbers, so that we don't contaminate the cache with things that were 
+        not unique. E.g. ./package might have dozens of installs done for it 
+        and build a version of 0.0...and if we built and cached a wheel, we'd 
+        end up using the same wheel even if the source has been edited. 
+ 
+        :param link: The link of the sdist for which this will cache wheels. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">parts = self._get_cache_path_parts(link)</span>
+
+        <span class="s3"># Store wheels within the root cache_dir</span>
+        <span class="s2">return </span><span class="s1">os.path.join(self.cache_dir</span><span class="s2">, </span><span class="s4">&quot;wheels&quot;</span><span class="s2">, </span><span class="s1">*parts)</span>
+
+    <span class="s2">def </span><span class="s1">get(self</span><span class="s2">, </span><span class="s1">link</span><span class="s2">, </span><span class="s1">package_name):</span>
+        <span class="s3"># type: (Link, Optional[str]) -&gt; Link</span>
+        <span class="s1">candidates = []</span>
+
+        <span class="s2">for </span><span class="s1">wheel_name </span><span class="s2">in </span><span class="s1">self._get_candidates(link</span><span class="s2">, </span><span class="s1">package_name):</span>
+            <span class="s2">try</span><span class="s1">:</span>
+                <span class="s1">wheel = Wheel(wheel_name)</span>
+            <span class="s2">except </span><span class="s1">InvalidWheelFilename:</span>
+                <span class="s2">continue</span>
+            <span class="s2">if not </span><span class="s1">wheel.supported():</span>
+                <span class="s3"># Built for a different python/arch/etc</span>
+                <span class="s2">continue</span>
+            <span class="s1">candidates.append((wheel.support_index_min()</span><span class="s2">, </span><span class="s1">wheel_name))</span>
+
+        <span class="s2">if not </span><span class="s1">candidates:</span>
+            <span class="s2">return </span><span class="s1">link</span>
+
+        <span class="s2">return </span><span class="s1">self._link_for_candidate(link</span><span class="s2">, </span><span class="s1">min(candidates)[</span><span class="s5">1</span><span class="s1">])</span>
+
+
+<span class="s2">class </span><span class="s1">EphemWheelCache(SimpleWheelCache):</span>
+    <span class="s0">&quot;&quot;&quot;A SimpleWheelCache that creates it's own temporary cache directory 
+    &quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">format_control):</span>
+        <span class="s3"># type: (FormatControl) -&gt; None</span>
+        <span class="s1">self._temp_dir = TempDirectory(kind=</span><span class="s4">&quot;ephem-wheel-cache&quot;</span><span class="s1">)</span>
+        <span class="s1">self._temp_dir.create()</span>
+
+        <span class="s1">super(EphemWheelCache</span><span class="s2">, </span><span class="s1">self).__init__(</span>
+            <span class="s1">self._temp_dir.path</span><span class="s2">, </span><span class="s1">format_control</span>
+        <span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">cleanup(self):</span>
+        <span class="s3"># type: () -&gt; None</span>
+        <span class="s1">self._temp_dir.cleanup()</span>
+
+
+<span class="s2">class </span><span class="s1">WheelCache(Cache):</span>
+    <span class="s0">&quot;&quot;&quot;Wraps EphemWheelCache and SimpleWheelCache into a single Cache 
+ 
+    This Cache allows for gracefully degradation, using the ephem wheel cache 
+    when a certain link is not found in the simple wheel cache first. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">cache_dir</span><span class="s2">, </span><span class="s1">format_control):</span>
+        <span class="s3"># type: (str, FormatControl) -&gt; None</span>
+        <span class="s1">super(WheelCache</span><span class="s2">, </span><span class="s1">self).__init__(</span>
+            <span class="s1">cache_dir</span><span class="s2">, </span><span class="s1">format_control</span><span class="s2">, </span><span class="s1">{</span><span class="s4">'binary'</span><span class="s1">}</span>
+        <span class="s1">)</span>
+        <span class="s1">self._wheel_cache = SimpleWheelCache(cache_dir</span><span class="s2">, </span><span class="s1">format_control)</span>
+        <span class="s1">self._ephem_cache = EphemWheelCache(format_control)</span>
+
+    <span class="s2">def </span><span class="s1">get_path_for_link(self</span><span class="s2">, </span><span class="s1">link):</span>
+        <span class="s3"># type: (Link) -&gt; str</span>
+        <span class="s2">return </span><span class="s1">self._wheel_cache.get_path_for_link(link)</span>
+
+    <span class="s2">def </span><span class="s1">get_ephem_path_for_link(self</span><span class="s2">, </span><span class="s1">link):</span>
+        <span class="s3"># type: (Link) -&gt; str</span>
+        <span class="s2">return </span><span class="s1">self._ephem_cache.get_path_for_link(link)</span>
+
+    <span class="s2">def </span><span class="s1">get(self</span><span class="s2">, </span><span class="s1">link</span><span class="s2">, </span><span class="s1">package_name):</span>
+        <span class="s3"># type: (Link, Optional[str]) -&gt; Link</span>
+        <span class="s1">retval = self._wheel_cache.get(link</span><span class="s2">, </span><span class="s1">package_name)</span>
+        <span class="s2">if </span><span class="s1">retval </span><span class="s2">is </span><span class="s1">link:</span>
+            <span class="s1">retval = self._ephem_cache.get(link</span><span class="s2">, </span><span class="s1">package_name)</span>
+        <span class="s2">return </span><span class="s1">retval</span>
+
+    <span class="s2">def </span><span class="s1">cleanup(self):</span>
+        <span class="s3"># type: () -&gt; None</span>
+        <span class="s1">self._wheel_cache.cleanup()</span>
+        <span class="s1">self._ephem_cache.cleanup()</span>
+</pre>
+</body>
+</html>

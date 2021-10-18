@@ -1,0 +1,226 @@
+<html>
+<head>
+<title>strhandler.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #cc7832;}
+.s4 { color: #6897bb;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+strhandler.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Functions to handle strings&quot;&quot;&quot;</span>
+
+<span class="s1">OKAY_BEFORE = [</span><span class="s2">&quot;&quot;</span><span class="s3">, </span><span class="s2">&quot; &quot;</span><span class="s3">, </span><span class="s2">&quot;.&quot;</span><span class="s3">, </span><span class="s2">&quot;=&quot;</span><span class="s1">]</span>
+<span class="s1">OKAY_AFTER = [</span><span class="s2">&quot;&quot;</span><span class="s3">, </span><span class="s2">&quot; &quot;</span><span class="s1">]</span>
+
+<span class="s3">def </span><span class="s1">exact_replace(text</span><span class="s3">, </span><span class="s1">src</span><span class="s3">, </span><span class="s1">target</span><span class="s3">, </span><span class="s1">okay_before=</span><span class="s3">None, </span><span class="s1">okay_after=</span><span class="s3">None</span><span class="s1">):</span>
+    <span class="s3">if not </span><span class="s1">okay_before:</span>
+        <span class="s1">okay_before = OKAY_BEFORE</span>
+    <span class="s3">if not </span><span class="s1">okay_after:</span>
+        <span class="s1">okay_after = OKAY_AFTER</span>
+    <span class="s1">beg = </span><span class="s4">0</span>
+    <span class="s1">indices = []</span>
+    <span class="s1">L = len(src)</span>
+    <span class="s3">while </span><span class="s1">beg &lt; len(text):</span>
+        <span class="s1">found = text.find(src</span><span class="s3">, </span><span class="s1">beg)</span>
+        <span class="s3">if </span><span class="s1">found == </span><span class="s4">0 </span><span class="s3">and </span><span class="s2">&quot;&quot; </span><span class="s3">in </span><span class="s1">okay_before:</span>
+            <span class="s3">if </span><span class="s1">text[L] </span><span class="s3">in </span><span class="s1">okay_after:</span>
+                <span class="s1">indices.append(found)</span>
+        <span class="s3">elif </span><span class="s1">found &gt; </span><span class="s4">0</span><span class="s1">:</span>
+            <span class="s3">if </span><span class="s1">text[found-</span><span class="s4">1</span><span class="s1">] </span><span class="s3">in </span><span class="s1">okay_before:</span>
+                <span class="s3">if </span><span class="s1">found + L &lt; len(text):</span>
+                    <span class="s3">if </span><span class="s1">text[found+L] </span><span class="s3">in </span><span class="s1">okay_after:</span>
+                        <span class="s1">indices.append(found)</span>
+                <span class="s3">elif </span><span class="s2">&quot;&quot; </span><span class="s3">in </span><span class="s1">okay_after:</span>
+                    <span class="s1">indices.append(found)</span>
+        <span class="s3">else</span><span class="s1">:</span>
+            <span class="s3">break</span>
+        <span class="s1">beg = found + L</span>
+    <span class="s1">new_txt = </span><span class="s2">&quot;&quot;</span>
+    <span class="s1">beg = </span><span class="s4">0</span>
+    <span class="s3">for </span><span class="s1">i </span><span class="s3">in </span><span class="s1">indices:</span>
+        <span class="s1">new_txt += text[beg:i] + target</span>
+        <span class="s1">beg = i + L</span>
+    <span class="s1">new_txt += text[beg:]</span>
+    <span class="s3">return </span><span class="s1">new_txt</span>
+
+<span class="s5">##s = &quot;a=lol= =lol lol= bonjour lol kevinlolkeivin heinlol lolhein .lol, gracealol lol dfg&quot;</span>
+<span class="s5">##print(exact_replace(s, &quot;lol&quot;, &quot;katapult&quot;))</span>
+
+<span class="s3">def </span><span class="s1">convert_str(value</span><span class="s3">, </span><span class="s1">type_):</span>
+    <span class="s3">if </span><span class="s1">type_ == int:</span>
+        <span class="s1">value = float(value)</span>
+    <span class="s3">return </span><span class="s1">type_(value)</span>
+
+<span class="s5">##class NoFinish(Exception):</span>
+<span class="s5">##    &quot;&quot;&quot;Exception for get_between_key&quot;&quot;&quot;</span>
+<span class="s5">##</span>
+<span class="s5">##    def __init__(self, end):</span>
+<span class="s5">##        Exception.__init__(self, &quot;End of line but &quot; + str(end) + &quot; not found&quot;)</span>
+
+<span class="s3">def </span><span class="s1">get_between_keys(text</span><span class="s3">, </span><span class="s1">beg</span><span class="s3">, </span><span class="s1">end=</span><span class="s3">None, </span><span class="s1">first=</span><span class="s3">True, </span><span class="s1">finish=</span><span class="s3">False</span><span class="s1">):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Returns the text between &lt;beg&gt; and &lt;end&gt;. 
+ 
+    If &lt;end&gt; is None, returns all that follows &lt;beg&gt;. 
+ 
+    If &lt;first&gt; is True, &lt;txt&gt; must begin with &lt;beg&gt; 
+ 
+    If &lt;finish&gt; is True, &lt;end&gt; must be in &lt;txt&gt;. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">a = text.find(beg)</span>
+    <span class="s3">if </span><span class="s1">a &lt; </span><span class="s4">0</span><span class="s1">: </span><span class="s5">#no begin found</span>
+        <span class="s3">return None</span>
+<span class="s5">##        raise Exception(&quot;No begin '&quot; + beg + &quot;' found in '&quot; + text + &quot;'&quot;)</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s3">if </span><span class="s1">first </span><span class="s3">and </span><span class="s1">(a != </span><span class="s4">0</span><span class="s1">): </span><span class="s5">#a is not first char and &lt;first&gt; is True</span>
+<span class="s5">##            raise Exception(&quot;Not first char&quot;)</span>
+            <span class="s3">return None</span>
+        <span class="s1">l = len(beg)</span>
+        <span class="s3">if </span><span class="s1">end </span><span class="s3">is None</span><span class="s1">:</span>
+            <span class="s3">return </span><span class="s1">text[a+l::]</span>
+        <span class="s1">b = text[a+l::].find(end)</span>
+        <span class="s3">if </span><span class="s1">b &lt; </span><span class="s4">0</span><span class="s1">:</span>
+            <span class="s3">if </span><span class="s1">finish: </span><span class="s5">#no end found and &lt;finish&gt; is True</span>
+                <span class="s3">raise </span><span class="s1">NoFinish(end)</span>
+            <span class="s3">else</span><span class="s1">:</span>
+                <span class="s3">return </span><span class="s1">text[a+l::]</span>
+        <span class="s3">else</span><span class="s1">:</span>
+            <span class="s3">return </span><span class="s1">text[a+l:b+l]</span>
+
+<span class="s3">def </span><span class="s1">get_between_possible_keys(text</span><span class="s3">, </span><span class="s1">beg</span><span class="s3">, </span><span class="s1">ends):</span>
+    <span class="s0">&quot;&quot;&quot;Like get_between_keys, but for multiple possible ends. Returns the result 
+    that corresponds to the nearest end found from beg.&quot;&quot;&quot;</span>
+    <span class="s1">scores = list()</span>
+    <span class="s3">for </span><span class="s1">end </span><span class="s3">in </span><span class="s1">ends:</span>
+        <span class="s3">try</span><span class="s1">:</span>
+            <span class="s1">r = get_between_keys(text</span><span class="s3">, </span><span class="s1">beg</span><span class="s3">, </span><span class="s1">end</span><span class="s3">, </span><span class="s1">finish=</span><span class="s3">True</span><span class="s1">)</span>
+            <span class="s1">index = text[</span><span class="s4">1</span><span class="s1">::].find(end)</span>
+            <span class="s1">scores.append((index</span><span class="s3">, </span><span class="s1">end</span><span class="s3">, </span><span class="s1">r))</span>
+        <span class="s3">except </span><span class="s1">NoFinish:</span>
+            <span class="s3">pass</span>
+    <span class="s3">if </span><span class="s1">scores:</span>
+        <span class="s1">scores.sort()</span>
+        <span class="s3">return </span><span class="s1">scores[</span><span class="s4">0</span><span class="s1">][</span><span class="s4">2</span><span class="s1">]</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s3">raise </span><span class="s1">Exception(</span><span class="s2">&quot;No end found&quot;</span><span class="s1">)</span>
+
+
+
+<span class="s3">def </span><span class="s1">get_parent_folder(path</span><span class="s3">, </span><span class="s1">sep=</span><span class="s2">&quot;/&quot;</span><span class="s1">):</span>
+    <span class="s0">&quot;&quot;&quot;Returns the path corresponding to the parent folder of &lt;path&gt;.&quot;&quot;&quot;</span>
+    <span class="s1">l = len(path)</span>
+    <span class="s1">n = -</span><span class="s4">1</span>
+    <span class="s3">for </span><span class="s1">i </span><span class="s3">in </span><span class="s1">range(l-</span><span class="s4">2</span><span class="s3">, </span><span class="s1">-</span><span class="s4">1</span><span class="s3">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">):</span>
+        <span class="s3">if </span><span class="s1">path[i] == sep:</span>
+            <span class="s1">n = i</span>
+            <span class="s3">break</span>
+    <span class="s3">if </span><span class="s1">n &gt; </span><span class="s4">0</span><span class="s1">:</span>
+        <span class="s3">return </span><span class="s1">path[:n+</span><span class="s4">1</span><span class="s1">]</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s3">return </span><span class="s1">-</span><span class="s4">1</span>
+
+<span class="s3">def </span><span class="s1">simplify_str(filename):</span>
+    <span class="s0">&quot;&quot;&quot;Remove all the path from a filename ; returns only the actual name&quot;&quot;&quot;</span>
+    <span class="s3">for </span><span class="s1">i </span><span class="s3">in </span><span class="s1">range(len(filename)-</span><span class="s4">1</span><span class="s3">, </span><span class="s1">-</span><span class="s4">1</span><span class="s3">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">):</span>
+        <span class="s1">char = filename[i]</span>
+        <span class="s3">if </span><span class="s1">char == </span><span class="s2">&quot;/&quot; </span><span class="s3">or </span><span class="s1">char == </span><span class="s2">&quot;</span><span class="s3">\\</span><span class="s2">&quot;</span><span class="s1">:</span>
+            <span class="s3">return </span><span class="s1">filename[i+</span><span class="s4">1</span><span class="s1">:].replace(</span><span class="s2">&quot;.txt&quot;</span><span class="s3">, </span><span class="s2">&quot;&quot;</span><span class="s1">)</span>
+    <span class="s3">return </span><span class="s1">filename</span>
+
+<span class="s3">def </span><span class="s1">no_minus_zero(n):</span>
+    <span class="s0">&quot;&quot;&quot;Removes possibles '-0.'&quot;&quot;&quot;</span>
+    <span class="s3">if </span><span class="s1">n.startswith(</span><span class="s2">&quot; &quot;</span><span class="s1">):</span>
+        <span class="s1">n = n[</span><span class="s4">1</span><span class="s1">::]</span>
+    <span class="s3">if </span><span class="s1">n.startswith(</span><span class="s2">&quot;-&quot;</span><span class="s1">):</span>
+        <span class="s3">for </span><span class="s1">char </span><span class="s3">in </span><span class="s1">n[</span><span class="s4">1</span><span class="s1">:]:</span>
+            <span class="s3">if </span><span class="s1">char != </span><span class="s2">&quot;.&quot; </span><span class="s3">and </span><span class="s1">char != </span><span class="s2">&quot;0&quot;</span><span class="s1">:</span>
+                <span class="s3">return </span><span class="s1">n</span>
+        <span class="s3">return </span><span class="s1">n[</span><span class="s4">1</span><span class="s1">:]</span>
+    <span class="s3">return </span><span class="s1">n</span>
+
+
+<span class="s3">def </span><span class="s1">format_number(number</span><span class="s3">, </span><span class="s1">number_int=</span><span class="s3">False, </span><span class="s1">tot=</span><span class="s4">10</span><span class="s3">, </span><span class="s1">dec=</span><span class="s4">4</span><span class="s3">, </span><span class="s1">format_t=</span><span class="s2">&quot;f&quot;</span><span class="s1">):</span>
+    <span class="s0">&quot;&quot;&quot;Convert a number to string. 
+    number_int : first convert the number to an integer. 
+    tot : ???. 
+    dec : number of decimals 
+    format : format style ('f' for float, 'e' for scientific, ...) 
+    &quot;&quot;&quot;</span>
+    <span class="s3">if </span><span class="s1">number_int:</span>
+        <span class="s3">return </span><span class="s1">str(int(number))</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s1">s = </span><span class="s2">&quot;{:&quot; </span><span class="s1">+ str(tot) + </span><span class="s2">&quot;.&quot; </span><span class="s1">+ str(dec) + format_t + </span><span class="s2">&quot;}&quot;</span>
+        <span class="s1">sform = s.format(number)</span>
+        <span class="s3">return </span><span class="s1">no_minus_zero(sform)</span>
+
+<span class="s3">def </span><span class="s1">del_spaces(text):</span>
+    <span class="s0">&quot;&quot;&quot;&quot;abc def&quot; =&gt; &quot;abcdef&quot;&quot;&quot;</span>
+    <span class="s3">return </span><span class="s1">text.replace(</span><span class="s2">&quot; &quot;</span><span class="s3">, </span><span class="s2">&quot;&quot;</span><span class="s1">)</span>
+<span class="s5">##    return ' '.join(text.split())</span>
+
+
+<span class="s3">def </span><span class="s1">str_dist(new</span><span class="s3">, </span><span class="s1">original</span><span class="s3">, </span><span class="s1">lowerize=</span><span class="s3">True</span><span class="s1">):</span>
+    <span class="s0">&quot;&quot;&quot;Measures difference between two strings&quot;&quot;&quot;</span>
+    <span class="s3">if </span><span class="s1">lowerize:</span>
+        <span class="s1">new = new.lower()</span>
+        <span class="s1">original = original.lower()</span>
+    <span class="s1">len_diff = abs(len(new) - len(original))</span>
+    <span class="s1">length = min(len(new)</span><span class="s3">, </span><span class="s1">len(original))</span>
+    <span class="s3">for </span><span class="s1">i </span><span class="s3">in </span><span class="s1">range(length):</span>
+        <span class="s1">len_diff += </span><span class="s3">not</span><span class="s1">(new[i] == original[i])</span>
+    <span class="s3">return </span><span class="s1">len_diff</span>
+
+<span class="s3">def </span><span class="s1">longest_str(textes):</span>
+    <span class="s0">&quot;&quot;&quot;Returns longest text in a list&quot;&quot;&quot;</span>
+    <span class="s3">if not </span><span class="s1">textes:</span>
+        <span class="s3">return </span><span class="s1">-</span><span class="s4">1</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s1">maxlen = -</span><span class="s4">1</span>
+        <span class="s3">for </span><span class="s1">text </span><span class="s3">in </span><span class="s1">textes:</span>
+            <span class="s1">l = len(text)</span>
+            <span class="s3">if </span><span class="s1">l &gt; maxlen:</span>
+                <span class="s1">maxlen = l</span>
+                <span class="s1">toReturn = text</span>
+        <span class="s3">return </span><span class="s1">toReturn</span>
+
+
+<span class="s3">def </span><span class="s1">explode_string(text):</span>
+    <span class="s0">&quot;&quot;&quot;Returns a list containing all the chars in &lt;txt&gt; one by one&quot;&quot;&quot;</span>
+    <span class="s1">chars = []</span>
+    <span class="s3">for </span><span class="s1">char </span><span class="s3">in </span><span class="s1">text:</span>
+        <span class="s1">chars.append(char)</span>
+    <span class="s3">return </span><span class="s1">chars</span>
+
+
+<span class="s3">def </span><span class="s1">get_extension(s</span><span class="s3">, </span><span class="s1">delimiter=</span><span class="s2">'.'</span><span class="s1">):</span>
+    <span class="s0">&quot;&quot;&quot;Returns what belongs after delimiter&quot;&quot;&quot;</span>
+    <span class="s1">ext = </span><span class="s2">&quot;&quot;</span>
+    <span class="s1">point = </span><span class="s3">False</span>
+    <span class="s3">for </span><span class="s1">c </span><span class="s3">in </span><span class="s1">s:</span>
+        <span class="s3">if </span><span class="s1">c == delimiter:</span>
+            <span class="s1">ext = </span><span class="s2">&quot;&quot;</span>
+            <span class="s1">point = </span><span class="s3">True</span>
+        <span class="s3">if </span><span class="s1">point:</span>
+            <span class="s1">ext += c</span>
+    <span class="s3">return </span><span class="s1">ext</span>
+
+<span class="s3">def </span><span class="s1">get_without_extension(s</span><span class="s3">, </span><span class="s1">extension):</span>
+    <span class="s0">&quot;&quot;&quot;Returns s without what is after the point&quot;&quot;&quot;</span>
+    <span class="s1">lw = len(s)</span>
+    <span class="s1">le = len(extension)</span>
+    <span class="s3">return </span><span class="s1">s[</span><span class="s4">0</span><span class="s1">:lw-le]</span>
+
+<span class="s3">def </span><span class="s1">list_to_str(l):</span>
+    <span class="s3">return </span><span class="s2">&quot;&quot;</span><span class="s1">.join(l)</span></pre>
+</body>
+</html>

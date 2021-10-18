@@ -1,0 +1,51 @@
+<html>
+<head>
+<title>sysfont_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+sysfont_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">unittest</span>
+<span class="s0">import </span><span class="s1">platform</span>
+
+<span class="s0">class </span><span class="s1">SysfontModuleTest(unittest.TestCase):</span>
+    <span class="s0">def </span><span class="s1">todo_test_create_aliases(self):</span>
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_initsysfonts(self):</span>
+        <span class="s1">self.fail()</span>
+
+    <span class="s1">@unittest.skipIf(</span><span class="s2">'Darwin' </span><span class="s0">not in </span><span class="s1">platform.platform()</span><span class="s0">, </span><span class="s2">'Not mac we skip.'</span><span class="s1">)</span>
+    <span class="s0">def </span><span class="s1">test_initsysfonts_darwin(self):</span>
+        <span class="s0">import </span><span class="s1">pygame.sysfont</span>
+        <span class="s1">self.assertTrue(len(pygame.sysfont.get_fonts()) &gt; </span><span class="s3">10</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_sysfont(self):</span>
+        <span class="s0">import </span><span class="s1">pygame.font</span>
+        <span class="s1">pygame.font.init()</span>
+        <span class="s1">arial = pygame.font.SysFont(</span><span class="s2">'Arial'</span><span class="s0">, </span><span class="s3">40</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_initsysfonts_unix(self):</span>
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_initsysfonts_win32(self):</span>
+        <span class="s1">self.fail()</span>
+
+<span class="s4">################################################################################</span>
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s2">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

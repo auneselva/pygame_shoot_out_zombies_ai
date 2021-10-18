@@ -1,0 +1,276 @@
+<html>
+<head>
+<title>title.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+title.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Handle a Title to use with an Element.&quot;&quot;&quot;</span>
+<span class="s2">from </span><span class="s1">pygame.rect </span><span class="s2">import </span><span class="s1">Rect</span>
+
+<span class="s2">from </span><span class="s1">thorpy._utils.strhandler </span><span class="s2">import </span><span class="s1">get_between_keys</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui.constants </span><span class="s2">import </span><span class="s1">SYNTAX_BEG</span><span class="s2">, </span><span class="s1">SYNTAX_END</span><span class="s2">, </span><span class="s1">SYNTAX_FIRST</span><span class="s2">, </span><span class="s1">SYNTAX_LAST</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui </span><span class="s2">import </span><span class="s1">style</span><span class="s2">, </span><span class="s1">painterstyle</span>
+
+
+<span class="s2">class </span><span class="s1">Title(object):</span>
+    <span class="s0">&quot;&quot;&quot;A Title is a set of str and position in order to produce a surface, using 
+    line spacing, align mode and cut word string as parameters.&quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">text</span><span class="s2">, </span><span class="s1">writer=</span><span class="s2">None, </span><span class="s1">pos=</span><span class="s2">None, </span><span class="s1">space=</span><span class="s2">None, </span><span class="s1">align=</span><span class="s2">None,</span>
+                 <span class="s1">cut_word=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        &lt;text&gt; is the text to be produced. Markers can be used (see 
+            constants.SYNTAX_*) 
+        &lt;writer&gt; is the writer used to produce the text. 
+        &lt;pos&gt; is the relative position to painter.img. 
+        &lt;space&gt; is the interline spacing. 
+        &lt;align&gt; can be 'left', 'right' or 'center'. 
+        &lt;cut_word&gt; is the terminating string used if the text is too long to fit 
+        the dimensions. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">pos=style.TITLE_POS </span><span class="s2">if </span><span class="s1">pos </span><span class="s2">is None else </span><span class="s1">pos</span>
+        <span class="s1">space=style.TITLE_SPACE </span><span class="s2">if </span><span class="s1">space </span><span class="s2">is None else </span><span class="s1">space</span>
+        <span class="s1">align=style.TITLE_ALIGN </span><span class="s2">if </span><span class="s1">align </span><span class="s2">is None else </span><span class="s1">align</span>
+        <span class="s1">cut_word=style.CUT_WORD </span><span class="s2">if </span><span class="s1">cut_word </span><span class="s2">is None else </span><span class="s1">cut_word</span>
+        <span class="s1">t = get_between_keys(</span>
+            <span class="s1">text</span><span class="s2">,</span>
+            <span class="s1">SYNTAX_BEG</span><span class="s2">,</span>
+            <span class="s1">SYNTAX_END</span><span class="s2">,</span>
+            <span class="s1">SYNTAX_FIRST</span><span class="s2">,</span>
+            <span class="s1">SYNTAX_LAST)</span>
+        <span class="s2">if </span><span class="s1">t:</span>
+            <span class="s1">self._text = t</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">self._text = text</span>
+        <span class="s2">if </span><span class="s1">writer </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">self._writer = painterstyle.WRITER()</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">self._writer = writer</span>
+        <span class="s1">self._pos = pos</span>
+        <span class="s1">self._space = space</span>
+        <span class="s2">if not </span><span class="s1">self._space:</span>
+            <span class="s1">self._space = self._writer.font.get_linesize()</span>
+        <span class="s1">self._align = align</span>
+        <span class="s1">self._cut_word = cut_word</span>
+        <span class="s1">self._lines = </span><span class="s2">None</span>
+        <span class="s1">self._imgs = </span><span class="s2">None</span>
+        <span class="s1">self.refresh_imgs()</span>
+
+    <span class="s2">def </span><span class="s1">get_height(self</span><span class="s2">, </span><span class="s1">n):</span>
+        <span class="s1">h = self._writer.get_height()</span>
+        <span class="s2">return </span><span class="s1">n * h + (n - </span><span class="s3">1</span><span class="s1">) * self._space</span>
+
+    <span class="s2">def </span><span class="s1">get_rect(self</span><span class="s2">, </span><span class="s1">real=</span><span class="s2">False</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;self.imgs might not include all the text if the text is too large, 
+        real=True means that the size limit is not taken into account. 
+ 
+        Set real to True if you want the rect that WOULD have the title if there 
+        were not size limits. 
+        &quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">real:</span>
+            <span class="s1">self.set_text(self._text</span><span class="s2">, </span><span class="s1">size=</span><span class="s2">None</span><span class="s1">)</span>
+        <span class="s1">rects = [i.get_rect() </span><span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">self._imgs]</span>
+        <span class="s1">widths = [r.width </span><span class="s2">for </span><span class="s1">r </span><span class="s2">in </span><span class="s1">rects]</span>
+        <span class="s1">heigths = [r.height </span><span class="s2">for </span><span class="s1">r </span><span class="s2">in </span><span class="s1">rects]</span>
+        <span class="s1">w = max(widths)</span>
+        <span class="s1">h = sum(heigths) + (len(heigths) - </span><span class="s3">1</span><span class="s1">) * self._space</span>
+        <span class="s2">return </span><span class="s1">Rect(self._pos</span><span class="s2">, </span><span class="s1">(w</span><span class="s2">, </span><span class="s1">h))</span>
+
+    <span class="s2">def </span><span class="s1">_suppress_lines(self</span><span class="s2">, </span><span class="s1">lines</span><span class="s2">, </span><span class="s1">size):</span>
+        <span class="s1">(w</span><span class="s2">, </span><span class="s1">h) = size</span>
+        <span class="s1">lines = self._writer.get_lines(lines</span><span class="s2">, </span><span class="s1">w)</span>
+        <span class="s2">while </span><span class="s1">self.get_height(len(lines)) &gt; h:</span>
+            <span class="s2">if not </span><span class="s1">lines:</span>
+                <span class="s2">return </span><span class="s1">[</span><span class="s4">&quot;&quot;</span><span class="s1">]</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s1">lines.pop()</span>
+        <span class="s2">if not </span><span class="s1">lines:</span>
+            <span class="s1">lines = [</span><span class="s4">&quot;&quot;</span><span class="s1">]</span>
+        <span class="s2">return </span><span class="s1">lines</span>
+
+    <span class="s2">def </span><span class="s1">set_text(self</span><span class="s2">, </span><span class="s1">new_txt</span><span class="s2">, </span><span class="s1">size=</span><span class="s2">None, </span><span class="s1">cut=</span><span class="s2">False</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Set the text and refresh the image&quot;&quot;&quot;</span>
+        <span class="s1">self._text = new_txt</span>
+        <span class="s1">lines = new_txt.split(</span><span class="s4">&quot;</span><span class="s2">\n</span><span class="s4">&quot;</span><span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">size:</span>
+            <span class="s1">l1 = len(lines)</span>
+            <span class="s2">if not </span><span class="s1">cut </span><span class="s2">or </span><span class="s1">cut == -</span><span class="s3">1</span><span class="s1">:</span>
+                <span class="s1">lines = self._suppress_lines(lines</span><span class="s2">, </span><span class="s1">size)</span>
+            <span class="s1">cutted = (len(lines) != l1)</span>
+            <span class="s1">(self._imgs</span><span class="s2">,</span>
+             <span class="s1">self._lines) = self._writer.get_imgs_sized(lines</span><span class="s2">,</span>
+                                                      <span class="s1">size[</span><span class="s3">0</span><span class="s1">]</span><span class="s2">,</span>
+                                                      <span class="s1">self._cut_word</span><span class="s2">,</span>
+                                                      <span class="s1">cutted)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">self._imgs = self._writer.get_imgs(lines)</span>
+            <span class="s1">self._lines = lines</span>
+        <span class="s2">if </span><span class="s1">len(self._imgs) != len(self._lines):</span>
+            <span class="s2">raise </span><span class="s1">Exception(</span><span class="s4">&quot;problem with title&quot;</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">blit_on(self</span><span class="s2">, </span><span class="s1">surface):</span>
+        <span class="s1">(x</span><span class="s2">, </span><span class="s1">y) = self._pos</span>
+        <span class="s1">r = self.get_rect()</span>
+        <span class="s2">if </span><span class="s1">len(self._lines) != len(self._imgs):</span>
+            <span class="s2">raise</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">self._imgs:</span>
+            <span class="s2">if </span><span class="s1">self._align </span><span class="s2">is </span><span class="s4">&quot;left&quot;</span><span class="s1">:</span>
+                <span class="s1">x = self._pos[</span><span class="s3">0</span><span class="s1">]</span>
+            <span class="s2">elif </span><span class="s1">self._align </span><span class="s2">is </span><span class="s4">&quot;center&quot;</span><span class="s1">:</span>
+                <span class="s1">x = (r.width - i.get_width()) / </span><span class="s3">2</span>
+            <span class="s2">elif </span><span class="s1">self._align </span><span class="s2">is </span><span class="s4">&quot;right&quot;</span><span class="s1">:</span>
+                <span class="s1">x = r.width - i.get_width()</span>
+<span class="s5">##            print(self._align, x)</span>
+            <span class="s1">surface.blit(i</span><span class="s2">, </span><span class="s1">(x</span><span class="s2">, </span><span class="s1">y))</span>
+            <span class="s1">y += self._space + i.get_height()</span>
+
+    <span class="s2">def </span><span class="s1">center_on(self</span><span class="s2">, </span><span class="s1">rect):</span>
+        <span class="s0">&quot;&quot;&quot;Set the pos in order to centralize the text onto rect&quot;&quot;&quot;</span>
+        <span class="s1">r = self.get_rect()</span>
+        <span class="s2">if </span><span class="s1">isinstance(rect</span><span class="s2">, </span><span class="s1">tuple):</span>
+            <span class="s1">rect = Rect((</span><span class="s3">0</span><span class="s2">, </span><span class="s3">0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">rect)</span>
+        <span class="s1">x_shift = rect.w - r.width</span>
+        <span class="s1">y_shift = rect.h - r.height</span>
+        <span class="s1">self._pos = (x_shift / </span><span class="s3">2</span><span class="s2">, </span><span class="s1">y_shift / </span><span class="s3">2</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">set_pos_from_element(self</span><span class="s2">, </span><span class="s1">element</span><span class="s2">, </span><span class="s1">x_shift</span><span class="s2">, </span><span class="s1">y_shift):</span>
+        <span class="s0">&quot;&quot;&quot;Set the pos with x and y the relative coord. to element's rect&quot;&quot;&quot;</span>
+        <span class="s1">self._pos = (element.rect.x + x_shift</span><span class="s2">, </span><span class="s1">element.rect.y + y_shift)</span>
+
+    <span class="s2">def </span><span class="s1">move(self</span><span class="s2">, </span><span class="s1">shift):</span>
+        <span class="s0">&quot;&quot;&quot;Shifts the position&quot;&quot;&quot;</span>
+        <span class="s1">self._pos = (self._pos[</span><span class="s3">0</span><span class="s1">] + shift[</span><span class="s3">0</span><span class="s1">]</span><span class="s2">, </span><span class="s1">self._pos[</span><span class="s3">1</span><span class="s1">] + shift[</span><span class="s3">1</span><span class="s1">])</span>
+
+    <span class="s2">def </span><span class="s1">get_imgs_and_lines(self</span><span class="s2">, </span><span class="s1">size=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s2">if not </span><span class="s1">size:</span>
+            <span class="s2">return </span><span class="s1">(self._writer.get_imgs(self._text)</span><span class="s2">, </span><span class="s1">self._lines)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s1">self._writer.get_imgs_sized(self._text</span><span class="s2">, </span><span class="s1">size</span><span class="s2">, </span><span class="s1">self._cut_word)</span>
+
+    <span class="s2">def </span><span class="s1">get_imgs(self</span><span class="s2">, </span><span class="s1">size=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s2">if not </span><span class="s1">size:</span>
+            <span class="s2">return </span><span class="s1">self._writer.get_imgs(self._text)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s1">self._writer.get_imgs_sized(self._text</span><span class="s2">, </span><span class="s1">size</span><span class="s2">, </span><span class="s1">self._cut_word)[</span><span class="s3">0</span><span class="s1">]</span>
+
+    <span class="s2">def </span><span class="s1">set_params(self</span><span class="s2">, </span><span class="s1">dic</span><span class="s2">,  </span><span class="s1">refresh=</span><span class="s2">True, </span><span class="s1">size=</span><span class="s2">None, </span><span class="s1">cut=</span><span class="s2">False</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Example : title.set_params({'align' : 'right', 'space' : 10}).&quot;&quot;&quot;</span>
+        <span class="s2">for </span><span class="s1">key </span><span class="s2">in </span><span class="s1">dic:</span>
+            <span class="s2">if not </span><span class="s1">key.startswith(</span><span class="s4">&quot;_&quot;</span><span class="s1">):</span>
+                <span class="s1">real_key = </span><span class="s4">&quot;_&quot; </span><span class="s1">+ key</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s1">real_key = key</span>
+            <span class="s1">setattr(self</span><span class="s2">, </span><span class="s1">real_key</span><span class="s2">, </span><span class="s1">dic[key])</span>
+        <span class="s2">if </span><span class="s1">refresh:</span>
+            <span class="s1">self.refresh_imgs(size</span><span class="s2">, </span><span class="s1">cut)</span>
+
+    <span class="s2">def </span><span class="s1">set_writer(self</span><span class="s2">, </span><span class="s1">writer</span><span class="s2">, </span><span class="s1">refresh=</span><span class="s2">True, </span><span class="s1">size=</span><span class="s2">None, </span><span class="s1">cut=</span><span class="s2">False</span><span class="s1">):</span>
+        <span class="s1">self._writer = writer</span>
+        <span class="s2">if </span><span class="s1">refresh:</span>
+            <span class="s1">self.refresh_imgs(size</span><span class="s2">, </span><span class="s1">cut)</span>
+
+    <span class="s2">def </span><span class="s1">refresh_imgs(self</span><span class="s2">, </span><span class="s1">size=</span><span class="s2">None, </span><span class="s1">cut=</span><span class="s2">False</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Reproduce an image using the writer&quot;&quot;&quot;</span>
+        <span class="s1">self.set_text(self._text</span><span class="s2">, </span><span class="s1">size</span><span class="s2">, </span><span class="s1">cut)</span>
+
+    <span class="s2">def </span><span class="s1">get_text(self</span><span class="s2">, </span><span class="s1">get_lines=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">get_lines:</span>
+            <span class="s2">return </span><span class="s1">self._lines</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s1">self._text</span>
+
+<span class="s5">##from thorpy import Writer, Title</span>
+
+
+<span class="s5">##class RichText(object):</span>
+<span class="s5">##    &quot;&quot;&quot;Handles font color, font size and indentation.&quot;&quot;&quot;</span>
+<span class="s5">##    def __init__(self, default_font_size=thorpy.style.FONT_SIZE,</span>
+<span class="s5">##                        default_font_color=thorpy.style.FONT_COLOR,</span>
+<span class="s5">##                        indent=&quot;    &quot;,</span>
+<span class="s5">##                        meta=&quot;*/&quot;,</span>
+<span class="s5">##                        font_name=None):</span>
+<span class="s5">##        self.fs = default_font_size</span>
+<span class="s5">##        self.fc = default_font_color</span>
+<span class="s5">##        self.default_fs = default_font_size</span>
+<span class="s5">##        self.default_fc = default_font_color</span>
+<span class="s5">##        self.indent = indent</span>
+<span class="s5">##        self.paragraphs = [&quot;&quot;]</span>
+<span class="s5">##        self.colors = {&quot;r&quot;:(255,0,0),&quot;g&quot;:(0,255,0),&quot;b&quot;:(0,0,255),&quot;k&quot;:(0,0,0),</span>
+<span class="s5">##                        &quot;w&quot;:(255,255,255)}</span>
+<span class="s5">##        self.writer = Writer(font_name,self.fc,self.fs)</span>
+<span class="s5">##</span>
+<span class="s5">##    def paragraph(self,*text):</span>
+<span class="s5">##        &quot;&quot;&quot;Add a new paragraph&quot;&quot;&quot;</span>
+<span class="s5">##        content = self.indent</span>
+<span class="s5">##        for t in text:</span>
+<span class="s5">##            content += t</span>
+<span class="s5">##        self.paragraphs.append(content)</span>
+<span class="s5">##</span>
+<span class="s5">##    def more(self, *text):</span>
+<span class="s5">##        &quot;&quot;&quot;Append to the current paragraph&quot;&quot;&quot;</span>
+<span class="s5">##        for t in text:</span>
+<span class="s5">##            self.paragraphs[-1] += t</span>
+<span class="s5">##</span>
+<span class="s5">##    #**&lt;color&gt;: r, g, b, k, y, w or any (r,g,b) tuple</span>
+<span class="s5">##    #**s&lt;n&gt; : e.g **s12</span>
+<span class="s5">##    #**d : all default</span>
+<span class="s5">##</span>
+<span class="s5">##    def apply_effect(self, command):</span>
+<span class="s5">##        if command == &quot;d&quot;:</span>
+<span class="s5">##            self.fc = self.default_fc</span>
+<span class="s5">##            self.fs = self.default_fs</span>
+<span class="s5">##        elif command[0] == &quot;(&quot; and command[-1] == &quot;)&quot;:</span>
+<span class="s5">##            rgb = command[1:len(command)-1]</span>
+<span class="s5">##            rgb = tuple([int(val) for val in rgb.split(&quot;,&quot;)])</span>
+<span class="s5">##            self.fc = rgb</span>
+<span class="s5">##        elif command in self.colors:</span>
+<span class="s5">##            self.fc = self.colors[command]</span>
+<span class="s5">##        elif command[0] == &quot;s&quot;:</span>
+<span class="s5">##            size = int(command[1:])</span>
+<span class="s5">##            self.fs = size</span>
+<span class="s5">##        self.refresh</span>
+<span class="s5">##</span>
+<span class="s5">##    def get_title(self,text): #add bold and font name</span>
+<span class="s5">##        self.writer.set_color(self.fc)</span>
+<span class="s5">##        self.writer.set_size(self.fs)</span>
+<span class="s5">##        return Title(text, self.writer)</span>
+<span class="s5">##</span>
+<span class="s5">##    def render_text(self, text):</span>
+<span class="s5">##        fs = self.fs #we start with default size and color</span>
+<span class="s5">##        fc = self.fc</span>
+<span class="s5">##        i = 0</span>
+<span class="s5">##        imgs = []</span>
+<span class="s5">##        current_text = &quot;&quot;</span>
+<span class="s5">##        while True:</span>
+<span class="s5">##            c = text[i]</span>
+<span class="s5">##            current_text += c</span>
+<span class="s5">##            if c == &quot;*&quot;:</span>
+<span class="s5">##                try:</span>
+<span class="s5">##                    is_command = c[i+1] == &quot;*&quot;</span>
+<span class="s5">##                except:</span>
+<span class="s5">##                    is_command = False</span>
+<span class="s5">##                if is_command:</span>
+<span class="s5">##                    title = self.get_title(current_text)</span>
+<span class="s5">##                    imgs</span>
+<span class="s5">##                    space = text[i+2,::].find(&quot; &quot;)</span>
+<span class="s5">##                    command = text[i+2:space]</span>
+<span class="s5">##                    self.apply_effect(command)</span>
+<span class="s5">##                    i += len(command)</span>
+<span class="s5">##                    continue</span>
+<span class="s5">##            img = self.writer.get_imgs(c)</span>
+<span class="s5">##            imgs.append()</span></pre>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<html>
+<head>
+<title>surflock_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+surflock_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">unittest</span>
+<span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">import </span><span class="s1">platform</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s1">IS_PYPY = </span><span class="s2">'PyPy' </span><span class="s1">== platform.python_implementation()</span>
+
+<span class="s1">@unittest.skipIf(IS_PYPY</span><span class="s0">, </span><span class="s2">'pypy skip known failure'</span><span class="s1">) </span><span class="s3"># TODO</span>
+<span class="s0">class </span><span class="s1">SurfaceLockTest(unittest.TestCase):</span>
+
+    <span class="s0">def </span><span class="s1">test_lock(self):</span>
+        <span class="s1">sf = pygame.Surface((</span><span class="s4">5</span><span class="s0">, </span><span class="s4">5</span><span class="s1">))</span>
+
+        <span class="s1">sf.lock()</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(sf</span><span class="s0">,</span><span class="s1">))</span>
+
+        <span class="s1">sf.lock()</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(sf</span><span class="s0">, </span><span class="s1">sf))</span>
+
+        <span class="s1">sf.unlock()</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(sf</span><span class="s0">,</span><span class="s1">))</span>
+
+        <span class="s1">sf.unlock()</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, False</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">())</span>
+
+    <span class="s0">def </span><span class="s1">test_subsurface_lock(self):</span>
+        <span class="s1">sf = pygame.Surface((</span><span class="s4">5</span><span class="s0">, </span><span class="s4">5</span><span class="s1">))</span>
+        <span class="s1">subsf = sf.subsurface((</span><span class="s4">1</span><span class="s0">, </span><span class="s4">1</span><span class="s0">, </span><span class="s4">2</span><span class="s0">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">sf2 = pygame.Surface((</span><span class="s4">5</span><span class="s0">, </span><span class="s4">5</span><span class="s1">))</span>
+
+        <span class="s3"># Simple blits, nothing should happen here.</span>
+        <span class="s1">sf2.blit(subsf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">sf2.blit(sf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+
+        <span class="s3"># Test blitting on self:</span>
+        <span class="s1">self.assertRaises(pygame.error</span><span class="s0">, </span><span class="s1">sf.blit</span><span class="s0">, </span><span class="s1">subsf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s3">#self.assertRaises(pygame.error, subsf.blit, sf, (0, 0))</span>
+        <span class="s3"># ^ Fails although it should not in my opinion. If I cannot</span>
+        <span class="s3"># blit the subsurface to the surface, it should not be allowed</span>
+        <span class="s3"># the other way around as well.</span>
+
+        <span class="s3"># Test additional locks.</span>
+        <span class="s1">sf.lock()</span>
+        <span class="s1">sf2.blit(subsf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(pygame.error</span><span class="s0">, </span><span class="s1">sf2.blit</span><span class="s0">, </span><span class="s1">sf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+
+        <span class="s1">subsf.lock()</span>
+        <span class="s1">self.assertRaises(pygame.error</span><span class="s0">, </span><span class="s1">sf2.blit</span><span class="s0">, </span><span class="s1">subsf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(pygame.error</span><span class="s0">, </span><span class="s1">sf2.blit</span><span class="s0">, </span><span class="s1">sf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+
+        <span class="s3"># sf and subsf are now explicitly locked. Unlock sf, so we can</span>
+        <span class="s3"># (assume) to blit it.</span>
+        <span class="s3"># It will fail though as the subsurface still has a lock around,</span>
+        <span class="s3"># which is okay and correct behaviour.</span>
+        <span class="s1">sf.unlock()</span>
+        <span class="s1">self.assertRaises(pygame.error</span><span class="s0">, </span><span class="s1">sf2.blit</span><span class="s0">, </span><span class="s1">subsf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(pygame.error</span><span class="s0">, </span><span class="s1">sf2.blit</span><span class="s0">, </span><span class="s1">sf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+
+        <span class="s3"># Run a second unlock on the surface. This should ideally have</span>
+        <span class="s3"># no effect as the subsurface is the locking reason!</span>
+        <span class="s1">sf.unlock()</span>
+        <span class="s1">self.assertRaises(pygame.error</span><span class="s0">, </span><span class="s1">sf2.blit</span><span class="s0">, </span><span class="s1">sf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(pygame.error</span><span class="s0">, </span><span class="s1">sf2.blit</span><span class="s0">, </span><span class="s1">subsf</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">subsf.unlock()</span>
+
+        <span class="s1">sf.lock()</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(sf</span><span class="s0">,</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(subsf.get_locked()</span><span class="s0">, False</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(subsf.get_locks()</span><span class="s0">, </span><span class="s1">())</span>
+
+        <span class="s1">subsf.lock()</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(sf</span><span class="s0">, </span><span class="s1">subsf))</span>
+        <span class="s1">self.assertEqual(subsf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(subsf.get_locks()</span><span class="s0">, </span><span class="s1">(subsf</span><span class="s0">,</span><span class="s1">))</span>
+
+        <span class="s1">sf.unlock()</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(subsf</span><span class="s0">,</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(subsf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(subsf.get_locks()</span><span class="s0">, </span><span class="s1">(subsf</span><span class="s0">,</span><span class="s1">))</span>
+
+        <span class="s1">subsf.unlock()</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, False</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">())</span>
+        <span class="s1">self.assertEqual(subsf.get_locked()</span><span class="s0">, False</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(subsf.get_locks()</span><span class="s0">, </span><span class="s1">())</span>
+
+        <span class="s1">subsf.lock()</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(subsf</span><span class="s0">,</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(subsf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(subsf.get_locks()</span><span class="s0">, </span><span class="s1">(subsf</span><span class="s0">,</span><span class="s1">))</span>
+
+        <span class="s1">subsf.lock()</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(subsf</span><span class="s0">, </span><span class="s1">subsf))</span>
+        <span class="s1">self.assertEqual(subsf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(subsf.get_locks()</span><span class="s0">, </span><span class="s1">(subsf</span><span class="s0">, </span><span class="s1">subsf))</span>
+
+    <span class="s0">def </span><span class="s1">test_pxarray_ref(self):</span>
+        <span class="s1">sf = pygame.Surface((</span><span class="s4">5</span><span class="s0">, </span><span class="s4">5</span><span class="s1">))</span>
+        <span class="s1">ar = pygame.PixelArray(sf)</span>
+        <span class="s1">ar2 = pygame.PixelArray(sf)</span>
+
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(ar</span><span class="s0">, </span><span class="s1">ar2))</span>
+
+        <span class="s0">del </span><span class="s1">ar</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(ar2</span><span class="s0">,</span><span class="s1">))</span>
+
+        <span class="s1">ar = ar2[:]</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(ar2</span><span class="s0">,</span><span class="s1">))</span>
+
+        <span class="s0">del </span><span class="s1">ar</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(len(sf.get_locks())</span><span class="s0">, </span><span class="s4">1</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_buffer(self):</span>
+        <span class="s1">sf = pygame.Surface((</span><span class="s4">5</span><span class="s0">, </span><span class="s4">5</span><span class="s1">))</span>
+        <span class="s1">buf = sf.get_buffer()</span>
+
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(buf</span><span class="s0">,</span><span class="s1">))</span>
+
+        <span class="s1">sf.unlock()</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, True</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">(buf</span><span class="s0">,</span><span class="s1">))</span>
+
+        <span class="s0">del </span><span class="s1">buf</span>
+        <span class="s1">self.assertEqual(sf.get_locked()</span><span class="s0">, False</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(sf.get_locks()</span><span class="s0">, </span><span class="s1">())</span>
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s2">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

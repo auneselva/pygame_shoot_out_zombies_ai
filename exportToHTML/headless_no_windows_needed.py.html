@@ -1,0 +1,77 @@
+<html>
+<head>
+<title>headless_no_windows_needed.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6a8759;}
+.s4 { color: #cc7832;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+headless_no_windows_needed.py</font>
+</center></td></tr></table>
+<pre><span class="s0">#!/usr/bin/env python</span>
+<span class="s2">&quot;&quot;&quot;How to use pygame with no windowing system, like on headless servers. 
+ 
+Thumbnail generation with scaling is an example of what you can do with pygame. 
+NOTE: the pygame scale function uses mmx/sse if available, and can be run  
+  in multiple threads. 
+ 
+&quot;&quot;&quot;</span>
+<span class="s1">useage = </span><span class="s3">&quot;&quot;&quot;-scale inputimage outputimage new_width new_height 
+eg.  -scale in.png out.png 50 50 
+ 
+&quot;&quot;&quot;</span>
+
+<span class="s4">import </span><span class="s1">os</span><span class="s4">, </span><span class="s1">sys</span>
+
+<span class="s0"># set SDL to use the dummy NULL video driver, </span>
+<span class="s0">#   so it doesn't need a windowing system.</span>
+<span class="s1">os.environ[</span><span class="s3">&quot;SDL_VIDEODRIVER&quot;</span><span class="s1">] = </span><span class="s3">&quot;dummy&quot;</span>
+
+
+<span class="s4">import </span><span class="s1">pygame.transform</span>
+
+
+<span class="s4">if </span><span class="s5">1</span><span class="s1">:</span>
+    <span class="s0">#some platforms need to init the display for some parts of pygame.</span>
+    <span class="s4">import </span><span class="s1">pygame.display</span>
+    <span class="s1">pygame.display.init()</span>
+    <span class="s1">screen = pygame.display.set_mode((</span><span class="s5">1</span><span class="s4">,</span><span class="s5">1</span><span class="s1">))</span>
+
+
+
+<span class="s4">def </span><span class="s1">scaleit(fin</span><span class="s4">, </span><span class="s1">fout</span><span class="s4">, </span><span class="s1">w</span><span class="s4">, </span><span class="s1">h):</span>
+    <span class="s1">i = pygame.image.load(fin)</span>
+
+    <span class="s4">if </span><span class="s1">hasattr(pygame.transform</span><span class="s4">, </span><span class="s3">&quot;smoothscale&quot;</span><span class="s1">):</span>
+        <span class="s1">scaled_image = pygame.transform.smoothscale(i</span><span class="s4">, </span><span class="s1">(w</span><span class="s4">,</span><span class="s1">h))</span>
+    <span class="s4">else</span><span class="s1">:</span>
+        <span class="s1">scaled_image = pygame.transform.scale(i</span><span class="s4">, </span><span class="s1">(w</span><span class="s4">,</span><span class="s1">h))</span>
+    <span class="s1">pygame.image.save(scaled_image</span><span class="s4">, </span><span class="s1">fout)</span>
+
+<span class="s4">def </span><span class="s1">main(fin</span><span class="s4">, </span><span class="s1">fout</span><span class="s4">, </span><span class="s1">w</span><span class="s4">, </span><span class="s1">h):</span>
+    <span class="s2">&quot;&quot;&quot;smoothscale image file named fin as fout with new size (w,h)&quot;&quot;&quot;</span>
+    <span class="s1">scaleit(fin</span><span class="s4">, </span><span class="s1">fout</span><span class="s4">, </span><span class="s1">w</span><span class="s4">, </span><span class="s1">h)</span>
+
+<span class="s4">if </span><span class="s1">__name__ == </span><span class="s3">&quot;__main__&quot;</span><span class="s1">:</span>
+    <span class="s4">if </span><span class="s3">&quot;-scale&quot; </span><span class="s4">in </span><span class="s1">sys.argv:</span>
+        <span class="s1">fin</span><span class="s4">, </span><span class="s1">fout</span><span class="s4">, </span><span class="s1">w</span><span class="s4">, </span><span class="s1">h = sys.argv[</span><span class="s5">2</span><span class="s1">:]</span>
+        <span class="s1">w</span><span class="s4">, </span><span class="s1">h = map(int</span><span class="s4">, </span><span class="s1">[w</span><span class="s4">,</span><span class="s1">h])</span>
+        <span class="s1">main(fin</span><span class="s4">, </span><span class="s1">fout</span><span class="s4">, </span><span class="s1">w</span><span class="s4">,</span><span class="s1">h)</span>
+    <span class="s4">else</span><span class="s1">:</span>
+        <span class="s1">print (useage)</span>
+
+
+
+
+</pre>
+</body>
+</html>

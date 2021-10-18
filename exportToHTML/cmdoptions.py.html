@@ -1,0 +1,831 @@
+<html>
+<head>
+<title>cmdoptions.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #808080;}
+.s4 { color: #6a8759;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+cmdoptions.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+shared options and groups 
+ 
+The principle here is to define options once, but *not* instantiate them 
+globally. One reason being that options with action='append' can carry state 
+between parses. pip parses general options twice internally, and shouldn't 
+pass on state. To be consistent, all options will follow this design. 
+ 
+&quot;&quot;&quot;</span>
+<span class="s2">from </span><span class="s1">__future__ </span><span class="s2">import </span><span class="s1">absolute_import</span>
+
+<span class="s2">import </span><span class="s1">textwrap</span>
+<span class="s2">import </span><span class="s1">warnings</span>
+<span class="s2">from </span><span class="s1">distutils.util </span><span class="s2">import </span><span class="s1">strtobool</span>
+<span class="s2">from </span><span class="s1">functools </span><span class="s2">import </span><span class="s1">partial</span>
+<span class="s2">from </span><span class="s1">optparse </span><span class="s2">import </span><span class="s1">SUPPRESS_HELP</span><span class="s2">, </span><span class="s1">Option</span><span class="s2">, </span><span class="s1">OptionGroup</span>
+
+<span class="s2">from </span><span class="s1">pip._internal.exceptions </span><span class="s2">import </span><span class="s1">CommandError</span>
+<span class="s2">from </span><span class="s1">pip._internal.locations </span><span class="s2">import </span><span class="s1">USER_CACHE_DIR</span><span class="s2">, </span><span class="s1">src_prefix</span>
+<span class="s2">from </span><span class="s1">pip._internal.models.format_control </span><span class="s2">import </span><span class="s1">FormatControl</span>
+<span class="s2">from </span><span class="s1">pip._internal.models.index </span><span class="s2">import </span><span class="s1">PyPI</span>
+<span class="s2">from </span><span class="s1">pip._internal.utils.hashes </span><span class="s2">import </span><span class="s1">STRONG_HASHES</span>
+<span class="s2">from </span><span class="s1">pip._internal.utils.typing </span><span class="s2">import </span><span class="s1">MYPY_CHECK_RUNNING</span>
+<span class="s2">from </span><span class="s1">pip._internal.utils.ui </span><span class="s2">import </span><span class="s1">BAR_TYPES</span>
+
+<span class="s2">if </span><span class="s1">MYPY_CHECK_RUNNING:</span>
+    <span class="s2">from </span><span class="s1">typing </span><span class="s2">import </span><span class="s1">Any</span><span class="s2">, </span><span class="s1">Callable</span><span class="s2">, </span><span class="s1">Dict</span><span class="s2">, </span><span class="s1">List</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Union  </span><span class="s3"># noqa: F401</span>
+    <span class="s2">from </span><span class="s1">optparse </span><span class="s2">import </span><span class="s1">OptionParser</span><span class="s2">, </span><span class="s1">Values  </span><span class="s3"># noqa: F401</span>
+    <span class="s2">from </span><span class="s1">pip._internal.cli.parser </span><span class="s2">import </span><span class="s1">ConfigOptionParser  </span><span class="s3"># noqa: F401</span>
+
+
+<span class="s2">def </span><span class="s1">raise_option_error(parser</span><span class="s2">, </span><span class="s1">option</span><span class="s2">, </span><span class="s1">msg):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Raise an option parsing error using parser.error(). 
+ 
+    Args: 
+      parser: an OptionParser instance. 
+      option: an Option instance. 
+      msg: the error text. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">msg = </span><span class="s4">'{} error: {}'</span><span class="s1">.format(option</span><span class="s2">, </span><span class="s1">msg)</span>
+    <span class="s1">msg = textwrap.fill(</span><span class="s4">' '</span><span class="s1">.join(msg.split()))</span>
+    <span class="s1">parser.error(msg)</span>
+
+
+<span class="s2">def </span><span class="s1">make_option_group(group</span><span class="s2">, </span><span class="s1">parser):</span>
+    <span class="s3"># type: (Dict[str, Any], ConfigOptionParser) -&gt; OptionGroup</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Return an OptionGroup object 
+    group  -- assumed to be dict with 'name' and 'options' keys 
+    parser -- an optparse Parser 
+    &quot;&quot;&quot;</span>
+    <span class="s1">option_group = OptionGroup(parser</span><span class="s2">, </span><span class="s1">group[</span><span class="s4">'name'</span><span class="s1">])</span>
+    <span class="s2">for </span><span class="s1">option </span><span class="s2">in </span><span class="s1">group[</span><span class="s4">'options'</span><span class="s1">]:</span>
+        <span class="s1">option_group.add_option(option())</span>
+    <span class="s2">return </span><span class="s1">option_group</span>
+
+
+<span class="s2">def </span><span class="s1">check_install_build_global(options</span><span class="s2">, </span><span class="s1">check_options=</span><span class="s2">None</span><span class="s1">):</span>
+    <span class="s3"># type: (Values, Optional[Values]) -&gt; None</span>
+    <span class="s0">&quot;&quot;&quot;Disable wheels if per-setup.py call options are set. 
+ 
+    :param options: The OptionParser options to update. 
+    :param check_options: The options to check, if not supplied defaults to 
+        options. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">check_options </span><span class="s2">is None</span><span class="s1">:</span>
+        <span class="s1">check_options = options</span>
+
+    <span class="s2">def </span><span class="s1">getname(n):</span>
+        <span class="s2">return </span><span class="s1">getattr(check_options</span><span class="s2">, </span><span class="s1">n</span><span class="s2">, None</span><span class="s1">)</span>
+    <span class="s1">names = [</span><span class="s4">&quot;build_options&quot;</span><span class="s2">, </span><span class="s4">&quot;global_options&quot;</span><span class="s2">, </span><span class="s4">&quot;install_options&quot;</span><span class="s1">]</span>
+    <span class="s2">if </span><span class="s1">any(map(getname</span><span class="s2">, </span><span class="s1">names)):</span>
+        <span class="s1">control = options.format_control</span>
+        <span class="s1">control.disallow_binaries()</span>
+        <span class="s1">warnings.warn(</span>
+            <span class="s4">'Disabling all use of wheels due to the use of --build-options '</span>
+            <span class="s4">'/ --global-options / --install-options.'</span><span class="s2">, </span><span class="s1">stacklevel=</span><span class="s5">2</span><span class="s2">,</span>
+        <span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">check_dist_restriction(options</span><span class="s2">, </span><span class="s1">check_target=</span><span class="s2">False</span><span class="s1">):</span>
+    <span class="s3"># type: (Values, bool) -&gt; None</span>
+    <span class="s0">&quot;&quot;&quot;Function for determining if custom platform options are allowed. 
+ 
+    :param options: The OptionParser options. 
+    :param check_target: Whether or not to check if --target is being used. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">dist_restriction_set = any([</span>
+        <span class="s1">options.python_version</span><span class="s2">,</span>
+        <span class="s1">options.platform</span><span class="s2">,</span>
+        <span class="s1">options.abi</span><span class="s2">,</span>
+        <span class="s1">options.implementation</span><span class="s2">,</span>
+    <span class="s1">])</span>
+
+    <span class="s1">binary_only = FormatControl(set()</span><span class="s2">, </span><span class="s1">{</span><span class="s4">':all:'</span><span class="s1">})</span>
+    <span class="s1">sdist_dependencies_allowed = (</span>
+        <span class="s1">options.format_control != binary_only </span><span class="s2">and</span>
+        <span class="s2">not </span><span class="s1">options.ignore_dependencies</span>
+    <span class="s1">)</span>
+
+    <span class="s3"># Installations or downloads using dist restrictions must not combine</span>
+    <span class="s3"># source distributions and dist-specific wheels, as they are not</span>
+    <span class="s3"># gauranteed to be locally compatible.</span>
+    <span class="s2">if </span><span class="s1">dist_restriction_set </span><span class="s2">and </span><span class="s1">sdist_dependencies_allowed:</span>
+        <span class="s2">raise </span><span class="s1">CommandError(</span>
+            <span class="s4">&quot;When restricting platform and interpreter constraints using &quot;</span>
+            <span class="s4">&quot;--python-version, --platform, --abi, or --implementation, &quot;</span>
+            <span class="s4">&quot;either --no-deps must be set, or --only-binary=:all: must be &quot;</span>
+            <span class="s4">&quot;set and --no-binary must not be set (or must be set to &quot;</span>
+            <span class="s4">&quot;:none:).&quot;</span>
+        <span class="s1">)</span>
+
+    <span class="s2">if </span><span class="s1">check_target:</span>
+        <span class="s2">if </span><span class="s1">dist_restriction_set </span><span class="s2">and not </span><span class="s1">options.target_dir:</span>
+            <span class="s2">raise </span><span class="s1">CommandError(</span>
+                <span class="s4">&quot;Can not use any platform or abi specific options unless &quot;</span>
+                <span class="s4">&quot;installing via '--target'&quot;</span>
+            <span class="s1">)</span>
+
+
+<span class="s3">###########</span>
+<span class="s3"># options #</span>
+<span class="s3">###########</span>
+
+<span class="s1">help_ = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'-h'</span><span class="s2">, </span><span class="s4">'--help'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'help'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'help'</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">'Show help.'</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">isolated_mode = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">&quot;--isolated&quot;</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">&quot;isolated_mode&quot;</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">&quot;store_true&quot;</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">False,</span>
+    <span class="s1">help=(</span>
+        <span class="s4">&quot;Run pip in an isolated mode, ignoring environment variables and user &quot;</span>
+        <span class="s4">&quot;configuration.&quot;</span>
+    <span class="s1">)</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">require_virtualenv = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s3"># Run only if inside a virtualenv, bail if not.</span>
+    <span class="s4">'--require-virtualenv'</span><span class="s2">, </span><span class="s4">'--require-venv'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'require_venv'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">False,</span>
+    <span class="s1">help=SUPPRESS_HELP</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">verbose = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'-v'</span><span class="s2">, </span><span class="s4">'--verbose'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'verbose'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'count'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s5">0</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">'Give more output. Option is additive, and can be used up to 3 times.'</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">no_color = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--no-color'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'no_color'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">False,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Suppress colored output&quot;</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">version = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'-V'</span><span class="s2">, </span><span class="s4">'--version'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'version'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">'Show version and exit.'</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">quiet = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'-q'</span><span class="s2">, </span><span class="s4">'--quiet'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'quiet'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'count'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s5">0</span><span class="s2">,</span>
+    <span class="s1">help=(</span>
+        <span class="s4">'Give less output. Option is additive, and can be used up to 3'</span>
+        <span class="s4">' times (corresponding to WARNING, ERROR, and CRITICAL logging'</span>
+        <span class="s4">' levels).'</span>
+    <span class="s1">)</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">progress_bar = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--progress-bar'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'progress_bar'</span><span class="s2">,</span>
+    <span class="s1">type=</span><span class="s4">'choice'</span><span class="s2">,</span>
+    <span class="s1">choices=list(BAR_TYPES.keys())</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s4">'on'</span><span class="s2">,</span>
+    <span class="s1">help=(</span>
+        <span class="s4">'Specify type of progress to be displayed [' </span><span class="s1">+</span>
+        <span class="s4">'|'</span><span class="s1">.join(BAR_TYPES.keys()) + </span><span class="s4">'] (default: %default)'</span>
+    <span class="s1">)</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">log = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">&quot;--log&quot;</span><span class="s2">, </span><span class="s4">&quot;--log-file&quot;</span><span class="s2">, </span><span class="s4">&quot;--local-log&quot;</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">&quot;log&quot;</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">&quot;path&quot;</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Path to a verbose appending log.&quot;</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">no_input = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s3"># Don't ask for input</span>
+    <span class="s4">'--no-input'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'no_input'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">False,</span>
+    <span class="s1">help=SUPPRESS_HELP</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">proxy = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--proxy'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'proxy'</span><span class="s2">,</span>
+    <span class="s1">type=</span><span class="s4">'str'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s4">''</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Specify a proxy in the form [user:passwd@]proxy.server:port.&quot;</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">retries = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--retries'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'retries'</span><span class="s2">,</span>
+    <span class="s1">type=</span><span class="s4">'int'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s5">5</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Maximum number of retries each connection should attempt &quot;</span>
+         <span class="s4">&quot;(default %default times).&quot;</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">timeout = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--timeout'</span><span class="s2">, </span><span class="s4">'--default-timeout'</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">'sec'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'timeout'</span><span class="s2">,</span>
+    <span class="s1">type=</span><span class="s4">'float'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s5">15</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">'Set the socket timeout (default %default seconds).'</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">skip_requirements_regex = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s3"># A regex to be used to skip requirements</span>
+    <span class="s4">'--skip-requirements-regex'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'skip_requirements_regex'</span><span class="s2">,</span>
+    <span class="s1">type=</span><span class="s4">'str'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s4">''</span><span class="s2">,</span>
+    <span class="s1">help=SUPPRESS_HELP</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s2">def </span><span class="s1">exists_action():</span>
+    <span class="s3"># type: () -&gt; Option</span>
+    <span class="s2">return </span><span class="s1">Option(</span>
+        <span class="s3"># Option when path already exist</span>
+        <span class="s4">'--exists-action'</span><span class="s2">,</span>
+        <span class="s1">dest=</span><span class="s4">'exists_action'</span><span class="s2">,</span>
+        <span class="s1">type=</span><span class="s4">'choice'</span><span class="s2">,</span>
+        <span class="s1">choices=[</span><span class="s4">'s'</span><span class="s2">, </span><span class="s4">'i'</span><span class="s2">, </span><span class="s4">'w'</span><span class="s2">, </span><span class="s4">'b'</span><span class="s2">, </span><span class="s4">'a'</span><span class="s1">]</span><span class="s2">,</span>
+        <span class="s1">default=[]</span><span class="s2">,</span>
+        <span class="s1">action=</span><span class="s4">'append'</span><span class="s2">,</span>
+        <span class="s1">metavar=</span><span class="s4">'action'</span><span class="s2">,</span>
+        <span class="s1">help=</span><span class="s4">&quot;Default action when a path already exists: &quot;</span>
+             <span class="s4">&quot;(s)witch, (i)gnore, (w)ipe, (b)ackup, (a)bort).&quot;</span><span class="s2">,</span>
+    <span class="s1">)</span>
+
+
+<span class="s1">cert = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--cert'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'cert'</span><span class="s2">,</span>
+    <span class="s1">type=</span><span class="s4">'str'</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">'path'</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Path to alternate CA bundle.&quot;</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">client_cert = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--client-cert'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'client_cert'</span><span class="s2">,</span>
+    <span class="s1">type=</span><span class="s4">'str'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">None,</span>
+    <span class="s1">metavar=</span><span class="s4">'path'</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Path to SSL client certificate, a single file containing the &quot;</span>
+         <span class="s4">&quot;private key and the certificate in PEM format.&quot;</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">index_url = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'-i'</span><span class="s2">, </span><span class="s4">'--index-url'</span><span class="s2">, </span><span class="s4">'--pypi-url'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'index_url'</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">'URL'</span><span class="s2">,</span>
+    <span class="s1">default=PyPI.simple_url</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Base URL of Python Package Index (default %default). &quot;</span>
+         <span class="s4">&quot;This should point to a repository compliant with PEP 503 &quot;</span>
+         <span class="s4">&quot;(the simple repository API) or a local directory laid out &quot;</span>
+         <span class="s4">&quot;in the same format.&quot;</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s2">def </span><span class="s1">extra_index_url():</span>
+    <span class="s2">return </span><span class="s1">Option(</span>
+        <span class="s4">'--extra-index-url'</span><span class="s2">,</span>
+        <span class="s1">dest=</span><span class="s4">'extra_index_urls'</span><span class="s2">,</span>
+        <span class="s1">metavar=</span><span class="s4">'URL'</span><span class="s2">,</span>
+        <span class="s1">action=</span><span class="s4">'append'</span><span class="s2">,</span>
+        <span class="s1">default=[]</span><span class="s2">,</span>
+        <span class="s1">help=</span><span class="s4">&quot;Extra URLs of package indexes to use in addition to &quot;</span>
+             <span class="s4">&quot;--index-url. Should follow the same rules as &quot;</span>
+             <span class="s4">&quot;--index-url.&quot;</span><span class="s2">,</span>
+    <span class="s1">)</span>
+
+
+<span class="s1">no_index = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--no-index'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'no_index'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">False,</span>
+    <span class="s1">help=</span><span class="s4">'Ignore package index (only looking at --find-links URLs instead).'</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s2">def </span><span class="s1">find_links():</span>
+    <span class="s3"># type: () -&gt; Option</span>
+    <span class="s2">return </span><span class="s1">Option(</span>
+        <span class="s4">'-f'</span><span class="s2">, </span><span class="s4">'--find-links'</span><span class="s2">,</span>
+        <span class="s1">dest=</span><span class="s4">'find_links'</span><span class="s2">,</span>
+        <span class="s1">action=</span><span class="s4">'append'</span><span class="s2">,</span>
+        <span class="s1">default=[]</span><span class="s2">,</span>
+        <span class="s1">metavar=</span><span class="s4">'url'</span><span class="s2">,</span>
+        <span class="s1">help=</span><span class="s4">&quot;If a url or path to an html file, then parse for links to &quot;</span>
+             <span class="s4">&quot;archives. If a local path or file:// url that's a directory, &quot;</span>
+             <span class="s4">&quot;then look for archives in the directory listing.&quot;</span><span class="s2">,</span>
+    <span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">trusted_host():</span>
+    <span class="s3"># type: () -&gt; Option</span>
+    <span class="s2">return </span><span class="s1">Option(</span>
+        <span class="s4">&quot;--trusted-host&quot;</span><span class="s2">,</span>
+        <span class="s1">dest=</span><span class="s4">&quot;trusted_hosts&quot;</span><span class="s2">,</span>
+        <span class="s1">action=</span><span class="s4">&quot;append&quot;</span><span class="s2">,</span>
+        <span class="s1">metavar=</span><span class="s4">&quot;HOSTNAME&quot;</span><span class="s2">,</span>
+        <span class="s1">default=[]</span><span class="s2">,</span>
+        <span class="s1">help=</span><span class="s4">&quot;Mark this host as trusted, even though it does not have valid &quot;</span>
+             <span class="s4">&quot;or any HTTPS.&quot;</span><span class="s2">,</span>
+    <span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">constraints():</span>
+    <span class="s3"># type: () -&gt; Option</span>
+    <span class="s2">return </span><span class="s1">Option(</span>
+        <span class="s4">'-c'</span><span class="s2">, </span><span class="s4">'--constraint'</span><span class="s2">,</span>
+        <span class="s1">dest=</span><span class="s4">'constraints'</span><span class="s2">,</span>
+        <span class="s1">action=</span><span class="s4">'append'</span><span class="s2">,</span>
+        <span class="s1">default=[]</span><span class="s2">,</span>
+        <span class="s1">metavar=</span><span class="s4">'file'</span><span class="s2">,</span>
+        <span class="s1">help=</span><span class="s4">'Constrain versions using the given constraints file. '</span>
+        <span class="s4">'This option can be used multiple times.'</span>
+    <span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">requirements():</span>
+    <span class="s3"># type: () -&gt; Option</span>
+    <span class="s2">return </span><span class="s1">Option(</span>
+        <span class="s4">'-r'</span><span class="s2">, </span><span class="s4">'--requirement'</span><span class="s2">,</span>
+        <span class="s1">dest=</span><span class="s4">'requirements'</span><span class="s2">,</span>
+        <span class="s1">action=</span><span class="s4">'append'</span><span class="s2">,</span>
+        <span class="s1">default=[]</span><span class="s2">,</span>
+        <span class="s1">metavar=</span><span class="s4">'file'</span><span class="s2">,</span>
+        <span class="s1">help=</span><span class="s4">'Install from the given requirements file. '</span>
+        <span class="s4">'This option can be used multiple times.'</span>
+    <span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">editable():</span>
+    <span class="s3"># type: () -&gt; Option</span>
+    <span class="s2">return </span><span class="s1">Option(</span>
+        <span class="s4">'-e'</span><span class="s2">, </span><span class="s4">'--editable'</span><span class="s2">,</span>
+        <span class="s1">dest=</span><span class="s4">'editables'</span><span class="s2">,</span>
+        <span class="s1">action=</span><span class="s4">'append'</span><span class="s2">,</span>
+        <span class="s1">default=[]</span><span class="s2">,</span>
+        <span class="s1">metavar=</span><span class="s4">'path/url'</span><span class="s2">,</span>
+        <span class="s1">help=(</span><span class="s4">'Install a project in editable mode (i.e. setuptools '</span>
+              <span class="s4">'&quot;develop mode&quot;) from a local project path or a VCS url.'</span><span class="s1">)</span><span class="s2">,</span>
+    <span class="s1">)</span>
+
+
+<span class="s1">src = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--src'</span><span class="s2">, </span><span class="s4">'--source'</span><span class="s2">, </span><span class="s4">'--source-dir'</span><span class="s2">, </span><span class="s4">'--source-directory'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'src_dir'</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">'dir'</span><span class="s2">,</span>
+    <span class="s1">default=src_prefix</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">'Directory to check out editable projects into. '</span>
+    <span class="s4">'The default in a virtualenv is &quot;&lt;venv path&gt;/src&quot;. '</span>
+    <span class="s4">'The default for global installs is &quot;&lt;current dir&gt;/src&quot;.'</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s2">def </span><span class="s1">_get_format_control(values</span><span class="s2">, </span><span class="s1">option):</span>
+    <span class="s3"># type: (Values, Option) -&gt; Any</span>
+    <span class="s0">&quot;&quot;&quot;Get a format_control object.&quot;&quot;&quot;</span>
+    <span class="s2">return </span><span class="s1">getattr(values</span><span class="s2">, </span><span class="s1">option.dest)</span>
+
+
+<span class="s2">def </span><span class="s1">_handle_no_binary(option</span><span class="s2">, </span><span class="s1">opt_str</span><span class="s2">, </span><span class="s1">value</span><span class="s2">, </span><span class="s1">parser):</span>
+    <span class="s3"># type: (Option, str, str, OptionParser) -&gt; None</span>
+    <span class="s1">existing = _get_format_control(parser.values</span><span class="s2">, </span><span class="s1">option)</span>
+    <span class="s1">FormatControl.handle_mutual_excludes(</span>
+        <span class="s1">value</span><span class="s2">, </span><span class="s1">existing.no_binary</span><span class="s2">, </span><span class="s1">existing.only_binary</span><span class="s2">,</span>
+    <span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">_handle_only_binary(option</span><span class="s2">, </span><span class="s1">opt_str</span><span class="s2">, </span><span class="s1">value</span><span class="s2">, </span><span class="s1">parser):</span>
+    <span class="s3"># type: (Option, str, str, OptionParser) -&gt; None</span>
+    <span class="s1">existing = _get_format_control(parser.values</span><span class="s2">, </span><span class="s1">option)</span>
+    <span class="s1">FormatControl.handle_mutual_excludes(</span>
+        <span class="s1">value</span><span class="s2">, </span><span class="s1">existing.only_binary</span><span class="s2">, </span><span class="s1">existing.no_binary</span><span class="s2">,</span>
+    <span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">no_binary():</span>
+    <span class="s3"># type: () -&gt; Option</span>
+    <span class="s1">format_control = FormatControl(set()</span><span class="s2">, </span><span class="s1">set())</span>
+    <span class="s2">return </span><span class="s1">Option(</span>
+        <span class="s4">&quot;--no-binary&quot;</span><span class="s2">, </span><span class="s1">dest=</span><span class="s4">&quot;format_control&quot;</span><span class="s2">, </span><span class="s1">action=</span><span class="s4">&quot;callback&quot;</span><span class="s2">,</span>
+        <span class="s1">callback=_handle_no_binary</span><span class="s2">, </span><span class="s1">type=</span><span class="s4">&quot;str&quot;</span><span class="s2">,</span>
+        <span class="s1">default=format_control</span><span class="s2">,</span>
+        <span class="s1">help=</span><span class="s4">&quot;Do not use binary packages. Can be supplied multiple times, and &quot;</span>
+             <span class="s4">&quot;each time adds to the existing value. Accepts either :all: to &quot;</span>
+             <span class="s4">&quot;disable all binary packages, :none: to empty the set, or one or &quot;</span>
+             <span class="s4">&quot;more package names with commas between them. Note that some &quot;</span>
+             <span class="s4">&quot;packages are tricky to compile and may fail to install when &quot;</span>
+             <span class="s4">&quot;this option is used on them.&quot;</span><span class="s2">,</span>
+    <span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">only_binary():</span>
+    <span class="s3"># type: () -&gt; Option</span>
+    <span class="s1">format_control = FormatControl(set()</span><span class="s2">, </span><span class="s1">set())</span>
+    <span class="s2">return </span><span class="s1">Option(</span>
+        <span class="s4">&quot;--only-binary&quot;</span><span class="s2">, </span><span class="s1">dest=</span><span class="s4">&quot;format_control&quot;</span><span class="s2">, </span><span class="s1">action=</span><span class="s4">&quot;callback&quot;</span><span class="s2">,</span>
+        <span class="s1">callback=_handle_only_binary</span><span class="s2">, </span><span class="s1">type=</span><span class="s4">&quot;str&quot;</span><span class="s2">,</span>
+        <span class="s1">default=format_control</span><span class="s2">,</span>
+        <span class="s1">help=</span><span class="s4">&quot;Do not use source packages. Can be supplied multiple times, and &quot;</span>
+             <span class="s4">&quot;each time adds to the existing value. Accepts either :all: to &quot;</span>
+             <span class="s4">&quot;disable all source packages, :none: to empty the set, or one or &quot;</span>
+             <span class="s4">&quot;more package names with commas between them. Packages without &quot;</span>
+             <span class="s4">&quot;binary distributions will fail to install when this option is &quot;</span>
+             <span class="s4">&quot;used on them.&quot;</span><span class="s2">,</span>
+    <span class="s1">)</span>
+
+
+<span class="s1">platform = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--platform'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'platform'</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">'platform'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">None,</span>
+    <span class="s1">help=(</span><span class="s4">&quot;Only use wheels compatible with &lt;platform&gt;. &quot;</span>
+          <span class="s4">&quot;Defaults to the platform of the running system.&quot;</span><span class="s1">)</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s1">python_version = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--python-version'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'python_version'</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">'python_version'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">None,</span>
+    <span class="s1">help=(</span><span class="s4">&quot;Only use wheels compatible with Python &quot;</span>
+          <span class="s4">&quot;interpreter version &lt;version&gt;. If not specified, then the &quot;</span>
+          <span class="s4">&quot;current system interpreter minor version is used. A major &quot;</span>
+          <span class="s4">&quot;version (e.g. '2') can be specified to match all &quot;</span>
+          <span class="s4">&quot;minor revs of that major version.  A minor version &quot;</span>
+          <span class="s4">&quot;(e.g. '34') can also be specified.&quot;</span><span class="s1">)</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s1">implementation = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--implementation'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'implementation'</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">'implementation'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">None,</span>
+    <span class="s1">help=(</span><span class="s4">&quot;Only use wheels compatible with Python &quot;</span>
+          <span class="s4">&quot;implementation &lt;implementation&gt;, e.g. 'pp', 'jy', 'cp', &quot;</span>
+          <span class="s4">&quot; or 'ip'. If not specified, then the current &quot;</span>
+          <span class="s4">&quot;interpreter implementation is used.  Use 'py' to force &quot;</span>
+          <span class="s4">&quot;implementation-agnostic wheels.&quot;</span><span class="s1">)</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s1">abi = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--abi'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'abi'</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">'abi'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">None,</span>
+    <span class="s1">help=(</span><span class="s4">&quot;Only use wheels compatible with Python &quot;</span>
+          <span class="s4">&quot;abi &lt;abi&gt;, e.g. 'pypy_41'.  If not specified, then the &quot;</span>
+          <span class="s4">&quot;current interpreter abi tag is used.  Generally &quot;</span>
+          <span class="s4">&quot;you will need to specify --implementation, &quot;</span>
+          <span class="s4">&quot;--platform, and --python-version when using &quot;</span>
+          <span class="s4">&quot;this option.&quot;</span><span class="s1">)</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s2">def </span><span class="s1">prefer_binary():</span>
+    <span class="s3"># type: () -&gt; Option</span>
+    <span class="s2">return </span><span class="s1">Option(</span>
+        <span class="s4">&quot;--prefer-binary&quot;</span><span class="s2">,</span>
+        <span class="s1">dest=</span><span class="s4">&quot;prefer_binary&quot;</span><span class="s2">,</span>
+        <span class="s1">action=</span><span class="s4">&quot;store_true&quot;</span><span class="s2">,</span>
+        <span class="s1">default=</span><span class="s2">False,</span>
+        <span class="s1">help=</span><span class="s4">&quot;Prefer older binary packages over newer source packages.&quot;</span>
+    <span class="s1">)</span>
+
+
+<span class="s1">cache_dir = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">&quot;--cache-dir&quot;</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">&quot;cache_dir&quot;</span><span class="s2">,</span>
+    <span class="s1">default=USER_CACHE_DIR</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">&quot;dir&quot;</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Store the cache data in &lt;dir&gt;.&quot;</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s2">def </span><span class="s1">no_cache_dir_callback(option</span><span class="s2">, </span><span class="s1">opt</span><span class="s2">, </span><span class="s1">value</span><span class="s2">, </span><span class="s1">parser):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Process a value provided for the --no-cache-dir option. 
+ 
+    This is an optparse.Option callback for the --no-cache-dir option. 
+    &quot;&quot;&quot;</span>
+    <span class="s3"># The value argument will be None if --no-cache-dir is passed via the</span>
+    <span class="s3"># command-line, since the option doesn't accept arguments.  However,</span>
+    <span class="s3"># the value can be non-None if the option is triggered e.g. by an</span>
+    <span class="s3"># environment variable, like PIP_NO_CACHE_DIR=true.</span>
+    <span class="s2">if </span><span class="s1">value </span><span class="s2">is not None</span><span class="s1">:</span>
+        <span class="s3"># Then parse the string value to get argument error-checking.</span>
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s1">strtobool(value)</span>
+        <span class="s2">except </span><span class="s1">ValueError </span><span class="s2">as </span><span class="s1">exc:</span>
+            <span class="s1">raise_option_error(parser</span><span class="s2">, </span><span class="s1">option=option</span><span class="s2">, </span><span class="s1">msg=str(exc))</span>
+
+    <span class="s3"># Originally, setting PIP_NO_CACHE_DIR to a value that strtobool()</span>
+    <span class="s3"># converted to 0 (like &quot;false&quot; or &quot;no&quot;) caused cache_dir to be disabled</span>
+    <span class="s3"># rather than enabled (logic would say the latter).  Thus, we disable</span>
+    <span class="s3"># the cache directory not just on values that parse to True, but (for</span>
+    <span class="s3"># backwards compatibility reasons) also on values that parse to False.</span>
+    <span class="s3"># In other words, always set it to False if the option is provided in</span>
+    <span class="s3"># some (valid) form.</span>
+    <span class="s1">parser.values.cache_dir = </span><span class="s2">False</span>
+
+
+<span class="s1">no_cache = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">&quot;--no-cache-dir&quot;</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">&quot;cache_dir&quot;</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">&quot;callback&quot;</span><span class="s2">,</span>
+    <span class="s1">callback=no_cache_dir_callback</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Disable the cache.&quot;</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">no_deps = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--no-deps'</span><span class="s2">, </span><span class="s4">'--no-dependencies'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'ignore_dependencies'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">False,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Don't install package dependencies.&quot;</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">build_dir = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'-b'</span><span class="s2">, </span><span class="s4">'--build'</span><span class="s2">, </span><span class="s4">'--build-dir'</span><span class="s2">, </span><span class="s4">'--build-directory'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'build_dir'</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">'dir'</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">'Directory to unpack packages into and build in. Note that '</span>
+         <span class="s4">'an initial build still takes place in a temporary directory. '</span>
+         <span class="s4">'The location of temporary directories can be controlled by setting '</span>
+         <span class="s4">'the TMPDIR environment variable (TEMP on Windows) appropriately. '</span>
+         <span class="s4">'When passed, build directories are not cleaned in case of failures.'</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">ignore_requires_python = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--ignore-requires-python'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'ignore_requires_python'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">'Ignore the Requires-Python information.'</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">no_build_isolation = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--no-build-isolation'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'build_isolation'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_false'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">True,</span>
+    <span class="s1">help=</span><span class="s4">'Disable isolation when building a modern source distribution. '</span>
+         <span class="s4">'Build dependencies specified by PEP 518 must be already installed '</span>
+         <span class="s4">'if this option is used.'</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s2">def </span><span class="s1">no_use_pep517_callback(option</span><span class="s2">, </span><span class="s1">opt</span><span class="s2">, </span><span class="s1">value</span><span class="s2">, </span><span class="s1">parser):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Process a value provided for the --no-use-pep517 option. 
+ 
+    This is an optparse.Option callback for the no_use_pep517 option. 
+    &quot;&quot;&quot;</span>
+    <span class="s3"># Since --no-use-pep517 doesn't accept arguments, the value argument</span>
+    <span class="s3"># will be None if --no-use-pep517 is passed via the command-line.</span>
+    <span class="s3"># However, the value can be non-None if the option is triggered e.g.</span>
+    <span class="s3"># by an environment variable, for example &quot;PIP_NO_USE_PEP517=true&quot;.</span>
+    <span class="s2">if </span><span class="s1">value </span><span class="s2">is not None</span><span class="s1">:</span>
+        <span class="s1">msg = </span><span class="s4">&quot;&quot;&quot;A value was passed for --no-use-pep517, 
+        probably using either the PIP_NO_USE_PEP517 environment variable 
+        or the &quot;no-use-pep517&quot; config file option. Use an appropriate value 
+        of the PIP_USE_PEP517 environment variable or the &quot;use-pep517&quot; 
+        config file option instead. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">raise_option_error(parser</span><span class="s2">, </span><span class="s1">option=option</span><span class="s2">, </span><span class="s1">msg=msg)</span>
+
+    <span class="s3"># Otherwise, --no-use-pep517 was passed via the command-line.</span>
+    <span class="s1">parser.values.use_pep517 = </span><span class="s2">False</span>
+
+
+<span class="s1">use_pep517 = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--use-pep517'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'use_pep517'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">None,</span>
+    <span class="s1">help=</span><span class="s4">'Use PEP 517 for building source distributions '</span>
+         <span class="s4">'(use --no-use-pep517 to force legacy behaviour).'</span>
+<span class="s1">)  </span><span class="s3"># type: Any</span>
+
+<span class="s1">no_use_pep517 = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--no-use-pep517'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'use_pep517'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'callback'</span><span class="s2">,</span>
+    <span class="s1">callback=no_use_pep517_callback</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">None,</span>
+    <span class="s1">help=SUPPRESS_HELP</span>
+<span class="s1">)  </span><span class="s3"># type: Any</span>
+
+<span class="s1">install_options = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--install-option'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'install_options'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'append'</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">'options'</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Extra arguments to be supplied to the setup.py install &quot;</span>
+         <span class="s4">&quot;command (use like --install-option=</span><span class="s2">\&quot;</span><span class="s4">--install-scripts=/usr/local/&quot;</span>
+         <span class="s4">&quot;bin</span><span class="s2">\&quot;</span><span class="s4">). Use multiple --install-option options to pass multiple &quot;</span>
+         <span class="s4">&quot;options to setup.py install. If you are using an option with a &quot;</span>
+         <span class="s4">&quot;directory path, be sure to use absolute path.&quot;</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">global_options = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--global-option'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'global_options'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'append'</span><span class="s2">,</span>
+    <span class="s1">metavar=</span><span class="s4">'options'</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Extra global options to be supplied to the setup.py &quot;</span>
+         <span class="s4">&quot;call before the install command.&quot;</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">no_clean = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--no-clean'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">False,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Don't clean up build directories.&quot;</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">pre = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--pre'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">False,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Include pre-release and development versions. By default, &quot;</span>
+         <span class="s4">&quot;pip only finds stable versions.&quot;</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+<span class="s1">disable_pip_version_check = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">&quot;--disable-pip-version-check&quot;</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">&quot;disable_pip_version_check&quot;</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">&quot;store_true&quot;</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">False,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Don't periodically check PyPI to determine whether a new version &quot;</span>
+         <span class="s4">&quot;of pip is available for download. Implied with --no-index.&quot;</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s3"># Deprecated, Remove later</span>
+<span class="s1">always_unzip = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'-Z'</span><span class="s2">, </span><span class="s4">'--always-unzip'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'always_unzip'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+    <span class="s1">help=SUPPRESS_HELP</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s2">def </span><span class="s1">_merge_hash(option</span><span class="s2">, </span><span class="s1">opt_str</span><span class="s2">, </span><span class="s1">value</span><span class="s2">, </span><span class="s1">parser):</span>
+    <span class="s3"># type: (Option, str, str, OptionParser) -&gt; None</span>
+    <span class="s0">&quot;&quot;&quot;Given a value spelled &quot;algo:digest&quot;, append the digest to a list 
+    pointed to in a dict by the algo name.&quot;&quot;&quot;</span>
+    <span class="s2">if not </span><span class="s1">parser.values.hashes:</span>
+        <span class="s1">parser.values.hashes = {}  </span><span class="s3"># type: ignore</span>
+    <span class="s2">try</span><span class="s1">:</span>
+        <span class="s1">algo</span><span class="s2">, </span><span class="s1">digest = value.split(</span><span class="s4">':'</span><span class="s2">, </span><span class="s5">1</span><span class="s1">)</span>
+    <span class="s2">except </span><span class="s1">ValueError:</span>
+        <span class="s1">parser.error(</span><span class="s4">'Arguments to %s must be a hash name '</span>
+                     <span class="s4">'followed by a value, like --hash=sha256:abcde...' </span><span class="s1">%</span>
+                     <span class="s1">opt_str)</span>
+    <span class="s2">if </span><span class="s1">algo </span><span class="s2">not in </span><span class="s1">STRONG_HASHES:</span>
+        <span class="s1">parser.error(</span><span class="s4">'Allowed hash algorithms for %s are %s.' </span><span class="s1">%</span>
+                     <span class="s1">(opt_str</span><span class="s2">, </span><span class="s4">', '</span><span class="s1">.join(STRONG_HASHES)))</span>
+    <span class="s1">parser.values.hashes.setdefault(algo</span><span class="s2">, </span><span class="s1">[]).append(digest)</span>
+
+
+<span class="s1">hash = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--hash'</span><span class="s2">,</span>
+    <span class="s3"># Hash values eventually end up in InstallRequirement.hashes due to</span>
+    <span class="s3"># __dict__ copying in process_line().</span>
+    <span class="s1">dest=</span><span class="s4">'hashes'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'callback'</span><span class="s2">,</span>
+    <span class="s1">callback=_merge_hash</span><span class="s2">,</span>
+    <span class="s1">type=</span><span class="s4">'string'</span><span class="s2">,</span>
+    <span class="s1">help=</span><span class="s4">&quot;Verify that the package's archive matches this &quot;</span>
+         <span class="s4">'hash before installing. Example: --hash=sha256:abcdef...'</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s1">require_hashes = partial(</span>
+    <span class="s1">Option</span><span class="s2">,</span>
+    <span class="s4">'--require-hashes'</span><span class="s2">,</span>
+    <span class="s1">dest=</span><span class="s4">'require_hashes'</span><span class="s2">,</span>
+    <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+    <span class="s1">default=</span><span class="s2">False,</span>
+    <span class="s1">help=</span><span class="s4">'Require a hash to check each requirement against, for '</span>
+         <span class="s4">'repeatable installs. This option is implied when any package in a '</span>
+         <span class="s4">'requirements file has a --hash option.'</span><span class="s2">,</span>
+<span class="s1">)  </span><span class="s3"># type: Callable[..., Option]</span>
+
+
+<span class="s3">##########</span>
+<span class="s3"># groups #</span>
+<span class="s3">##########</span>
+
+<span class="s1">general_group = {</span>
+    <span class="s4">'name'</span><span class="s1">: </span><span class="s4">'General Options'</span><span class="s2">,</span>
+    <span class="s4">'options'</span><span class="s1">: [</span>
+        <span class="s1">help_</span><span class="s2">,</span>
+        <span class="s1">isolated_mode</span><span class="s2">,</span>
+        <span class="s1">require_virtualenv</span><span class="s2">,</span>
+        <span class="s1">verbose</span><span class="s2">,</span>
+        <span class="s1">version</span><span class="s2">,</span>
+        <span class="s1">quiet</span><span class="s2">,</span>
+        <span class="s1">log</span><span class="s2">,</span>
+        <span class="s1">no_input</span><span class="s2">,</span>
+        <span class="s1">proxy</span><span class="s2">,</span>
+        <span class="s1">retries</span><span class="s2">,</span>
+        <span class="s1">timeout</span><span class="s2">,</span>
+        <span class="s1">skip_requirements_regex</span><span class="s2">,</span>
+        <span class="s1">exists_action</span><span class="s2">,</span>
+        <span class="s1">trusted_host</span><span class="s2">,</span>
+        <span class="s1">cert</span><span class="s2">,</span>
+        <span class="s1">client_cert</span><span class="s2">,</span>
+        <span class="s1">cache_dir</span><span class="s2">,</span>
+        <span class="s1">no_cache</span><span class="s2">,</span>
+        <span class="s1">disable_pip_version_check</span><span class="s2">,</span>
+        <span class="s1">no_color</span><span class="s2">,</span>
+    <span class="s1">]</span>
+<span class="s1">}  </span><span class="s3"># type: Dict[str, Any]</span>
+
+<span class="s1">index_group = {</span>
+    <span class="s4">'name'</span><span class="s1">: </span><span class="s4">'Package Index Options'</span><span class="s2">,</span>
+    <span class="s4">'options'</span><span class="s1">: [</span>
+        <span class="s1">index_url</span><span class="s2">,</span>
+        <span class="s1">extra_index_url</span><span class="s2">,</span>
+        <span class="s1">no_index</span><span class="s2">,</span>
+        <span class="s1">find_links</span><span class="s2">,</span>
+    <span class="s1">]</span>
+<span class="s1">}  </span><span class="s3"># type: Dict[str, Any]</span>
+</pre>
+</body>
+</html>

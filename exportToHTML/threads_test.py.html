@@ -1,0 +1,198 @@
+<html>
+<head>
+<title>threads_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6897bb;}
+.s3 { color: #808080;}
+.s4 { color: #629755; font-style: italic;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+threads_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">unittest</span>
+<span class="s0">from </span><span class="s1">pygame.threads </span><span class="s0">import </span><span class="s1">FuncResult</span><span class="s0">, </span><span class="s1">tmap</span><span class="s0">, </span><span class="s1">WorkerQueue</span><span class="s0">, </span><span class="s1">Empty</span><span class="s0">, </span><span class="s1">STOP</span>
+<span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">threads</span>
+<span class="s0">from </span><span class="s1">pygame.compat </span><span class="s0">import </span><span class="s1">xrange_</span>
+
+<span class="s0">import </span><span class="s1">time</span>
+
+
+<span class="s0">class </span><span class="s1">WorkerQueueTypeTest(unittest.TestCase):</span>
+    <span class="s0">def </span><span class="s1">test_usage_with_different_functions(self):</span>
+        <span class="s0">def </span><span class="s1">f(x):</span>
+            <span class="s0">return </span><span class="s1">x+</span><span class="s2">1</span>
+
+        <span class="s0">def </span><span class="s1">f2(x):</span>
+            <span class="s0">return </span><span class="s1">x+</span><span class="s2">2</span>
+
+        <span class="s1">wq = WorkerQueue()</span>
+        <span class="s1">fr = FuncResult(f)</span>
+        <span class="s1">fr2 = FuncResult(f2)</span>
+        <span class="s1">wq.do(fr</span><span class="s0">, </span><span class="s2">1</span><span class="s1">)</span>
+        <span class="s1">wq.do(fr2</span><span class="s0">, </span><span class="s2">1</span><span class="s1">)</span>
+        <span class="s1">wq.wait()</span>
+        <span class="s1">wq.stop()</span>
+
+        <span class="s1">self.assertEqual(fr.result</span><span class="s0">, </span><span class="s2">2</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(fr2.result</span><span class="s0">, </span><span class="s2">3</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_do(self):</span>
+
+        <span class="s3"># __doc__ (as of 2008-06-28) for pygame.threads.WorkerQueue.do:</span>
+
+          <span class="s3"># puts a function on a queue for running later.</span>
+          <span class="s3">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">test_stop(self):</span>
+        <span class="s4">&quot;&quot;&quot;Ensure stop() stops the worker queue&quot;&quot;&quot;</span>
+        <span class="s1">wq = WorkerQueue()</span>
+
+        <span class="s1">self.assertGreater(len(wq.pool)</span><span class="s0">, </span><span class="s2">0</span><span class="s1">)</span>
+
+        <span class="s0">for </span><span class="s1">t </span><span class="s0">in </span><span class="s1">wq.pool:</span>
+            <span class="s1">self.assertTrue(t.isAlive())</span>
+
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">xrange_(</span><span class="s2">200</span><span class="s1">):</span>
+            <span class="s1">wq.do(</span><span class="s0">lambda </span><span class="s1">x: x+</span><span class="s2">1</span><span class="s0">, </span><span class="s1">i)</span>
+
+        <span class="s1">wq.stop()</span>
+
+        <span class="s0">for </span><span class="s1">t </span><span class="s0">in </span><span class="s1">wq.pool:</span>
+            <span class="s1">self.assertFalse(t.isAlive())</span>
+
+        <span class="s1">self.assertIs(wq.queue.get()</span><span class="s0">, </span><span class="s1">STOP)</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_threadloop(self):</span>
+
+        <span class="s3"># __doc__ (as of 2008-06-28) for pygame.threads.WorkerQueue.threadloop:</span>
+
+          <span class="s3"># Loops until all of the tasks are finished.</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">test_wait(self):</span>
+
+        <span class="s3"># __doc__ (as of 2008-06-28) for pygame.threads.WorkerQueue.wait:</span>
+
+          <span class="s3"># waits until all tasks are complete.</span>
+
+        <span class="s1">wq = WorkerQueue()</span>
+
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">xrange_(</span><span class="s2">2000</span><span class="s1">): wq.do(</span><span class="s0">lambda </span><span class="s1">x: x+</span><span class="s2">1</span><span class="s0">, </span><span class="s1">i)</span>
+        <span class="s1">wq.wait()</span>
+
+        <span class="s1">self.assertRaises(Empty</span><span class="s0">, </span><span class="s1">wq.queue.get_nowait)</span>
+
+        <span class="s1">wq.stop()</span>
+
+
+<span class="s0">class </span><span class="s1">ThreadsModuleTest(unittest.TestCase):</span>
+    <span class="s0">def </span><span class="s1">todo_test_benchmark_workers(self):</span>
+        <span class="s4">&quot;tags:long_running&quot;</span>
+
+        <span class="s3"># __doc__ (as of 2008-06-28) for pygame.threads.benchmark_workers:</span>
+
+          <span class="s3"># does a little test to see if workers are at all faster.</span>
+          <span class="s3"># Returns the number of workers which works best.</span>
+          <span class="s3"># Takes a little bit of time to run, so you should only really call</span>
+          <span class="s3">#   it once.</span>
+          <span class="s3"># You can pass in benchmark data, and functions if you want.</span>
+          <span class="s3"># a_bench_func - f(data)</span>
+          <span class="s3"># the_data - data to work on.</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">test_init(self):</span>
+        <span class="s4">&quot;&quot;&quot;Ensure init() sets up the worker queue&quot;&quot;&quot;</span>
+        <span class="s1">threads.init(</span><span class="s2">8</span><span class="s1">)</span>
+
+        <span class="s1">self.assertIsInstance(threads._wq</span><span class="s0">, </span><span class="s1">WorkerQueue)</span>
+
+        <span class="s1">threads.quit()</span>
+
+    <span class="s0">def </span><span class="s1">test_quit(self):</span>
+        <span class="s4">&quot;&quot;&quot;Ensure quit() cleans up the worker queue&quot;&quot;&quot;</span>
+        <span class="s1">threads.init(</span><span class="s2">8</span><span class="s1">)</span>
+        <span class="s1">threads.quit()</span>
+
+        <span class="s1">self.assertIsNone(threads._wq)</span>
+
+    <span class="s0">def </span><span class="s1">test_tmap(self):</span>
+        <span class="s3"># __doc__ (as of 2008-06-28) for pygame.threads.tmap:</span>
+
+          <span class="s3"># like map, but uses a thread pool to execute.</span>
+          <span class="s3"># num_workers - the number of worker threads that will be used.  If pool</span>
+          <span class="s3">#                 is passed in, then the num_workers arg is ignored.</span>
+          <span class="s3"># worker_queue - you can optionally pass in an existing WorkerQueue.</span>
+          <span class="s3"># wait - True means that the results are returned when everything is finished.</span>
+          <span class="s3">#        False means that we return the [worker_queue, results] right away instead.</span>
+          <span class="s3">#        results, is returned as a list of FuncResult instances.</span>
+          <span class="s3"># stop_on_error -</span>
+
+        <span class="s1">func</span><span class="s0">, </span><span class="s1">data = </span><span class="s0">lambda </span><span class="s1">x:x+</span><span class="s2">1</span><span class="s0">, </span><span class="s1">xrange_(</span><span class="s2">100</span><span class="s1">)</span>
+
+        <span class="s1">tmapped = list(tmap(func</span><span class="s0">, </span><span class="s1">data))</span>
+        <span class="s1">mapped = list(map(func</span><span class="s0">, </span><span class="s1">data))</span>
+
+        <span class="s1">self.assertEqual(tmapped</span><span class="s0">, </span><span class="s1">mapped)</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_tmap__None_func_and_multiple_sequences(self):</span>
+        <span class="s4">&quot;&quot;&quot;Using a None as func and multiple sequences&quot;&quot;&quot;</span>
+        <span class="s1">self.fail()</span>
+
+        <span class="s1">res =  tmap(</span><span class="s0">None, </span><span class="s1">[</span><span class="s2">1</span><span class="s0">,</span><span class="s2">2</span><span class="s0">,</span><span class="s2">3</span><span class="s0">,</span><span class="s2">4</span><span class="s1">])</span>
+        <span class="s1">res2 = tmap(</span><span class="s0">None, </span><span class="s1">[</span><span class="s2">1</span><span class="s0">,</span><span class="s2">2</span><span class="s0">,</span><span class="s2">3</span><span class="s0">,</span><span class="s2">4</span><span class="s1">]</span><span class="s0">, </span><span class="s1">[</span><span class="s2">22</span><span class="s0">, </span><span class="s2">33</span><span class="s0">, </span><span class="s2">44</span><span class="s0">, </span><span class="s2">55</span><span class="s1">])</span>
+        <span class="s1">res3 = tmap(</span><span class="s0">None, </span><span class="s1">[</span><span class="s2">1</span><span class="s0">,</span><span class="s2">2</span><span class="s0">,</span><span class="s2">3</span><span class="s0">,</span><span class="s2">4</span><span class="s1">]</span><span class="s0">, </span><span class="s1">[</span><span class="s2">22</span><span class="s0">, </span><span class="s2">33</span><span class="s0">, </span><span class="s2">44</span><span class="s0">, </span><span class="s2">55</span><span class="s0">, </span><span class="s2">66</span><span class="s1">])</span>
+        <span class="s1">res4 = tmap(</span><span class="s0">None, </span><span class="s1">[</span><span class="s2">1</span><span class="s0">,</span><span class="s2">2</span><span class="s0">,</span><span class="s2">3</span><span class="s0">,</span><span class="s2">4</span><span class="s0">,</span><span class="s2">5</span><span class="s1">]</span><span class="s0">, </span><span class="s1">[</span><span class="s2">22</span><span class="s0">, </span><span class="s2">33</span><span class="s0">, </span><span class="s2">44</span><span class="s0">, </span><span class="s2">55</span><span class="s1">])</span>
+
+        <span class="s1">self.assertEqual([</span><span class="s2">1</span><span class="s0">, </span><span class="s2">2</span><span class="s0">, </span><span class="s2">3</span><span class="s0">, </span><span class="s2">4</span><span class="s1">]</span><span class="s0">, </span><span class="s1">res)</span>
+        <span class="s1">self.assertEqual([(</span><span class="s2">1</span><span class="s0">, </span><span class="s2">22</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">2</span><span class="s0">, </span><span class="s2">33</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">3</span><span class="s0">, </span><span class="s2">44</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">4</span><span class="s0">, </span><span class="s2">55</span><span class="s1">)]</span><span class="s0">, </span><span class="s1">res2)</span>
+        <span class="s1">self.assertEqual([(</span><span class="s2">1</span><span class="s0">, </span><span class="s2">22</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">2</span><span class="s0">, </span><span class="s2">33</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">3</span><span class="s0">, </span><span class="s2">44</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">4</span><span class="s0">, </span><span class="s2">55</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s0">None, </span><span class="s2">66</span><span class="s1">)]</span><span class="s0">, </span><span class="s1">res3)</span>
+        <span class="s1">self.assertEqual([(</span><span class="s2">1</span><span class="s0">, </span><span class="s2">22</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">2</span><span class="s0">, </span><span class="s2">33</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">3</span><span class="s0">, </span><span class="s2">44</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">4</span><span class="s0">, </span><span class="s2">55</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">5</span><span class="s0">,None</span><span class="s1">)]</span><span class="s0">, </span><span class="s1">res4)</span>
+
+    <span class="s0">def </span><span class="s1">test_tmap__wait(self):</span>
+        <span class="s1">r = range(</span><span class="s2">1000</span><span class="s1">)</span>
+        <span class="s1">wq</span><span class="s0">, </span><span class="s1">results = tmap(</span><span class="s0">lambda </span><span class="s1">x:x</span><span class="s0">, </span><span class="s1">r</span><span class="s0">, </span><span class="s1">num_workers = </span><span class="s2">5</span><span class="s0">, </span><span class="s1">wait=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">wq.wait()</span>
+        <span class="s1">r2 = map(</span><span class="s0">lambda </span><span class="s1">x:x.result</span><span class="s0">, </span><span class="s1">results)</span>
+        <span class="s1">self.assertEqual(list(r)</span><span class="s0">, </span><span class="s1">list(r2))</span>
+
+    <span class="s0">def </span><span class="s1">test_FuncResult(self):</span>
+        <span class="s4">&quot;&quot;&quot;Ensure FuncResult sets its result and exception attributes&quot;&quot;&quot;</span>
+        <span class="s3"># Results are stored in result attribute</span>
+        <span class="s1">fr = FuncResult(</span><span class="s0">lambda </span><span class="s1">x:x+</span><span class="s2">1</span><span class="s1">)</span>
+        <span class="s1">fr(</span><span class="s2">2</span><span class="s1">)</span>
+
+        <span class="s1">self.assertEqual(fr.result</span><span class="s0">, </span><span class="s2">3</span><span class="s1">)</span>
+
+        <span class="s3"># Exceptions are store in exception attribute</span>
+        <span class="s1">self.assertIsNone(fr.exception</span><span class="s0">, </span><span class="s5">&quot;no exception should be raised&quot;</span><span class="s1">)</span>
+
+        <span class="s1">exception = ValueError(</span><span class="s5">'rast'</span><span class="s1">)</span>
+
+        <span class="s0">def </span><span class="s1">x(sdf):</span>
+            <span class="s0">raise </span><span class="s1">exception</span>
+
+        <span class="s1">fr = FuncResult(x)</span>
+        <span class="s1">fr(</span><span class="s0">None</span><span class="s1">)</span>
+
+        <span class="s1">self.assertIs(fr.exception</span><span class="s0">, </span><span class="s1">exception)</span>
+
+
+<span class="s3">################################################################################</span>
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s5">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

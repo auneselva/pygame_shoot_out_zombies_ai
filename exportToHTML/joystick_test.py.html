@@ -1,0 +1,111 @@
+<html>
+<head>
+<title>joystick_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+joystick_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">unittest</span>
+
+<span class="s0">class </span><span class="s1">JoystickTypeTest(unittest.TestCase):</span>
+    <span class="s0">def </span><span class="s1">todo_test_Joystick(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.joystick.Joystick:</span>
+
+          <span class="s2"># pygame.joystick.Joystick(id): return Joystick</span>
+          <span class="s2"># create a new Joystick object</span>
+          <span class="s2">#</span>
+          <span class="s2"># Create a new joystick to access a physical device. The id argument</span>
+          <span class="s2"># must be a value from 0 to pygame.joystick.get_count()-1.</span>
+          <span class="s2">#</span>
+          <span class="s2"># To access most of the Joystick methods, you'll need to init() the</span>
+          <span class="s2"># Joystick. This is separate from making sure the joystick module is</span>
+          <span class="s2"># initialized. When multiple Joysticks objects are created for the</span>
+          <span class="s2"># same physical joystick device (i.e., they have the same ID number),</span>
+          <span class="s2"># the state and values for those Joystick objects will be shared.</span>
+          <span class="s2">#</span>
+          <span class="s2"># The Joystick object allows you to get information about the types of</span>
+          <span class="s2"># controls on a joystick device. Once the device is initialized the</span>
+          <span class="s2"># Pygame event queue will start receiving events about its input.</span>
+          <span class="s2">#</span>
+          <span class="s2"># You can call the Joystick.get_name() and Joystick.get_id() functions</span>
+          <span class="s2"># without initializing the Joystick object.</span>
+          <span class="s2">#</span>
+
+        <span class="s1">self.fail()</span>
+
+<span class="s0">class </span><span class="s1">JoytickModuleTest(unittest.TestCase):</span>
+    <span class="s0">def </span><span class="s1">todo_test_get_count(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.joystick.get_count:</span>
+
+          <span class="s2"># pygame.joystick.get_count(): return count</span>
+          <span class="s2"># number of joysticks on the system</span>
+          <span class="s2">#</span>
+          <span class="s2"># Return the number of joystick devices on the system. The count will</span>
+          <span class="s2"># be 0 if there are no joysticks on the system.</span>
+          <span class="s2">#</span>
+          <span class="s2"># When you create Joystick objects using Joystick(id), you pass an</span>
+          <span class="s2"># integer that must be lower than this count.</span>
+          <span class="s2">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_get_init(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.joystick.get_init:</span>
+
+          <span class="s2"># pygame.joystick.get_init(): return bool</span>
+          <span class="s2"># true if the joystick module is initialized</span>
+          <span class="s2">#</span>
+          <span class="s2"># Test if the pygame.joystick.init() function has been called.</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_init(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.joystick.init:</span>
+
+          <span class="s2"># pygame.joystick.init(): return None</span>
+          <span class="s2"># initialize the joystick module</span>
+          <span class="s2">#</span>
+          <span class="s2"># This function is called automatically by pygame.init().</span>
+          <span class="s2"># It initializes the joystick module. This will scan the system for</span>
+          <span class="s2"># all joystick devices. The module must be initialized before any</span>
+          <span class="s2"># other functions will work.</span>
+          <span class="s2">#</span>
+          <span class="s2"># It is safe to call this function more than once.</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_quit(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.joystick.quit:</span>
+
+          <span class="s2"># pygame.joystick.quit(): return None</span>
+          <span class="s2"># uninitialize the joystick module</span>
+          <span class="s2">#</span>
+          <span class="s2"># Uninitialize the joystick module. After you call this any existing</span>
+          <span class="s2"># joystick objects will no longer work.</span>
+          <span class="s2">#</span>
+          <span class="s2"># It is safe to call this function more than once.</span>
+
+        <span class="s1">self.fail()</span>
+
+<span class="s2">################################################################################</span>
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s3">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<html>
+<head>
+<title>pgopengl.h</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+pgopengl.h</font>
+</center></td></tr></table>
+<pre><span class="s0">#if </span><span class="s1">!defined(PGOPENGL_H)</span>
+<span class="s0">#define </span><span class="s1">PGOPENGL_H</span>
+
+<span class="s2">/** This header includes definitions of Opengl functions as pointer types for 
+ ** use with the SDL function SDL_GL_GetProcAddress. 
+ **/</span>
+
+<span class="s0">#if </span><span class="s1">defined(_WIN32)</span>
+<span class="s0">#define </span><span class="s1">GL_APIENTRY __stdcall</span>
+<span class="s0">#else</span>
+<span class="s0">#define </span><span class="s1">GL_APIENTRY</span>
+<span class="s0">#endif</span>
+
+<span class="s0">typedef void </span><span class="s1">(GL_APIENTRY *GL_glReadPixels_Func)(</span><span class="s0">int</span><span class="s1">, </span><span class="s0">int</span><span class="s1">, </span><span class="s0">int</span><span class="s1">, </span><span class="s0">int</span><span class="s1">, </span><span class="s0">unsigned int</span><span class="s1">, </span><span class="s0">unsigned int</span><span class="s1">, </span><span class="s0">void</span><span class="s1">*);</span>
+
+<span class="s0">#endif</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<html>
+<head>
+<title>text_effects.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+text_effects.py</font>
+</center></td></tr></table>
+<pre><span class="s0">class </span><span class="s1">TextBoxEffect:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Base class for text box effects 
+ 
+    :param all_characters: All the character sin the text box. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">all_characters: str):</span>
+        <span class="s1">self.all_characters = all_characters</span>
+
+    <span class="s3"># pylint: disable=unused-argument,no-self-use</span>
+    <span class="s0">def </span><span class="s1">should_full_redraw(self) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Stub that returns False 
+ 
+        :return: False 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return False</span>
+
+    <span class="s3"># pylint: disable=unused-argument,no-self-use</span>
+    <span class="s0">def </span><span class="s1">should_redraw_from_chunks(self) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Stub that returns False 
+ 
+        :return: False 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Stub for overriding. 
+ 
+        :param time_delta: time in seconds since last frame. 
+        &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">get_end_text_pos(self) -&gt; int:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Returns the position to draw the text up to (e.g 1 would draw only the first character). 
+        By default it is the whole text. 
+ 
+        :return: length of self.all_characters. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">len(self.all_characters)</span>
+
+    <span class="s3"># pylint: disable=unused-argument,no-self-use</span>
+    <span class="s0">def </span><span class="s1">get_final_alpha(self) -&gt; int:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        The alpha value to draw the text box with. By default it is 255. 
+ 
+        :return: The default alpha value for a text box. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s4">255</span>
+
+
+<span class="s0">class </span><span class="s1">TypingAppearEffect(TextBoxEffect):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Does that 'typewriter' effect where the text in a box appears one character at a time as if 
+    they were being typed by an invisible hand. 
+ 
+    :param all_characters: All the character sin the text box. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">all_characters: str):</span>
+        <span class="s1">super().__init__(all_characters)</span>
+        <span class="s1">self.text_progress = </span><span class="s4">0</span>
+        <span class="s1">self.time_per_letter = </span><span class="s4">0.05</span>
+        <span class="s1">self.time_per_letter_acc = </span><span class="s4">0.0</span>
+        <span class="s1">self.time_to_redraw = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Updates the effect with amount of time passed since the last call to update. Adds a new 
+        letter to the progress every self.time_per_letter seconds. 
+ 
+        :param time_delta: time in seconds since last frame. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.text_progress &lt; len(self.all_characters):</span>
+            <span class="s0">if </span><span class="s1">self.time_per_letter_acc &lt; self.time_per_letter:</span>
+                <span class="s1">self.time_per_letter_acc += time_delta</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.time_per_letter_acc = </span><span class="s4">0.0</span>
+                <span class="s1">self.text_progress += </span><span class="s4">1</span>
+                <span class="s1">self.time_to_redraw = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">should_full_redraw(self) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Test if we should redraw the whole text box. 
+ 
+        TODO: Once text box is refactored change this. 
+              So we only redraw the new bits of added text and the last two lines 
+              (current and previous) 
+ 
+        :return: True if we should redraw, False otherwise. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.time_to_redraw:</span>
+            <span class="s1">self.time_to_redraw = </span><span class="s0">False</span>
+            <span class="s0">return True</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">get_end_text_pos(self) -&gt; int:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Returns the position to draw the text up to (e.g 1 would draw only the first character). 
+ 
+        :return: progress through the typing effect. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.text_progress</span>
+
+
+<span class="s3"># TODO: Should we merge these two effects into one with a direction parameter?</span>
+<span class="s0">class </span><span class="s1">FadeInEffect(TextBoxEffect):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A fade in effect for the text box. Allows us to fade the text, though this class just takes 
+    care of fading up an alpha value over time. 
+ 
+    :param all_characters: The text characters in the text box. Useful to know for some effects. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">all_characters: str):</span>
+        <span class="s1">super().__init__(all_characters)</span>
+        <span class="s1">self.alpha_value = </span><span class="s4">0</span>
+        <span class="s1">self.time_per_alpha_change = </span><span class="s4">0.01</span>
+        <span class="s1">self.time_per_alpha_change_acc = </span><span class="s4">0.0</span>
+        <span class="s1">self.time_to_redraw = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Updates the fade with amount of time passed since the last call to update. 
+ 
+        :param time_delta: time in seconds since last frame. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.alpha_value &lt; </span><span class="s4">255</span><span class="s1">:</span>
+            <span class="s1">self.time_per_alpha_change_acc += time_delta</span>
+
+            <span class="s1">alpha_progress = int(self.time_per_alpha_change_acc / self.time_per_alpha_change)</span>
+
+            <span class="s0">if </span><span class="s1">alpha_progress != self.alpha_value:</span>
+                <span class="s1">self.alpha_value = alpha_progress</span>
+                <span class="s0">if </span><span class="s1">self.alpha_value &gt; </span><span class="s4">255</span><span class="s1">:</span>
+                    <span class="s1">self.alpha_value = </span><span class="s4">255</span>
+                <span class="s1">self.time_to_redraw = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">should_redraw_from_chunks(self) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Lets us know when the fade alpha has changed enough (i.e. by a whole int) to warrant us 
+        redrawing the text box with the new alpha value. 
+ 
+        :return: True if it is is time to redraw our text. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.time_to_redraw:</span>
+            <span class="s1">self.time_to_redraw = </span><span class="s0">False</span>
+            <span class="s0">return True</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">get_final_alpha(self) -&gt; int:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Returns the current alpha value of the fade. 
+ 
+        :return: The alpha value, between 0 and 255 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.alpha_value</span>
+
+
+<span class="s0">class </span><span class="s1">FadeOutEffect(TextBoxEffect):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A fade out effect for the text box. Allows us to fade the text, though this class just takes 
+    care of fading out an alpha value over time. 
+ 
+    :param all_characters: The text characters in the text box. Useful to know for some effects. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">all_characters: str):</span>
+
+        <span class="s1">super().__init__(all_characters)</span>
+        <span class="s1">self.alpha_value = </span><span class="s4">255</span>
+        <span class="s1">self.time_per_alpha_change = </span><span class="s4">0.01</span>
+        <span class="s1">self.time_per_alpha_change_acc = </span><span class="s4">0.0</span>
+        <span class="s1">self.time_to_redraw = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Updates the fade with amount of time passed since the last call to update. 
+ 
+        :param time_delta: time in seconds since last frame. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.alpha_value &gt; </span><span class="s4">0</span><span class="s1">:</span>
+            <span class="s1">self.time_per_alpha_change_acc += time_delta</span>
+
+            <span class="s1">alpha_progress = </span><span class="s4">255 </span><span class="s1">- int(self.time_per_alpha_change_acc / self.time_per_alpha_change)</span>
+
+            <span class="s0">if </span><span class="s1">alpha_progress != self.alpha_value:</span>
+                <span class="s1">self.alpha_value = alpha_progress</span>
+                <span class="s0">if </span><span class="s1">self.alpha_value &lt; </span><span class="s4">0</span><span class="s1">:</span>
+                    <span class="s1">self.alpha_value = </span><span class="s4">0</span>
+                <span class="s1">self.time_to_redraw = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">should_redraw_from_chunks(self) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Lets us know when the fade alpha has changed enough (i.e. by a whole int) to warrant us 
+        redrawing the text box with the new alpha value. 
+ 
+        :return: True if it is is time to redraw our text. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.time_to_redraw:</span>
+            <span class="s1">self.time_to_redraw = </span><span class="s0">False</span>
+            <span class="s0">return True</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">get_final_alpha(self) -&gt; int:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Returns the current alpha value of the fade. 
+ 
+        :return: The alpha value, between 0 and 255 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.alpha_value</span>
+</pre>
+</body>
+</html>

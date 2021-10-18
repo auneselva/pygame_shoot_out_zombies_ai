@@ -1,0 +1,223 @@
+<html>
+<head>
+<title>camera.h</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6a8759;}
+.s4 { color: #ab51ba;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+camera.h</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+  pygame - Python Game Library 
+ 
+  This library is free software; you can redistribute it and/or 
+  modify it under the terms of the GNU Library General Public 
+  License as published by the Free Software Foundation; either 
+  version 2 of the License, or (at your option) any later version. 
+ 
+  This library is distributed in the hope that it will be useful, 
+  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  Library General Public License for more details. 
+ 
+  You should have received a copy of the GNU Library General Public 
+  License along with this library; if not, write to the Free 
+  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+ 
+*/</span>
+
+<span class="s2">#include </span><span class="s3">&quot;pygame.h&quot;</span>
+<span class="s2">#include </span><span class="s3">&quot;doc/camera_doc.h&quot;</span>
+
+<span class="s2">#if </span><span class="s1">defined(__unix__)</span>
+    <span class="s2">#include </span><span class="s1">&lt;structmember.h&gt;</span>
+    <span class="s2">#include </span><span class="s1">&lt;stdio.h&gt;</span>
+    <span class="s2">#include </span><span class="s1">&lt;stdlib.h&gt;</span>
+    <span class="s2">#include </span><span class="s1">&lt;string.h&gt;</span>
+    <span class="s2">#include </span><span class="s1">&lt;assert.h&gt;</span>
+
+    <span class="s2">#include </span><span class="s1">&lt;fcntl.h&gt;              </span><span class="s0">/* low-level i/o */</span>
+    <span class="s2">#include </span><span class="s1">&lt;unistd.h&gt;</span>
+    <span class="s2">#include </span><span class="s1">&lt;errno.h&gt;</span>
+    <span class="s2">#include </span><span class="s1">&lt;sys/stat.h&gt;</span>
+    <span class="s2">#include </span><span class="s1">&lt;sys/types.h&gt;</span>
+    <span class="s2">#include </span><span class="s1">&lt;sys/time.h&gt;</span>
+    <span class="s2">#include </span><span class="s1">&lt;sys/mman.h&gt;</span>
+    <span class="s2">#include </span><span class="s1">&lt;sys/ioctl.h&gt;</span>
+
+    <span class="s0">/* on freebsd there is no asm/types */</span>
+    <span class="s2">#ifdef </span><span class="s1">linux</span>
+        <span class="s2">#include </span><span class="s1">&lt;</span><span class="s4">asm</span><span class="s1">/types.h&gt;          </span><span class="s0">/* for videodev2.h */</span>
+    <span class="s2">#endif</span>
+
+    <span class="s2">#include </span><span class="s1">&lt;linux/videodev2.h&gt;</span>
+<span class="s1">#elif defined(__APPLE__)</span>
+    <span class="s2">#include </span><span class="s1">&lt;AvailabilityMacros.h&gt;</span>
+    <span class="s0">/* We support OSX 10.6 and below. */</span>
+    <span class="s2">#if </span><span class="s1">__MAC_OS_X_VERSION_MAX_ALLOWED &lt;= </span><span class="s5">1060</span>
+        <span class="s2">#define </span><span class="s1">PYGAME_MAC_CAMERA_OLD </span><span class="s5">1</span>
+    <span class="s2">#endif</span>
+<span class="s2">#endif</span>
+
+<span class="s2">#if </span><span class="s1">defined(PYGAME_MAC_CAMERA_OLD)</span>
+        <span class="s2">#include </span><span class="s1">&lt;QuickTime/QuickTime.h&gt;</span>
+        <span class="s2">#include </span><span class="s1">&lt;QuickTime/Movies.h&gt;</span>
+        <span class="s2">#include </span><span class="s1">&lt;QuickTime/ImageCompression.h&gt;</span>
+<span class="s2">#endif</span>
+
+<span class="s0">/* some constants used which are not defined on non-v4l machines. */</span>
+<span class="s2">#ifndef </span><span class="s1">V4L2_PIX_FMT_RGB24</span>
+    <span class="s2">#define </span><span class="s1">V4L2_PIX_FMT_RGB24 </span><span class="s3">'RGB3'</span>
+<span class="s2">#endif</span>
+<span class="s2">#ifndef </span><span class="s1">V4L2_PIX_FMT_RGB444</span>
+    <span class="s2">#define </span><span class="s1">V4L2_PIX_FMT_RGB444 </span><span class="s3">'R444'</span>
+<span class="s2">#endif</span>
+<span class="s2">#ifndef </span><span class="s1">V4L2_PIX_FMT_YUYV</span>
+    <span class="s2">#define </span><span class="s1">V4L2_PIX_FMT_YUYV </span><span class="s3">'YUYV'</span>
+<span class="s2">#endif</span>
+
+<span class="s2">#define </span><span class="s1">CLEAR(x) memset (&amp;(x), </span><span class="s5">0</span><span class="s1">, </span><span class="s2">sizeof </span><span class="s1">(x))</span>
+<span class="s2">#define </span><span class="s1">SAT(c) </span><span class="s2">if </span><span class="s1">(c &amp; (~</span><span class="s5">255</span><span class="s1">)) { </span><span class="s2">if </span><span class="s1">(c &lt; </span><span class="s5">0</span><span class="s1">) c = </span><span class="s5">0</span><span class="s1">; </span><span class="s2">else </span><span class="s1">c = </span><span class="s5">255</span><span class="s1">; }</span>
+<span class="s2">#define </span><span class="s1">SAT2(c) ((c) &amp; (~</span><span class="s5">255</span><span class="s1">) ? ((c) &lt; </span><span class="s5">0 </span><span class="s1">? </span><span class="s5">0 </span><span class="s1">: </span><span class="s5">255</span><span class="s1">) : (c))</span>
+<span class="s2">#define </span><span class="s1">DEFAULT_WIDTH </span><span class="s5">640</span>
+<span class="s2">#define </span><span class="s1">DEFAULT_HEIGHT </span><span class="s5">480</span>
+<span class="s2">#define </span><span class="s1">RGB_OUT </span><span class="s5">1</span>
+<span class="s2">#define </span><span class="s1">YUV_OUT </span><span class="s5">2</span>
+<span class="s2">#define </span><span class="s1">HSV_OUT </span><span class="s5">4</span>
+<span class="s2">#define </span><span class="s1">CAM_V4L </span><span class="s5">1 </span><span class="s0">/* deprecated. the incomplete support in pygame was removed */</span>
+<span class="s2">#define </span><span class="s1">CAM_V4L2 </span><span class="s5">2</span>
+
+<span class="s2">struct </span><span class="s1">buffer {</span>
+    <span class="s2">void </span><span class="s1">* start;</span>
+    <span class="s1">size_t length;</span>
+<span class="s1">};</span>
+
+<span class="s2">#if </span><span class="s1">defined(__unix__)</span>
+<span class="s2">typedef struct </span><span class="s1">pgCameraObject {</span>
+    <span class="s1">PyObject_HEAD</span>
+    <span class="s2">char</span><span class="s1">* device_name;</span>
+    <span class="s2">int </span><span class="s1">camera_type;</span>
+    <span class="s2">unsigned long </span><span class="s1">pixelformat;</span>
+    <span class="s2">unsigned int </span><span class="s1">color_out;</span>
+    <span class="s2">struct </span><span class="s1">buffer* buffers;</span>
+    <span class="s2">unsigned int </span><span class="s1">n_buffers;</span>
+    <span class="s2">int </span><span class="s1">width;</span>
+    <span class="s2">int </span><span class="s1">height;</span>
+    <span class="s2">int </span><span class="s1">size;</span>
+    <span class="s2">int </span><span class="s1">hflip;</span>
+    <span class="s2">int </span><span class="s1">vflip;</span>
+    <span class="s2">int </span><span class="s1">brightness;</span>
+    <span class="s2">int </span><span class="s1">fd;</span>
+<span class="s1">} pgCameraObject;</span>
+<span class="s1">#elif defined(PYGAME_MAC_CAMERA_OLD)</span>
+<span class="s2">typedef struct </span><span class="s1">pgCameraObject {</span>
+    <span class="s1">PyObject_HEAD</span>
+    <span class="s2">char</span><span class="s1">* device_name;              </span><span class="s0">/* unieke name of the device */</span>
+    <span class="s1">OSType pixelformat;</span>
+    <span class="s2">unsigned int </span><span class="s1">color_out;</span>
+    <span class="s1">SeqGrabComponent component;     </span><span class="s0">/* A type used by the Sequence Grabber API */</span>
+    <span class="s1">SGChannel channel;              </span><span class="s0">/* Channel of the Sequence Grabber */</span>
+    <span class="s1">GWorldPtr gworld;               </span><span class="s0">/* Pointer to the struct that holds the data of the captured image */</span>
+    <span class="s1">Rect boundsRect;                </span><span class="s0">/* bounds of the image frame */</span>
+    <span class="s2">long </span><span class="s1">size;                      </span><span class="s0">/* size of the image in our buffer to draw */</span>
+    <span class="s2">int </span><span class="s1">hflip;</span>
+    <span class="s2">int </span><span class="s1">vflip;</span>
+    <span class="s2">short </span><span class="s1">depth;</span>
+    <span class="s2">struct </span><span class="s1">buffer pixels;</span>
+    <span class="s0">//struct buffer tmp_pixels        /* place where the flipped image in temporarly stored if hflip or vflip is true.*/</span>
+<span class="s1">} pgCameraObject;</span>
+
+<span class="s2">#else</span>
+<span class="s0">/* generic definition. 
+*/</span>
+
+<span class="s2">typedef struct </span><span class="s1">pgCameraObject {</span>
+    <span class="s1">PyObject_HEAD</span>
+    <span class="s2">char</span><span class="s1">* device_name;</span>
+    <span class="s2">int </span><span class="s1">camera_type;</span>
+    <span class="s2">unsigned long </span><span class="s1">pixelformat;</span>
+    <span class="s2">unsigned int </span><span class="s1">color_out;</span>
+    <span class="s2">struct </span><span class="s1">buffer* buffers;</span>
+    <span class="s2">unsigned int </span><span class="s1">n_buffers;</span>
+    <span class="s2">int </span><span class="s1">width;</span>
+    <span class="s2">int </span><span class="s1">height;</span>
+    <span class="s2">int </span><span class="s1">size;</span>
+    <span class="s2">int </span><span class="s1">hflip;</span>
+    <span class="s2">int </span><span class="s1">vflip;</span>
+    <span class="s2">int </span><span class="s1">brightness;</span>
+    <span class="s2">int </span><span class="s1">fd;</span>
+<span class="s1">} pgCameraObject;</span>
+<span class="s2">#endif</span>
+
+<span class="s0">/* internal functions for colorspace conversion */</span>
+<span class="s2">void </span><span class="s1">colorspace (SDL_Surface *src, SDL_Surface *dst, </span><span class="s2">int </span><span class="s1">cspace);</span>
+<span class="s2">void </span><span class="s1">rgb24_to_rgb (</span><span class="s2">const void</span><span class="s1">* src, </span><span class="s2">void</span><span class="s1">* dst, </span><span class="s2">int </span><span class="s1">length, SDL_PixelFormat* format);</span>
+<span class="s2">void </span><span class="s1">rgb444_to_rgb (</span><span class="s2">const void</span><span class="s1">* src, </span><span class="s2">void</span><span class="s1">* dst, </span><span class="s2">int </span><span class="s1">length, SDL_PixelFormat* format);</span>
+<span class="s2">void </span><span class="s1">rgb_to_yuv (</span><span class="s2">const void</span><span class="s1">* src, </span><span class="s2">void</span><span class="s1">* dst, </span><span class="s2">int </span><span class="s1">length,</span>
+                 <span class="s2">unsigned long </span><span class="s1">source, SDL_PixelFormat* format);</span>
+<span class="s2">void </span><span class="s1">rgb_to_hsv (</span><span class="s2">const void</span><span class="s1">* src, </span><span class="s2">void</span><span class="s1">* dst, </span><span class="s2">int </span><span class="s1">length,</span>
+                 <span class="s2">unsigned long </span><span class="s1">source, SDL_PixelFormat* format);</span>
+<span class="s2">void </span><span class="s1">yuyv_to_rgb (</span><span class="s2">const void</span><span class="s1">* src, </span><span class="s2">void</span><span class="s1">* dst, </span><span class="s2">int </span><span class="s1">length, SDL_PixelFormat* format);</span>
+<span class="s2">void </span><span class="s1">yuyv_to_yuv (</span><span class="s2">const void</span><span class="s1">* src, </span><span class="s2">void</span><span class="s1">* dst, </span><span class="s2">int </span><span class="s1">length, SDL_PixelFormat* format);</span>
+<span class="s2">void </span><span class="s1">uyvy_to_rgb (</span><span class="s2">const void</span><span class="s1">* src, </span><span class="s2">void</span><span class="s1">* dst, </span><span class="s2">int </span><span class="s1">length, SDL_PixelFormat* format);</span>
+<span class="s2">void </span><span class="s1">uyvy_to_yuv (</span><span class="s2">const void</span><span class="s1">* src, </span><span class="s2">void</span><span class="s1">* dst, </span><span class="s2">int </span><span class="s1">length, SDL_PixelFormat* format);</span>
+<span class="s2">void </span><span class="s1">sbggr8_to_rgb (</span><span class="s2">const void</span><span class="s1">* src, </span><span class="s2">void</span><span class="s1">* dst, </span><span class="s2">int </span><span class="s1">width, </span><span class="s2">int </span><span class="s1">height,</span>
+                    <span class="s1">SDL_PixelFormat* format);</span>
+<span class="s2">void </span><span class="s1">yuv420_to_rgb (</span><span class="s2">const void</span><span class="s1">* src, </span><span class="s2">void</span><span class="s1">* dst, </span><span class="s2">int </span><span class="s1">width, </span><span class="s2">int </span><span class="s1">height,</span>
+                    <span class="s1">SDL_PixelFormat* format);</span>
+<span class="s2">void </span><span class="s1">yuv420_to_yuv (</span><span class="s2">const void</span><span class="s1">* src, </span><span class="s2">void</span><span class="s1">* dst, </span><span class="s2">int </span><span class="s1">width, </span><span class="s2">int </span><span class="s1">height,</span>
+                    <span class="s1">SDL_PixelFormat* format);</span>
+
+<span class="s2">#if </span><span class="s1">defined(__unix__)</span>
+<span class="s0">/* internal functions specific to v4l2 */</span>
+<span class="s2">char</span><span class="s1">** v4l2_list_cameras (</span><span class="s2">int</span><span class="s1">* num_devices);</span>
+<span class="s2">int </span><span class="s1">v4l2_get_control (</span><span class="s2">int </span><span class="s1">fd, </span><span class="s2">int </span><span class="s1">id, </span><span class="s2">int </span><span class="s1">*value);</span>
+<span class="s2">int </span><span class="s1">v4l2_set_control (</span><span class="s2">int </span><span class="s1">fd, </span><span class="s2">int </span><span class="s1">id, </span><span class="s2">int </span><span class="s1">value);</span>
+<span class="s1">PyObject* v4l2_read_raw (pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">v4l2_xioctl (</span><span class="s2">int </span><span class="s1">fd, </span><span class="s2">int </span><span class="s1">request, </span><span class="s2">void </span><span class="s1">*arg);</span>
+<span class="s2">int </span><span class="s1">v4l2_process_image (pgCameraObject* self, </span><span class="s2">const void </span><span class="s1">*image,</span>
+                               <span class="s2">unsigned int </span><span class="s1">buffer_size, SDL_Surface* surf);</span>
+<span class="s2">int </span><span class="s1">v4l2_query_buffer (pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">v4l2_read_frame (pgCameraObject* self, SDL_Surface* surf);</span>
+<span class="s2">int </span><span class="s1">v4l2_stop_capturing (pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">v4l2_start_capturing (pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">v4l2_uninit_device (pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">v4l2_init_mmap (pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">v4l2_init_device (pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">v4l2_close_device (pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">v4l2_open_device (pgCameraObject* self);</span>
+
+<span class="s1">#elif defined(PYGAME_MAC_CAMERA_OLD)</span>
+<span class="s0">/* internal functions specific to mac */</span>
+<span class="s2">char</span><span class="s1">** mac_list_cameras(</span><span class="s2">int</span><span class="s1">* num_devices);</span>
+<span class="s2">int </span><span class="s1">mac_open_device (pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">mac_init_device(pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">mac_close_device (pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">mac_start_capturing(pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">mac_stop_capturing (pgCameraObject* self);</span>
+
+<span class="s2">int </span><span class="s1">mac_get_control(pgCameraObject* self, </span><span class="s2">int </span><span class="s1">id, </span><span class="s2">int</span><span class="s1">* value);</span>
+<span class="s2">int </span><span class="s1">mac_set_control(pgCameraObject* self, </span><span class="s2">int </span><span class="s1">id, </span><span class="s2">int </span><span class="s1">value);</span>
+
+<span class="s1">PyObject* mac_read_raw(pgCameraObject *self);</span>
+<span class="s2">int </span><span class="s1">mac_read_frame(pgCameraObject* self, SDL_Surface* surf);</span>
+<span class="s2">int </span><span class="s1">mac_camera_idle(pgCameraObject* self);</span>
+<span class="s2">int </span><span class="s1">mac_copy_gworld_to_surface(pgCameraObject* self, SDL_Surface* surf);</span>
+
+<span class="s2">void </span><span class="s1">flip_image(</span><span class="s2">const void</span><span class="s1">* image, </span><span class="s2">void</span><span class="s1">* flipped_image, </span><span class="s2">int </span><span class="s1">width, </span><span class="s2">int </span><span class="s1">height,</span>
+                <span class="s2">short </span><span class="s1">depth, </span><span class="s2">int </span><span class="s1">hflip, </span><span class="s2">int </span><span class="s1">vflip);</span>
+
+<span class="s2">#endif</span>
+</pre>
+</body>
+</html>

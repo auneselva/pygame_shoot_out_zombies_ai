@@ -1,0 +1,641 @@
+<html>
+<head>
+<title>ui_colour_picker_dialog.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6897bb;}
+.s4 { color: #629755; font-style: italic;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+ui_colour_picker_dialog.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">warnings</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Tuple</span><span class="s0">, </span><span class="s1">Dict</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui._constants </span><span class="s0">import </span><span class="s1">UI_BUTTON_PRESSED</span><span class="s0">, </span><span class="s1">UI_HORIZONTAL_SLIDER_MOVED</span>
+<span class="s0">from </span><span class="s1">pygame_gui._constants </span><span class="s0">import </span><span class="s1">UI_COLOUR_PICKER_COLOUR_PICKED</span><span class="s0">, </span><span class="s1">UI_TEXT_ENTRY_FINISHED</span>
+<span class="s0">from </span><span class="s1">pygame_gui._constants </span><span class="s0">import </span><span class="s1">UI_COLOUR_PICKER_COLOUR_CHANNEL_CHANGED</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IUIManagerInterface</span><span class="s0">, </span><span class="s1">IContainerLikeInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core </span><span class="s0">import </span><span class="s1">UIElement</span><span class="s0">, </span><span class="s1">UIContainer</span><span class="s0">, </span><span class="s1">ObjectID</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.elements </span><span class="s0">import </span><span class="s1">UIWindow</span><span class="s0">, </span><span class="s1">UIButton</span><span class="s0">, </span><span class="s1">UIImage</span>
+<span class="s0">from </span><span class="s1">pygame_gui.elements </span><span class="s0">import </span><span class="s1">UIHorizontalSlider</span><span class="s0">, </span><span class="s1">UILabel</span><span class="s0">, </span><span class="s1">UITextEntryLine</span>
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s2"># mouse button constants not defined in pygame 1.9.3</span>
+    <span class="s0">assert </span><span class="s1">pygame.BUTTON_LEFT == </span><span class="s3">1</span>
+    <span class="s0">assert </span><span class="s1">pygame.BUTTON_MIDDLE == </span><span class="s3">2</span>
+    <span class="s0">assert </span><span class="s1">pygame.BUTTON_RIGHT == </span><span class="s3">3</span>
+<span class="s0">except </span><span class="s1">(AttributeError</span><span class="s0">, </span><span class="s1">AssertionError):</span>
+    <span class="s1">pygame.BUTTON_LEFT = </span><span class="s3">1</span>
+    <span class="s1">pygame.BUTTON_MIDDLE = </span><span class="s3">2</span>
+    <span class="s1">pygame.BUTTON_RIGHT = </span><span class="s3">3</span>
+
+
+<span class="s0">class </span><span class="s1">UIColourChannelEditor(UIElement):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    This colour picker specific element lets us edit a single colour channel (Red, Green, Blue, 
+    Hue etc). It's bundled along with the colour picker class because I don't see much use for it 
+    outside of a colour picker, but it still seemed sensible to make a class for a pattern in the 
+    colour picker that is repeated six times. 
+ 
+    :param relative_rect: The relative rectangle for sizing and positioning the element, relative 
+                          to the anchors. 
+    :param manager: The UI manager for the UI system. 
+    :param name: Name for this colour channel, (e.g 'R:' or 'B:'). Used for the label. 
+    :param channel_index: Index for the colour channel (e.g. red is 0, blue is 1, hue is also 0, 
+                          saturation is 1) 
+    :param value_range: Range of values for this channel (0 to 255 for R,G,B - 0 to 360 for hue, 0 
+                        to 100 for the rest) 
+    :param initial_value: Starting value for this colour channel. 
+    :param container: UI container for this element. 
+    :param parent_element: An element to parent this element, used for theming hierarchies and 
+                           events. 
+    :param object_id: A specific theming/event ID for this element. 
+    :param anchors: A dictionary of anchors used for setting up what this element's relative_rect 
+                    is relative to. 
+    :param visible: Whether the element is visible by default. Warning - container visibility 
+                    may override this. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">relative_rect: pygame.Rect</span><span class="s0">,</span>
+                 <span class="s1">manager: IUIManagerInterface</span><span class="s0">,</span>
+                 <span class="s1">name: str</span><span class="s0">,</span>
+                 <span class="s1">channel_index: int</span><span class="s0">,</span>
+                 <span class="s1">value_range: Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                 <span class="s1">initial_value: int</span><span class="s0">,</span>
+                 <span class="s1">container: Union[IContainerLikeInterface</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">parent_element: UIElement = </span><span class="s0">None,</span>
+                 <span class="s1">object_id: Union[ObjectID</span><span class="s0">, </span><span class="s1">str</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">anchors: Dict[str</span><span class="s0">, </span><span class="s1">str] = </span><span class="s0">None,</span>
+                 <span class="s1">visible: int = </span><span class="s3">1</span><span class="s1">):</span>
+
+        <span class="s1">super().__init__(relative_rect</span><span class="s0">,</span>
+                         <span class="s1">manager</span><span class="s0">,</span>
+                         <span class="s1">container</span><span class="s0">,</span>
+                         <span class="s1">starting_height=</span><span class="s3">1</span><span class="s0">,</span>
+                         <span class="s1">layer_thickness=</span><span class="s3">1</span><span class="s0">,</span>
+                         <span class="s1">anchors=anchors</span><span class="s0">,</span>
+                         <span class="s1">visible=visible)</span>
+
+        <span class="s1">self._create_valid_ids(container=container</span><span class="s0">,</span>
+                               <span class="s1">parent_element=parent_element</span><span class="s0">,</span>
+                               <span class="s1">object_id=object_id</span><span class="s0">,</span>
+                               <span class="s1">element_id=</span><span class="s5">'colour_channel_editor'</span><span class="s1">)</span>
+
+        <span class="s1">self.range = value_range</span>
+        <span class="s1">self.current_value = initial_value</span>
+        <span class="s1">self.channel_index = channel_index</span>
+
+        <span class="s1">self.set_image(self.ui_manager.get_universal_empty_surface())</span>
+
+        <span class="s1">self.element_container = UIContainer(relative_rect</span><span class="s0">,</span>
+                                             <span class="s1">self.ui_manager</span><span class="s0">,</span>
+                                             <span class="s1">container=self.ui_container</span><span class="s0">,</span>
+                                             <span class="s1">parent_element=self</span><span class="s0">,</span>
+                                             <span class="s1">anchors=anchors</span><span class="s0">,</span>
+                                             <span class="s1">visible=self.visible)</span>
+
+        <span class="s1">default_sizes = {</span><span class="s5">'space_between'</span><span class="s1">: </span><span class="s3">5</span><span class="s0">,</span>
+                         <span class="s5">'label_width'</span><span class="s1">: </span><span class="s3">17</span><span class="s0">,</span>
+                         <span class="s5">'entry_width'</span><span class="s1">: </span><span class="s3">43</span><span class="s0">,</span>
+                         <span class="s5">'line_height'</span><span class="s1">: </span><span class="s3">29</span><span class="s0">,</span>
+                         <span class="s5">'slider_height'</span><span class="s1">: </span><span class="s3">21</span><span class="s0">,</span>
+                         <span class="s5">'slider_vert_space'</span><span class="s1">: </span><span class="s3">4</span><span class="s1">}</span>
+
+        <span class="s1">self.label = UILabel(pygame.Rect(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">,</span>
+                                         <span class="s1">default_sizes[</span><span class="s5">'label_width'</span><span class="s1">]</span><span class="s0">,</span>
+                                         <span class="s1">default_sizes[</span><span class="s5">'line_height'</span><span class="s1">])</span><span class="s0">,</span>
+                             <span class="s1">text=name</span><span class="s0">,</span>
+                             <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                             <span class="s1">container=self.element_container</span><span class="s0">,</span>
+                             <span class="s1">parent_element=self</span><span class="s0">,</span>
+                             <span class="s1">anchors={</span><span class="s5">'left'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">,</span>
+                                      <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">,</span>
+                                      <span class="s5">'top'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">,</span>
+                                      <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'bottom'</span><span class="s1">})</span>
+
+        <span class="s1">self.entry = UITextEntryLine(pygame.Rect(-default_sizes[</span><span class="s5">'entry_width'</span><span class="s1">]</span><span class="s0">,</span>
+                                                 <span class="s3">0</span><span class="s0">,</span>
+                                                 <span class="s1">default_sizes[</span><span class="s5">'entry_width'</span><span class="s1">]</span><span class="s0">,</span>
+                                                 <span class="s1">default_sizes[</span><span class="s5">'line_height'</span><span class="s1">])</span><span class="s0">,</span>
+                                     <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                     <span class="s1">container=self.element_container</span><span class="s0">,</span>
+                                     <span class="s1">parent_element=self</span><span class="s0">,</span>
+                                     <span class="s1">anchors={</span><span class="s5">'left'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                              <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                              <span class="s5">'top'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">,</span>
+                                              <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'bottom'</span><span class="s1">})</span>
+
+        <span class="s1">slider_width = (self.entry.rect.left -</span>
+                        <span class="s1">self.label.rect.right) - (</span><span class="s3">2 </span><span class="s1">* default_sizes[</span><span class="s5">'space_between'</span><span class="s1">])</span>
+
+        <span class="s1">self.slider = UIHorizontalSlider(pygame.Rect((default_sizes[</span><span class="s5">'label_width'</span><span class="s1">] +</span>
+                                                      <span class="s1">default_sizes[</span><span class="s5">'space_between'</span><span class="s1">])</span><span class="s0">,</span>
+                                                     <span class="s1">default_sizes[</span><span class="s5">'slider_vert_space'</span><span class="s1">]</span><span class="s0">,</span>
+                                                     <span class="s1">slider_width</span><span class="s0">,</span>
+                                                     <span class="s1">default_sizes[</span><span class="s5">'slider_height'</span><span class="s1">])</span><span class="s0">,</span>
+                                         <span class="s1">start_value=initial_value</span><span class="s0">,</span>
+                                         <span class="s1">value_range=value_range</span><span class="s0">,</span>
+                                         <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                         <span class="s1">container=self.element_container</span><span class="s0">,</span>
+                                         <span class="s1">parent_element=self</span><span class="s0">,</span>
+                                         <span class="s1">anchors={</span><span class="s5">'left'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">,</span>
+                                                  <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                                  <span class="s5">'top'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">,</span>
+                                                  <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'bottom'</span><span class="s1">})</span>
+
+        <span class="s1">self.entry.set_allowed_characters(</span><span class="s5">'numbers'</span><span class="s1">)</span>
+        <span class="s1">self.entry.set_text(str(initial_value))</span>
+        <span class="s1">self.entry.set_text_length_limit(</span><span class="s3">3</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">process_event(self</span><span class="s0">, </span><span class="s1">event: pygame.event.Event) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Handles events that this UI element is interested in. In this case we are responding to the 
+        slider being moved and the user finishing entering text in the text entry element. 
+ 
+        :param event: The pygame Event to process. 
+ 
+        :return: True if event is consumed by this element and should not be passed on to other 
+                 elements. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">consumed_event = super().process_event(event)</span>
+        <span class="s0">if </span><span class="s1">(event.type == pygame.USEREVENT </span><span class="s0">and</span>
+                <span class="s1">event.user_type == UI_TEXT_ENTRY_FINISHED </span><span class="s0">and</span>
+                <span class="s1">event.ui_element == self.entry):</span>
+
+            <span class="s1">int_value = self.current_value</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">int_value = int(self.entry.get_text())</span>
+            <span class="s0">except </span><span class="s1">ValueError:</span>
+                <span class="s1">int_value = </span><span class="s3">0</span>
+            <span class="s0">finally</span><span class="s1">:</span>
+                <span class="s1">self._set_value_from_entry(int_value)</span>
+
+        <span class="s0">if </span><span class="s1">(event.type == pygame.USEREVENT </span><span class="s0">and</span>
+                <span class="s1">event.user_type == UI_HORIZONTAL_SLIDER_MOVED </span><span class="s0">and</span>
+                <span class="s1">event.ui_element == self.slider):</span>
+
+            <span class="s1">int_value = self.current_value</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">int_value = int(self.slider.get_current_value())</span>
+            <span class="s0">except </span><span class="s1">ValueError:</span>
+                <span class="s1">int_value = </span><span class="s3">0</span>
+            <span class="s0">finally</span><span class="s1">:</span>
+                <span class="s1">self._set_value_from_slider(int_value)</span>
+
+        <span class="s0">return </span><span class="s1">consumed_event</span>
+
+    <span class="s0">def </span><span class="s1">_set_value_from_slider(self</span><span class="s0">, </span><span class="s1">new_value: int):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        For updating the value in the text entry element when we've moved the slider. Also sends 
+        out an event for the color picker. 
+ 
+        :param new_value: The new value to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">clipped_value = min(self.range[</span><span class="s3">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">max(self.range[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">new_value))</span>
+        <span class="s0">if </span><span class="s1">clipped_value != self.current_value:</span>
+            <span class="s1">self.current_value = clipped_value</span>
+            <span class="s1">self.entry.set_text(str(self.current_value))</span>
+            <span class="s1">event_data = {</span><span class="s5">'user_type'</span><span class="s1">: UI_COLOUR_PICKER_COLOUR_CHANNEL_CHANGED</span><span class="s0">,</span>
+                          <span class="s5">'value'</span><span class="s1">: self.current_value</span><span class="s0">,</span>
+                          <span class="s5">'channel_index'</span><span class="s1">: self.channel_index</span><span class="s0">,</span>
+                          <span class="s5">'ui_element'</span><span class="s1">: self</span><span class="s0">,</span>
+                          <span class="s5">'ui_object_id'</span><span class="s1">: self.most_specific_combined_id}</span>
+            <span class="s1">colour_channel_changed_event = pygame.event.Event(pygame.USEREVENT</span><span class="s0">, </span><span class="s1">event_data)</span>
+            <span class="s1">pygame.event.post(colour_channel_changed_event)</span>
+
+    <span class="s0">def </span><span class="s1">_set_value_from_entry(self</span><span class="s0">, </span><span class="s1">new_value: int):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        For updating the value the slider element is set to when we've edited the text entry. The 
+        slider may have much less precision than the text entry depending on it's available width 
+        so we need to be careful to make the change one way. Also sends out an event for the color 
+        picker and clips the value to within the allowed value range. 
+ 
+        :param new_value: The new value to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">clipped_value = min(self.range[</span><span class="s3">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">max(self.range[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">new_value))</span>
+        <span class="s0">if </span><span class="s1">clipped_value != new_value:</span>
+            <span class="s1">self.entry.set_text(str(clipped_value))</span>
+        <span class="s0">if </span><span class="s1">clipped_value != self.current_value:</span>
+            <span class="s1">self.current_value = clipped_value</span>
+            <span class="s1">self.slider.set_current_value(self.current_value)</span>
+            <span class="s1">event_data = {</span><span class="s5">'user_type'</span><span class="s1">: UI_COLOUR_PICKER_COLOUR_CHANNEL_CHANGED</span><span class="s0">,</span>
+                          <span class="s5">'value'</span><span class="s1">: self.current_value</span><span class="s0">,</span>
+                          <span class="s5">'channel_index'</span><span class="s1">: self.channel_index</span><span class="s0">,</span>
+                          <span class="s5">'ui_element'</span><span class="s1">: self</span><span class="s0">,</span>
+                          <span class="s5">'ui_object_id'</span><span class="s1">: self.most_specific_combined_id}</span>
+            <span class="s1">colour_channel_changed_event = pygame.event.Event(pygame.USEREVENT</span><span class="s0">, </span><span class="s1">event_data)</span>
+            <span class="s1">pygame.event.post(colour_channel_changed_event)</span>
+
+    <span class="s0">def </span><span class="s1">set_value(self</span><span class="s0">, </span><span class="s1">new_value: int):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        For when we need to set the value of the colour channel from outside, usually from 
+        adjusting the colour elsewhere in the colour picker. Makes sure the new value is within the 
+        allowed range. 
+ 
+        :param new_value: Value to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">clipped_value = min(self.range[</span><span class="s3">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">max(self.range[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">new_value))</span>
+        <span class="s0">if </span><span class="s1">clipped_value != self.current_value:</span>
+            <span class="s1">self.current_value = clipped_value</span>
+            <span class="s1">self.entry.set_text(str(self.current_value))</span>
+            <span class="s1">self.slider.set_current_value(self.current_value)</span>
+
+    <span class="s0">def </span><span class="s1">set_position(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                           <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                           <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Sets the absolute screen position of this channel, updating all subordinate elements at the 
+        same time. 
+ 
+        :param position: The absolute screen position to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().set_position(position)</span>
+        <span class="s1">self.element_container.set_relative_position(self.relative_rect.topleft)</span>
+
+    <span class="s0">def </span><span class="s1">set_relative_position(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                                    <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                                    <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Sets the relative screen position of this channel, updating all subordinate elements at the 
+        same time. 
+ 
+        :param position: The relative screen position to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().set_relative_position(position)</span>
+        <span class="s1">self.element_container.set_relative_position(self.relative_rect.topleft)</span>
+
+    <span class="s0">def </span><span class="s1">set_dimensions(self</span><span class="s0">, </span><span class="s1">dimensions: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Method to directly set the dimensions of an element. 
+ 
+        :param dimensions: The new dimensions to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().set_dimensions(dimensions)</span>
+        <span class="s1">self.element_container.set_dimensions(self.relative_rect.size)</span>
+
+    <span class="s0">def </span><span class="s1">show(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        In addition to the base UIElement.show() - call show() of the element_container 
+        - which will propagate to the sub-elements - label, entry and slider. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().show()</span>
+
+        <span class="s1">self.element_container.show()</span>
+
+    <span class="s0">def </span><span class="s1">hide(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        In addition to the base UIElement.hide() - call hide() of the element_container 
+        - which will propagate to the sub-elements - label, entry and slider. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().hide()</span>
+
+        <span class="s1">self.element_container.hide()</span>
+
+
+<span class="s0">class </span><span class="s1">UIColourPickerDialog(UIWindow):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    A colour picker window that gives us a small range of UI tools to pick a final colour. 
+ 
+    :param rect: The size and position of the colour picker window. Includes the size of shadow, 
+                 border and title bar. 
+    :param manager: The manager for the whole of the UI. 
+    :param initial_colour: The starting colour for the colour picker, defaults to black. 
+    :param window_title: The title for the window, defaults to 'Colour Picker' 
+    :param object_id: The object ID for the window, used for theming - defaults to 
+                      '#colour_picker_dialog' 
+    :param visible: Whether the element is visible by default. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">rect: pygame.Rect</span><span class="s0">,</span>
+                 <span class="s1">manager: IUIManagerInterface</span><span class="s0">,</span>
+                 <span class="s1">*</span><span class="s0">,</span>
+                 <span class="s1">initial_colour: pygame.Color = pygame.Color(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span><span class="s0">,</span>
+                 <span class="s1">window_title: str = </span><span class="s5">&quot;Colour Picker&quot;</span><span class="s0">,</span>
+                 <span class="s1">object_id: Union[ObjectID</span><span class="s0">, </span><span class="s1">str] = ObjectID(</span><span class="s5">'#colour_picker_dialog'</span><span class="s0">, None</span><span class="s1">)</span><span class="s0">,</span>
+                 <span class="s1">visible: int = </span><span class="s3">1</span><span class="s1">):</span>
+
+        <span class="s1">super().__init__(rect</span><span class="s0">, </span><span class="s1">manager</span><span class="s0">,</span>
+                         <span class="s1">window_display_title=window_title</span><span class="s0">,</span>
+                         <span class="s1">object_id=object_id</span><span class="s0">,</span>
+                         <span class="s1">resizable=</span><span class="s0">True,</span>
+                         <span class="s1">visible=visible)</span>
+
+        <span class="s1">minimum_dimensions = (</span><span class="s3">390</span><span class="s0">, </span><span class="s3">390</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">rect.width &lt; minimum_dimensions[</span><span class="s3">0</span><span class="s1">] </span><span class="s0">or </span><span class="s1">rect.height &lt; minimum_dimensions[</span><span class="s3">1</span><span class="s1">]:</span>
+            <span class="s1">warn_string = (</span><span class="s5">&quot;Initial size: &quot; </span><span class="s1">+ str(rect.size) +</span>
+                           <span class="s5">&quot; is less than minimum dimensions: &quot; </span><span class="s1">+ str(minimum_dimensions))</span>
+            <span class="s1">warnings.warn(warn_string</span><span class="s0">, </span><span class="s1">UserWarning)</span>
+        <span class="s1">self.set_minimum_dimensions(minimum_dimensions)</span>
+
+        <span class="s1">self.current_colour = initial_colour</span>
+
+        <span class="s1">self.ok_button = UIButton(relative_rect=pygame.Rect(-</span><span class="s3">220</span><span class="s0">, </span><span class="s1">-</span><span class="s3">40</span><span class="s0">, </span><span class="s3">100</span><span class="s0">, </span><span class="s3">30</span><span class="s1">)</span><span class="s0">,</span>
+                                  <span class="s1">text=</span><span class="s5">'OK'</span><span class="s0">,</span>
+                                  <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                  <span class="s1">container=self</span><span class="s0">,</span>
+                                  <span class="s1">object_id=</span><span class="s5">'#ok_button'</span><span class="s0">,</span>
+                                  <span class="s1">anchors={</span><span class="s5">'left'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                           <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                           <span class="s5">'top'</span><span class="s1">: </span><span class="s5">'bottom'</span><span class="s0">,</span>
+                                           <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'bottom'</span><span class="s1">})</span>
+
+        <span class="s1">self.cancel_button = UIButton(relative_rect=pygame.Rect(-</span><span class="s3">110</span><span class="s0">, </span><span class="s1">-</span><span class="s3">40</span><span class="s0">, </span><span class="s3">100</span><span class="s0">, </span><span class="s3">30</span><span class="s1">)</span><span class="s0">,</span>
+                                      <span class="s1">text=</span><span class="s5">'Cancel'</span><span class="s0">,</span>
+                                      <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                      <span class="s1">container=self</span><span class="s0">,</span>
+                                      <span class="s1">object_id=</span><span class="s5">'#cancel_button'</span><span class="s0">,</span>
+                                      <span class="s1">anchors={</span><span class="s5">'left'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                               <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                               <span class="s5">'top'</span><span class="s1">: </span><span class="s5">'bottom'</span><span class="s0">,</span>
+                                               <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'bottom'</span><span class="s1">})</span>
+
+        <span class="s1">default_sizes = {</span><span class="s5">'element_spacing'</span><span class="s1">: </span><span class="s3">20</span><span class="s0">,</span>
+                         <span class="s5">'channel_spacing'</span><span class="s1">: </span><span class="s3">11</span><span class="s0">,</span>
+                         <span class="s5">'channel_height'</span><span class="s1">: </span><span class="s3">29</span><span class="s1">}</span>
+
+        <span class="s1">current_colour_surface = pygame.surface.Surface((</span><span class="s3">64</span><span class="s0">, </span><span class="s3">64</span><span class="s1">)</span><span class="s0">,</span>
+                                                        <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">current_colour_surface.fill(self.current_colour)</span>
+
+        <span class="s1">self.current_colour_image = UIImage(pygame.Rect(default_sizes[</span><span class="s5">'element_spacing'</span><span class="s1">]</span><span class="s0">,</span>
+                                                        <span class="s1">-</span><span class="s3">100</span><span class="s0">,</span>
+                                                        <span class="s3">64</span><span class="s0">,</span>
+                                                        <span class="s3">64</span><span class="s1">)</span><span class="s0">,</span>
+                                            <span class="s1">image_surface=current_colour_surface</span><span class="s0">,</span>
+                                            <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                            <span class="s1">container=self</span><span class="s0">,</span>
+                                            <span class="s1">anchors={</span><span class="s5">'left'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">,</span>
+                                                     <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">,</span>
+                                                     <span class="s5">'top'</span><span class="s1">: </span><span class="s5">'bottom'</span><span class="s0">,</span>
+                                                     <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'bottom'</span><span class="s1">}</span>
+                                            <span class="s1">)</span>
+
+        <span class="s1">mini_colour_surf = pygame.surface.Surface((</span><span class="s3">2</span><span class="s0">, </span><span class="s3">2</span><span class="s1">)</span><span class="s0">, </span><span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">mini_colour_surf.fill(pygame.Color(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span><span class="s0">, </span><span class="s1">pygame.Rect(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">2</span><span class="s1">))</span>
+        <span class="s1">mini_colour_surf.fill(pygame.Color(</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span><span class="s0">, </span><span class="s1">pygame.Rect(</span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">))</span>
+
+        <span class="s1">hue_colour = pygame.Color(</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">hue_colour.hsva = (int(self.current_colour.hsva[</span><span class="s3">0</span><span class="s1">])</span><span class="s0">,</span>
+                           <span class="s3">100</span><span class="s0">, </span><span class="s3">100</span><span class="s0">, </span><span class="s3">100</span><span class="s1">)</span>
+        <span class="s1">mini_colour_surf.fill(hue_colour</span><span class="s0">, </span><span class="s1">pygame.Rect(</span><span class="s3">1</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">))</span>
+        <span class="s1">self.sat_value_square = UIImage(pygame.Rect(default_sizes[</span><span class="s5">'element_spacing'</span><span class="s1">]</span><span class="s0">,</span>
+                                                    <span class="s1">default_sizes[</span><span class="s5">'element_spacing'</span><span class="s1">]</span><span class="s0">,</span>
+                                                    <span class="s3">200</span><span class="s0">,</span>
+                                                    <span class="s3">200</span><span class="s1">)</span><span class="s0">,</span>
+                                        <span class="s1">image_surface=pygame.transform.smoothscale(mini_colour_surf</span><span class="s0">,</span>
+                                                                                   <span class="s1">(</span><span class="s3">200</span><span class="s0">, </span><span class="s3">200</span><span class="s1">))</span><span class="s0">,</span>
+                                        <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                        <span class="s1">container=self)</span>
+
+        <span class="s1">self.hue_channel = </span><span class="s0">None</span>
+        <span class="s1">self.sat_channel = </span><span class="s0">None</span>
+        <span class="s1">self.value_channel = </span><span class="s0">None</span>
+
+        <span class="s1">self.red_channel = </span><span class="s0">None</span>
+        <span class="s1">self.green_channel = </span><span class="s0">None</span>
+        <span class="s1">self.blue_channel = </span><span class="s0">None</span>
+
+        <span class="s1">self._setup_channels(default_sizes)</span>
+
+    <span class="s0">def </span><span class="s1">_setup_channels(self</span><span class="s0">, </span><span class="s1">default_sizes):</span>
+        <span class="s2"># group up setting up the channels, possibly we can make this into a</span>
+        <span class="s2"># slimmer method called with just the bits that change like names, position and value range.</span>
+        <span class="s1">channel_width = (self.rect.right -</span>
+                         <span class="s1">self.sat_value_square.rect.right) - (default_sizes[</span><span class="s5">'element_spacing'</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">)</span>
+        <span class="s1">channel_left_start = ((default_sizes[</span><span class="s5">'element_spacing'</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) +</span>
+                              <span class="s1">self.sat_value_square.rect.width)</span>
+        <span class="s1">acc_channel_top = default_sizes[</span><span class="s5">'element_spacing'</span><span class="s1">]</span>
+        <span class="s1">self.hue_channel = UIColourChannelEditor(pygame.Rect(channel_left_start</span><span class="s0">,</span>
+                                                             <span class="s1">acc_channel_top</span><span class="s0">,</span>
+                                                             <span class="s1">channel_width</span><span class="s0">,</span>
+                                                             <span class="s1">default_sizes[</span><span class="s5">'channel_height'</span><span class="s1">])</span><span class="s0">,</span>
+                                                 <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                                 <span class="s1">container=self</span><span class="s0">,</span>
+                                                 <span class="s1">name=</span><span class="s5">'H:'</span><span class="s0">,</span>
+                                                 <span class="s1">channel_index=</span><span class="s3">0</span><span class="s0">,</span>
+                                                 <span class="s1">initial_value=int(self.current_colour.hsva[</span><span class="s3">0</span><span class="s1">])</span><span class="s0">,</span>
+                                                 <span class="s1">value_range=(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">360</span><span class="s1">)</span><span class="s0">,</span>
+                                                 <span class="s1">anchors={</span><span class="s5">'left'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">,</span>
+                                                          <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                                          <span class="s5">'top'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">,</span>
+                                                          <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s1">})</span>
+        <span class="s1">acc_channel_top += (default_sizes[</span><span class="s5">'channel_height'</span><span class="s1">] +</span>
+                            <span class="s1">default_sizes[</span><span class="s5">'channel_spacing'</span><span class="s1">])</span>
+        <span class="s1">self.sat_channel = UIColourChannelEditor(pygame.Rect(channel_left_start</span><span class="s0">,</span>
+                                                             <span class="s1">acc_channel_top</span><span class="s0">,</span>
+                                                             <span class="s1">channel_width</span><span class="s0">,</span>
+                                                             <span class="s1">default_sizes[</span><span class="s5">'channel_height'</span><span class="s1">])</span><span class="s0">,</span>
+                                                 <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                                 <span class="s1">container=self</span><span class="s0">,</span>
+                                                 <span class="s1">name=</span><span class="s5">'S:'</span><span class="s0">,</span>
+                                                 <span class="s1">channel_index=</span><span class="s3">0</span><span class="s0">,</span>
+                                                 <span class="s1">initial_value=int(self.current_colour.hsva[</span><span class="s3">1</span><span class="s1">])</span><span class="s0">,</span>
+                                                 <span class="s1">value_range=(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">100</span><span class="s1">)</span><span class="s0">,</span>
+                                                 <span class="s1">anchors={</span><span class="s5">'left'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">,</span>
+                                                          <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                                          <span class="s5">'top'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">,</span>
+                                                          <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s1">})</span>
+        <span class="s1">acc_channel_top += (default_sizes[</span><span class="s5">'channel_height'</span><span class="s1">] +</span>
+                            <span class="s1">default_sizes[</span><span class="s5">'channel_spacing'</span><span class="s1">])</span>
+        <span class="s1">self.value_channel = UIColourChannelEditor(pygame.Rect(channel_left_start</span><span class="s0">,</span>
+                                                               <span class="s1">acc_channel_top</span><span class="s0">,</span>
+                                                               <span class="s1">channel_width</span><span class="s0">,</span>
+                                                               <span class="s1">default_sizes[</span><span class="s5">'channel_height'</span><span class="s1">])</span><span class="s0">,</span>
+                                                   <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                                   <span class="s1">container=self</span><span class="s0">,</span>
+                                                   <span class="s1">name=</span><span class="s5">'V:'</span><span class="s0">,</span>
+                                                   <span class="s1">channel_index=</span><span class="s3">2</span><span class="s0">,</span>
+                                                   <span class="s1">initial_value=int(self.current_colour.hsva[</span><span class="s3">2</span><span class="s1">])</span><span class="s0">,</span>
+                                                   <span class="s1">value_range=(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">100</span><span class="s1">)</span><span class="s0">,</span>
+                                                   <span class="s1">anchors={</span><span class="s5">'left'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">,</span>
+                                                            <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                                            <span class="s5">'top'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">,</span>
+                                                            <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s1">})</span>
+        <span class="s1">acc_channel_top += (default_sizes[</span><span class="s5">'channel_height'</span><span class="s1">] +</span>
+                            <span class="s1">default_sizes[</span><span class="s5">'channel_spacing'</span><span class="s1">])</span>
+        <span class="s1">self.red_channel = UIColourChannelEditor(pygame.Rect(channel_left_start</span><span class="s0">,</span>
+                                                             <span class="s1">acc_channel_top</span><span class="s0">,</span>
+                                                             <span class="s1">channel_width</span><span class="s0">,</span>
+                                                             <span class="s1">default_sizes[</span><span class="s5">'channel_height'</span><span class="s1">])</span><span class="s0">,</span>
+                                                 <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                                 <span class="s1">container=self</span><span class="s0">,</span>
+                                                 <span class="s1">name=</span><span class="s5">'R:'</span><span class="s0">,</span>
+                                                 <span class="s1">channel_index=</span><span class="s3">0</span><span class="s0">,</span>
+                                                 <span class="s1">initial_value=self.current_colour.r</span><span class="s0">,</span>
+                                                 <span class="s1">value_range=(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span><span class="s0">,</span>
+                                                 <span class="s1">anchors={</span><span class="s5">'left'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">,</span>
+                                                          <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                                          <span class="s5">'top'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">,</span>
+                                                          <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s1">})</span>
+        <span class="s1">acc_channel_top += (default_sizes[</span><span class="s5">'channel_height'</span><span class="s1">] +</span>
+                            <span class="s1">default_sizes[</span><span class="s5">'channel_spacing'</span><span class="s1">])</span>
+        <span class="s1">self.green_channel = UIColourChannelEditor(pygame.Rect(channel_left_start</span><span class="s0">,</span>
+                                                               <span class="s1">acc_channel_top</span><span class="s0">,</span>
+                                                               <span class="s1">channel_width</span><span class="s0">,</span>
+                                                               <span class="s1">default_sizes[</span><span class="s5">'channel_height'</span><span class="s1">])</span><span class="s0">,</span>
+                                                   <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                                   <span class="s1">container=self</span><span class="s0">,</span>
+                                                   <span class="s1">name=</span><span class="s5">'G:'</span><span class="s0">,</span>
+                                                   <span class="s1">channel_index=</span><span class="s3">1</span><span class="s0">,</span>
+                                                   <span class="s1">initial_value=self.current_colour.g</span><span class="s0">,</span>
+                                                   <span class="s1">value_range=(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span><span class="s0">,</span>
+                                                   <span class="s1">anchors={</span><span class="s5">'left'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">,</span>
+                                                            <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                                            <span class="s5">'top'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">,</span>
+                                                            <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s1">})</span>
+        <span class="s1">acc_channel_top += (default_sizes[</span><span class="s5">'channel_height'</span><span class="s1">] +</span>
+                            <span class="s1">default_sizes[</span><span class="s5">'channel_spacing'</span><span class="s1">])</span>
+        <span class="s1">self.blue_channel = UIColourChannelEditor(pygame.Rect(channel_left_start</span><span class="s0">,</span>
+                                                              <span class="s1">acc_channel_top</span><span class="s0">,</span>
+                                                              <span class="s1">channel_width</span><span class="s0">,</span>
+                                                              <span class="s1">default_sizes[</span><span class="s5">'channel_height'</span><span class="s1">])</span><span class="s0">,</span>
+                                                  <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                                  <span class="s1">container=self</span><span class="s0">,</span>
+                                                  <span class="s1">name=</span><span class="s5">'B:'</span><span class="s0">,</span>
+                                                  <span class="s1">channel_index=</span><span class="s3">2</span><span class="s0">,</span>
+                                                  <span class="s1">initial_value=self.current_colour.b</span><span class="s0">,</span>
+                                                  <span class="s1">value_range=(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span><span class="s0">,</span>
+                                                  <span class="s1">anchors={</span><span class="s5">'left'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">,</span>
+                                                           <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                                           <span class="s5">'top'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">,</span>
+                                                           <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s1">})</span>
+
+    <span class="s0">def </span><span class="s1">process_event(self</span><span class="s0">, </span><span class="s1">event: pygame.event.Event) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Handles events that this UI element is interested in. In this case we are responding to 
+        the colour channel elements being changed, the OK or Cancel buttons being pressed or the 
+        user clicking the mouse inside of the Saturation &amp; Value picking square. 
+ 
+        :param event: The pygame Event to process. 
+ 
+        :return: True if event is consumed by this element and should not be passed on to other 
+                 elements. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">consumed_event = super().process_event(event)</span>
+        <span class="s0">if </span><span class="s1">(event.type == pygame.USEREVENT </span><span class="s0">and</span>
+                <span class="s1">event.user_type == UI_BUTTON_PRESSED </span><span class="s0">and</span>
+                <span class="s1">event.ui_element == self.cancel_button):</span>
+            <span class="s1">self.kill()</span>
+
+        <span class="s0">if </span><span class="s1">(event.type == pygame.USEREVENT </span><span class="s0">and</span>
+                <span class="s1">event.user_type == UI_BUTTON_PRESSED </span><span class="s0">and</span>
+                <span class="s1">event.ui_element == self.ok_button):</span>
+            <span class="s1">event_data = {</span><span class="s5">'user_type'</span><span class="s1">: UI_COLOUR_PICKER_COLOUR_PICKED</span><span class="s0">,</span>
+                          <span class="s5">'colour'</span><span class="s1">: self.current_colour</span><span class="s0">,</span>
+                          <span class="s5">'ui_element'</span><span class="s1">: self</span><span class="s0">,</span>
+                          <span class="s5">'ui_object_id'</span><span class="s1">: self.most_specific_combined_id}</span>
+            <span class="s1">new_colour_chosen_event = pygame.event.Event(pygame.USEREVENT</span><span class="s0">, </span><span class="s1">event_data)</span>
+            <span class="s1">pygame.event.post(new_colour_chosen_event)</span>
+            <span class="s1">self.kill()</span>
+
+        <span class="s0">if </span><span class="s1">(event.type == pygame.USEREVENT </span><span class="s0">and</span>
+                <span class="s1">event.user_type == UI_COLOUR_PICKER_COLOUR_CHANNEL_CHANGED):</span>
+            <span class="s0">if </span><span class="s1">event.ui_element </span><span class="s0">in </span><span class="s1">[self.hue_channel</span><span class="s0">, </span><span class="s1">self.sat_channel</span><span class="s0">, </span><span class="s1">self.value_channel]:</span>
+                <span class="s1">self.current_colour.hsva = (self.hue_channel.current_value</span><span class="s0">,</span>
+                                            <span class="s1">self.sat_channel.current_value</span><span class="s0">,</span>
+                                            <span class="s1">self.value_channel.current_value</span><span class="s0">,</span>
+                                            <span class="s3">100</span><span class="s1">)</span>
+                <span class="s1">self.changed_hsv_update_rgb()</span>
+                <span class="s1">self.update_current_colour_image()</span>
+                <span class="s1">self.update_saturation_value_square()</span>
+            <span class="s0">elif </span><span class="s1">event.ui_element </span><span class="s0">in </span><span class="s1">[self.red_channel</span><span class="s0">, </span><span class="s1">self.green_channel</span><span class="s0">, </span><span class="s1">self.blue_channel]:</span>
+                <span class="s1">self.current_colour[event.channel_index] = event.value</span>
+                <span class="s1">self.changed_rgb_update_hsv()</span>
+                <span class="s1">self.update_current_colour_image()</span>
+                <span class="s1">self.update_saturation_value_square()</span>
+
+        <span class="s0">if </span><span class="s1">event.type == pygame.MOUSEBUTTONDOWN </span><span class="s0">and </span><span class="s1">event.button == pygame.BUTTON_LEFT:</span>
+            <span class="s1">scaled_mouse_pos = self.ui_manager.calculate_scaled_mouse_position(event.pos)</span>
+            <span class="s0">if </span><span class="s1">self.sat_value_square.rect.collidepoint(scaled_mouse_pos):</span>
+                <span class="s1">relative_click_pos = [scaled_mouse_pos[</span><span class="s3">0</span><span class="s1">] - self.sat_value_square.rect.left</span><span class="s0">,</span>
+                                      <span class="s1">scaled_mouse_pos[</span><span class="s3">1</span><span class="s1">] - self.sat_value_square.rect.top]</span>
+                <span class="s2"># put in range 0 - 100 and reverse y</span>
+                <span class="s1">x_value = int((relative_click_pos[</span><span class="s3">0</span><span class="s1">] / self.sat_value_square.rect.width) * </span><span class="s3">100</span><span class="s1">)</span>
+                <span class="s1">y_value = int((relative_click_pos[</span><span class="s3">1</span><span class="s1">] / self.sat_value_square.rect.height) * </span><span class="s3">100</span><span class="s1">)</span>
+                <span class="s1">value = min(</span><span class="s3">100</span><span class="s0">, </span><span class="s1">max(</span><span class="s3">0</span><span class="s0">, </span><span class="s1">x_value))</span>
+                <span class="s1">saturation = min(</span><span class="s3">100</span><span class="s0">, </span><span class="s1">max(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">100 </span><span class="s1">- y_value))</span>
+
+                <span class="s1">self.sat_channel.set_value(saturation)</span>
+                <span class="s1">self.value_channel.set_value(value)</span>
+                <span class="s1">self.current_colour.hsva = (self.hue_channel.current_value</span><span class="s0">,</span>
+                                            <span class="s1">self.sat_channel.current_value</span><span class="s0">,</span>
+                                            <span class="s1">self.value_channel.current_value</span><span class="s0">,</span>
+                                            <span class="s3">100</span><span class="s1">)</span>
+                <span class="s1">self.changed_hsv_update_rgb()</span>
+                <span class="s1">self.update_current_colour_image()</span>
+
+        <span class="s0">return </span><span class="s1">consumed_event</span>
+
+    <span class="s0">def </span><span class="s1">update_current_colour_image(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Updates the 'current colour' image when the current colour has been changed. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">current_colour_surface = pygame.surface.Surface((</span><span class="s3">64</span><span class="s0">, </span><span class="s3">64</span><span class="s1">)</span><span class="s0">, </span><span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">current_colour_surface.fill(self.current_colour)</span>
+        <span class="s1">self.current_colour_image.set_image(current_colour_surface)</span>
+
+    <span class="s0">def </span><span class="s1">update_saturation_value_square(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Updates the appearance of the big square that lets us visually pick the Saturation and 
+        Value of our current Hue. This is done by drawing a very small 4x4 pixel square with a 
+        pattern like so: 
+ 
+                   [black] [hue at max saturation &amp; value)] 
+                   [black] [white] 
+ 
+        And then using the smoothscale transform to enlarge it so that the colours blend smoothly 
+        from one to the other. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">mini_colour_surf = pygame.surface.Surface((</span><span class="s3">2</span><span class="s0">, </span><span class="s3">2</span><span class="s1">)</span><span class="s0">, </span><span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">mini_colour_surf.fill(pygame.Color(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span><span class="s0">, </span><span class="s1">pygame.Rect(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">2</span><span class="s1">))</span>
+        <span class="s1">mini_colour_surf.fill(pygame.Color(</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span><span class="s0">, </span><span class="s1">pygame.Rect(</span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">))</span>
+
+        <span class="s1">hue_colour = pygame.Color(</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">hue_colour.hsva = (int(self.hue_channel.current_value)</span><span class="s0">,</span>
+                           <span class="s3">100</span><span class="s0">, </span><span class="s3">100</span><span class="s0">, </span><span class="s3">100</span><span class="s1">)</span>
+        <span class="s1">mini_colour_surf.fill(hue_colour</span><span class="s0">, </span><span class="s1">pygame.Rect(</span><span class="s3">1</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">))</span>
+        <span class="s1">self.sat_value_square.set_image(pygame.transform.smoothscale(mini_colour_surf</span><span class="s0">, </span><span class="s1">(</span><span class="s3">200</span><span class="s0">, </span><span class="s3">200</span><span class="s1">)))</span>
+
+    <span class="s0">def </span><span class="s1">changed_hsv_update_rgb(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Updates the RGB channels when we've altered the HSV ones. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.red_channel.set_value(self.current_colour.r)</span>
+        <span class="s1">self.green_channel.set_value(self.current_colour.g)</span>
+        <span class="s1">self.blue_channel.set_value(self.current_colour.b)</span>
+
+    <span class="s0">def </span><span class="s1">changed_rgb_update_hsv(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Updates the HSV channels when we've altered the RGB ones. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.hue_channel.set_value(int(self.current_colour.hsva[</span><span class="s3">0</span><span class="s1">]))</span>
+        <span class="s1">self.sat_channel.set_value(int(self.current_colour.hsva[</span><span class="s3">1</span><span class="s1">]))</span>
+        <span class="s1">self.value_channel.set_value(int(self.current_colour.hsva[</span><span class="s3">2</span><span class="s1">]))</span>
+</pre>
+</body>
+</html>

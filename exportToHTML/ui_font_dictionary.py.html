@@ -1,0 +1,442 @@
+<html>
+<head>
+<title>ui_font_dictionary.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6a8759;}
+.s4 { color: #629755; font-style: italic;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+ui_font_dictionary.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">os</span>
+<span class="s0">import </span><span class="s1">warnings</span>
+
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Dict</span><span class="s0">, </span><span class="s1">Union</span>
+<span class="s0">from </span><span class="s1">importlib.util </span><span class="s0">import </span><span class="s1">find_spec</span>
+
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces.font_dictionary_interface </span><span class="s0">import </span><span class="s1">IUIFontDictionaryInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.resource_loaders </span><span class="s0">import </span><span class="s1">IResourceLoader</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">PackageResource</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">FontResource</span>
+
+<span class="s2"># First try importlib</span>
+<span class="s2"># Then importlib_resources</span>
+<span class="s2"># If that fails fall back to __file__</span>
+<span class="s2"># Finally fall back to stringified data</span>
+<span class="s1">USE_IMPORT_LIB_RESOURCE = </span><span class="s0">False</span>
+<span class="s1">USE_FILE_PATH = </span><span class="s0">False</span>
+<span class="s1">USE_STRINGIFIED_DATA = </span><span class="s0">False</span>
+
+<span class="s1">RESOURCES_MODULE_SPEC = find_spec(name=</span><span class="s3">&quot;importlib.resources&quot;</span><span class="s1">)</span>
+<span class="s0">if </span><span class="s1">RESOURCES_MODULE_SPEC </span><span class="s0">is None</span><span class="s1">:</span>
+    <span class="s1">RESOURCES_MODULE_SPEC = find_spec(name=</span><span class="s3">&quot;importlib_resources&quot;</span><span class="s1">)</span>
+    <span class="s0">if </span><span class="s1">RESOURCES_MODULE_SPEC </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s1">ROOT_PATH = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))</span>
+        <span class="s1">FONT_PATH = os.path.normpath(os.path.join(ROOT_PATH</span><span class="s0">, </span><span class="s3">'data/FiraCode-Regular.ttf'</span><span class="s1">))</span>
+        <span class="s0">if not </span><span class="s1">os.path.exists(FONT_PATH):</span>
+            <span class="s1">USE_STRINGIFIED_DATA = </span><span class="s0">True</span>
+            <span class="s0">from </span><span class="s1">pygame_gui.core._string_data </span><span class="s0">import </span><span class="s1">FiraCode_Regular</span><span class="s0">, </span><span class="s1">FiraCode_Bold</span>
+            <span class="s0">from </span><span class="s1">pygame_gui.core._string_data </span><span class="s0">import </span><span class="s1">FiraMono_BoldItalic</span><span class="s0">, </span><span class="s1">FiraMono_RegularItalic</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">USE_FILE_PATH = </span><span class="s0">True</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s1">USE_IMPORT_LIB_RESOURCE = </span><span class="s0">True</span>
+<span class="s0">else</span><span class="s1">:</span>
+    <span class="s1">USE_IMPORT_LIB_RESOURCE = </span><span class="s0">True</span>
+
+
+<span class="s0">class </span><span class="s1">UIFontDictionary(IUIFontDictionaryInterface):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    The font dictionary is used to store all the fonts that have been loaded into the UI system. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">_html_font_sizes = {</span>
+        <span class="s5">1</span><span class="s1">: </span><span class="s5">8</span><span class="s0">,</span>
+        <span class="s5">1.5</span><span class="s1">: </span><span class="s5">9</span><span class="s0">,</span>
+        <span class="s5">2</span><span class="s1">: </span><span class="s5">10</span><span class="s0">,</span>
+        <span class="s5">2.5</span><span class="s1">: </span><span class="s5">11</span><span class="s0">,</span>
+        <span class="s5">3</span><span class="s1">: </span><span class="s5">12</span><span class="s0">,</span>
+        <span class="s5">3.5</span><span class="s1">: </span><span class="s5">13</span><span class="s0">,</span>
+        <span class="s5">4</span><span class="s1">: </span><span class="s5">14</span><span class="s0">,</span>
+        <span class="s5">4.5</span><span class="s1">: </span><span class="s5">16</span><span class="s0">,</span>
+        <span class="s5">5</span><span class="s1">: </span><span class="s5">18</span><span class="s0">,</span>
+        <span class="s5">5.5</span><span class="s1">: </span><span class="s5">20</span><span class="s0">,</span>
+        <span class="s5">6</span><span class="s1">: </span><span class="s5">24</span><span class="s0">,</span>
+        <span class="s5">6.5</span><span class="s1">: </span><span class="s5">32</span><span class="s0">,</span>
+        <span class="s5">7</span><span class="s1">: </span><span class="s5">48</span>
+    <span class="s1">}</span>
+
+    <span class="s1">_html_font_sizes_reverse_lookup = {</span>
+        <span class="s5">8</span><span class="s1">: </span><span class="s5">1</span><span class="s0">,</span>
+        <span class="s5">9</span><span class="s1">: </span><span class="s5">1.5</span><span class="s0">,</span>
+        <span class="s5">10</span><span class="s1">: </span><span class="s5">2</span><span class="s0">,</span>
+        <span class="s5">11</span><span class="s1">: </span><span class="s5">2.5</span><span class="s0">,</span>
+        <span class="s5">12</span><span class="s1">: </span><span class="s5">3</span><span class="s0">,</span>
+        <span class="s5">13</span><span class="s1">: </span><span class="s5">3.5</span><span class="s0">,</span>
+        <span class="s5">14</span><span class="s1">: </span><span class="s5">4</span><span class="s0">,</span>
+        <span class="s5">16</span><span class="s1">: </span><span class="s5">4.5</span><span class="s0">,</span>
+        <span class="s5">18</span><span class="s1">: </span><span class="s5">5</span><span class="s0">,</span>
+        <span class="s5">20</span><span class="s1">: </span><span class="s5">5.5</span><span class="s0">,</span>
+        <span class="s5">24</span><span class="s1">: </span><span class="s5">6</span><span class="s0">,</span>
+        <span class="s5">32</span><span class="s1">: </span><span class="s5">6.5</span><span class="s0">,</span>
+        <span class="s5">48</span><span class="s1">: </span><span class="s5">7</span>
+    <span class="s1">}</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">resource_loader: IResourceLoader):</span>
+        <span class="s2"># , use_threaded_loading: bool = False, loading_queue: ClosableQueue = None</span>
+        <span class="s2"># self.use_threaded_loading = use_threaded_loading</span>
+        <span class="s2"># self.loading_queue = loading_queue</span>
+        <span class="s1">self._resource_loader = resource_loader</span>
+
+        <span class="s1">self.default_font_size = </span><span class="s5">14</span>
+        <span class="s1">self.default_font_name = </span><span class="s3">&quot;fira_code&quot;</span>
+        <span class="s1">self.default_font_style = </span><span class="s3">&quot;regular&quot;</span>
+        <span class="s1">self.default_font_id = (self.default_font_name + </span><span class="s3">'_' </span><span class="s1">+ self.default_font_style</span>
+                                <span class="s1">+ </span><span class="s3">'_' </span><span class="s1">+ str(self.default_font_size))</span>
+
+        <span class="s1">self.default_font_info = {</span><span class="s3">'name'</span><span class="s1">: self.default_font_name</span><span class="s0">,</span>
+                                  <span class="s3">'size'</span><span class="s1">: self.default_font_size</span><span class="s0">,</span>
+                                  <span class="s3">'bold'</span><span class="s1">: </span><span class="s0">False,</span>
+                                  <span class="s3">'italic'</span><span class="s1">: </span><span class="s0">False</span><span class="s1">}</span>
+
+        <span class="s1">self.debug_font_size = </span><span class="s5">8</span>
+
+        <span class="s1">self.loaded_fonts = {}  </span><span class="s2"># type: Dict[str, FontResource]</span>
+        <span class="s1">self.known_font_paths = {}</span>
+
+        <span class="s1">self._load_default_font()</span>
+
+        <span class="s1">self.used_font_ids = [self.default_font_id]</span>
+
+    <span class="s0">def </span><span class="s1">_load_default_font(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Load the default font. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">default_font_res = FontResource(font_id=self.default_font_id</span><span class="s0">,</span>
+                                        <span class="s1">size=self.default_font_size</span><span class="s0">,</span>
+                                        <span class="s1">style={</span><span class="s3">'bold'</span><span class="s1">: </span><span class="s0">False, </span><span class="s3">'italic'</span><span class="s1">: </span><span class="s0">False</span><span class="s1">}</span><span class="s0">,</span>
+                                        <span class="s1">location=PackageResource(package=</span><span class="s3">'pygame_gui.data'</span><span class="s0">,</span>
+                                                                 <span class="s1">resource=</span><span class="s3">'FiraCode-Regular.ttf'</span><span class="s1">))</span>
+        <span class="s0">if not </span><span class="s1">USE_STRINGIFIED_DATA:</span>
+            <span class="s1">error = default_font_res.load()</span>
+            <span class="s0">if </span><span class="s1">error </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">warnings.warn(str(error))</span>
+            <span class="s1">self.loaded_fonts[self.default_font_id] = default_font_res</span>
+
+            <span class="s1">self.known_font_paths[</span><span class="s3">'fira_code'</span><span class="s1">] = [</span>
+                <span class="s1">PackageResource(package=</span><span class="s3">'pygame_gui.data'</span><span class="s0">,</span>
+                                <span class="s1">resource=</span><span class="s3">'FiraCode-Regular.ttf'</span><span class="s1">)</span><span class="s0">,</span>
+                <span class="s1">PackageResource(package=</span><span class="s3">'pygame_gui.data'</span><span class="s0">,</span>
+                                <span class="s1">resource=</span><span class="s3">'FiraCode-Bold.ttf'</span><span class="s1">)</span><span class="s0">,</span>
+                <span class="s1">PackageResource(package=</span><span class="s3">'pygame_gui.data'</span><span class="s0">,</span>
+                                <span class="s1">resource=</span><span class="s3">'FiraMono-RegularItalic.ttf'</span><span class="s1">)</span><span class="s0">,</span>
+                <span class="s1">PackageResource(package=</span><span class="s3">'pygame_gui.data'</span><span class="s0">,</span>
+                                <span class="s1">resource=</span><span class="s3">'FiraMono-BoldItalic.ttf'</span><span class="s1">)]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">default_font_res.location = FiraCode_Regular</span>
+            <span class="s1">error = default_font_res.load()</span>
+            <span class="s0">if </span><span class="s1">error </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">warnings.warn(str(error))</span>
+            <span class="s1">self.loaded_fonts[self.default_font_id] = default_font_res</span>
+
+            <span class="s1">self.known_font_paths[</span><span class="s3">'fira_code'</span><span class="s1">] = [FiraCode_Regular</span><span class="s0">,</span>
+                                                  <span class="s1">FiraCode_Bold</span><span class="s0">,</span>
+                                                  <span class="s1">FiraMono_RegularItalic</span><span class="s0">,</span>
+                                                  <span class="s1">FiraMono_BoldItalic]</span>
+
+    <span class="s0">def </span><span class="s1">find_font(self</span><span class="s0">, </span><span class="s1">font_size: int</span><span class="s0">, </span><span class="s1">font_name: str</span><span class="s0">,</span>
+                  <span class="s1">bold: bool = </span><span class="s0">False, </span><span class="s1">italic: bool = </span><span class="s0">False</span><span class="s1">) -&gt; pygame.font.Font:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Find a loaded font from the font dictionary. Will load a font if it does not already exist 
+        and we have paths to the needed files, however it will issue a warning after doing so 
+        because dynamic file loading is normally a bad idea as you will get frame rate hitches 
+        while the running program waits for the font to load. 
+ 
+        Instead it's best to preload all your needed files at another time in your program when 
+        you have more control over the user experience. 
+ 
+        :param font_size: The size of the font to find. 
+        :param font_name: The name of the font to find. 
+        :param bold: Whether the font is bold or not. 
+        :param italic: Whether the font is italic or not. 
+ 
+        :return pygame.font.Font: Returns either the font we asked for, or the default font. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.find_font_resource(font_size</span><span class="s0">, </span><span class="s1">font_name</span><span class="s0">, </span><span class="s1">bold</span><span class="s0">, </span><span class="s1">italic).loaded_font</span>
+
+    <span class="s0">def </span><span class="s1">find_font_resource(self</span><span class="s0">, </span><span class="s1">font_size: int</span><span class="s0">, </span><span class="s1">font_name: str</span><span class="s0">,</span>
+                           <span class="s1">bold: bool = </span><span class="s0">False, </span><span class="s1">italic: bool = </span><span class="s0">False</span><span class="s1">) -&gt; FontResource:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Find a loaded font resource from the font dictionary. Will load a font if it does not 
+        already exist and we have paths to the needed files, however it will issue a warning 
+        after doing so because dynamic file loading is normally a bad idea as you will get frame 
+        rate hitches hile the running program waits for the font to load. 
+ 
+        Instead it's best to preload all your needed files at another time in your program when 
+        you have more control over the user experience. 
+ 
+        :param font_size: The size of the font to find. 
+        :param font_name: The name of the font to find. 
+        :param bold: Whether the font is bold or not. 
+        :param italic: Whether the font is italic or not. 
+ 
+        :return FontResource: Returns either the font resource we asked for, or the default font. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">font_id = self.create_font_id(font_size</span><span class="s0">, </span><span class="s1">font_name</span><span class="s0">, </span><span class="s1">bold</span><span class="s0">, </span><span class="s1">italic)</span>
+
+        <span class="s0">if </span><span class="s1">font_id </span><span class="s0">not in </span><span class="s1">self.used_font_ids:</span>
+            <span class="s1">self.used_font_ids.append(font_id)  </span><span class="s2"># record font usage for optimisation purposes</span>
+
+        <span class="s0">if </span><span class="s1">self.check_font_preloaded(font_id):  </span><span class="s2"># font already loaded</span>
+            <span class="s0">return </span><span class="s1">self.loaded_fonts[font_id]</span>
+        <span class="s0">elif </span><span class="s1">font_name </span><span class="s0">in </span><span class="s1">self.known_font_paths:</span>
+            <span class="s2"># we know paths to this font, just haven't loaded current size/style</span>
+            <span class="s1">style_string = </span><span class="s3">&quot;regular&quot;</span>
+            <span class="s0">if </span><span class="s1">bold </span><span class="s0">and </span><span class="s1">italic:</span>
+                <span class="s1">style_string = </span><span class="s3">&quot;bold_italic&quot;</span>
+            <span class="s0">elif </span><span class="s1">bold:</span>
+                <span class="s1">style_string = </span><span class="s3">&quot;bold&quot;</span>
+            <span class="s0">elif </span><span class="s1">italic:</span>
+                <span class="s1">style_string = </span><span class="s3">&quot;italic&quot;</span>
+
+            <span class="s1">warning_string = (</span><span class="s3">'Finding font with id: ' </span><span class="s1">+</span>
+                              <span class="s1">font_id +</span>
+                              <span class="s3">&quot; that is not already loaded.</span><span class="s0">\n</span><span class="s3">&quot;</span>
+                              <span class="s3">&quot;Preload this font with {'name': &quot;</span>
+                              <span class="s3">&quot;'&quot; </span><span class="s1">+ font_name + </span><span class="s3">&quot;',&quot;</span>
+                              <span class="s3">&quot; 'point_size': &quot; </span><span class="s1">+ str(font_size) + </span><span class="s3">&quot;,&quot;</span>
+                              <span class="s3">&quot; 'style': '&quot; </span><span class="s1">+ style_string + </span><span class="s3">&quot;'}&quot;</span><span class="s1">)</span>
+            <span class="s1">warnings.warn(warning_string</span><span class="s0">, </span><span class="s1">UserWarning)</span>
+            <span class="s1">self.preload_font(font_size</span><span class="s0">, </span><span class="s1">font_name</span><span class="s0">, </span><span class="s1">bold</span><span class="s0">, </span><span class="s1">italic</span><span class="s0">, </span><span class="s1">force_immediate_load=</span><span class="s0">True</span><span class="s1">)</span>
+            <span class="s0">return </span><span class="s1">self.loaded_fonts[font_id]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">self.loaded_fonts[self.default_font_id]</span>
+
+    <span class="s0">def </span><span class="s1">get_default_font(self) -&gt; pygame.font.Font:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Grab the default font. 
+ 
+        :return: The default font. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.find_font(self.default_font_size</span><span class="s0">, </span><span class="s1">self.default_font_name)</span>
+
+    <span class="s0">def </span><span class="s1">create_font_id(self</span><span class="s0">, </span><span class="s1">font_size: int</span><span class="s0">, </span><span class="s1">font_name: str</span><span class="s0">, </span><span class="s1">bold: bool</span><span class="s0">, </span><span class="s1">italic: bool) -&gt; str:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Create an id for a particularly styled and sized font from those characteristics. 
+ 
+        :param font_size: The size of the font. 
+        :param font_name: The name of the font. 
+        :param bold: Whether the font is bold styled or not. 
+        :param italic: Whether the font is italic styled or not. 
+ 
+        :return str: The finished font id. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">font_size &lt;= </span><span class="s5">0</span><span class="s1">:</span>
+            <span class="s1">font_size = self.default_font_size</span>
+            <span class="s1">warnings.warn(</span><span class="s3">&quot;Font size less than or equal to 0&quot;</span><span class="s0">, </span><span class="s1">UserWarning)</span>
+        <span class="s0">if </span><span class="s1">bold </span><span class="s0">and </span><span class="s1">italic:</span>
+            <span class="s1">font_style_string = </span><span class="s3">&quot;bold_italic&quot;</span>
+        <span class="s0">elif </span><span class="s1">bold:</span>
+            <span class="s1">font_style_string = </span><span class="s3">&quot;bold&quot;</span>
+        <span class="s0">elif </span><span class="s1">italic:</span>
+            <span class="s1">font_style_string = </span><span class="s3">&quot;italic&quot;</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">font_style_string = </span><span class="s3">&quot;regular&quot;</span>
+        <span class="s0">return </span><span class="s1">font_name + </span><span class="s3">&quot;_&quot; </span><span class="s1">+ font_style_string + </span><span class="s3">&quot;_&quot; </span><span class="s1">+ str(font_size)</span>
+
+    <span class="s0">def </span><span class="s1">preload_font(self</span><span class="s0">, </span><span class="s1">font_size: int</span><span class="s0">, </span><span class="s1">font_name: str</span><span class="s0">,</span>
+                     <span class="s1">bold: bool = </span><span class="s0">False, </span><span class="s1">italic: bool = </span><span class="s0">False,</span>
+                     <span class="s1">force_immediate_load: bool = </span><span class="s0">False</span><span class="s1">):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Lets us load a font at a particular size and style before we use it. While you can get 
+        away with relying on dynamic font loading during development, it is better to eventually 
+        pre-load all your font data at a controlled time, which is where this method comes in. 
+ 
+        :param font_size: The size of the font to load. 
+        :param font_name: The name of the font to load. 
+        :param bold: Whether the font is bold styled or not. 
+        :param italic: Whether the font is italic styled or not. 
+        :param force_immediate_load: resource loading setup to immediately 
+                                     load the font on the main thread. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">font_id = self.create_font_id(font_size</span><span class="s0">, </span><span class="s1">font_name</span><span class="s0">, </span><span class="s1">bold</span><span class="s0">, </span><span class="s1">italic)</span>
+        <span class="s0">if </span><span class="s1">font_id </span><span class="s0">in </span><span class="s1">self.loaded_fonts:    </span><span class="s2"># font already loaded</span>
+            <span class="s1">warnings.warn(</span><span class="s3">'Trying to pre-load font id: ' </span><span class="s1">+</span>
+                          <span class="s1">font_id +</span>
+                          <span class="s3">' that is already loaded'</span><span class="s0">, </span><span class="s1">UserWarning)</span>
+        <span class="s0">elif </span><span class="s1">font_name </span><span class="s0">in </span><span class="s1">self.known_font_paths:</span>
+            <span class="s2"># we know paths to this font, just haven't loaded current size/style</span>
+            <span class="s1">regular_path = self.known_font_paths[font_name][</span><span class="s5">0</span><span class="s1">]</span>
+            <span class="s1">bold_path = self.known_font_paths[font_name][</span><span class="s5">1</span><span class="s1">]</span>
+            <span class="s1">italic_path = self.known_font_paths[font_name][</span><span class="s5">2</span><span class="s1">]</span>
+            <span class="s1">bold_italic_path = self.known_font_paths[font_name][</span><span class="s5">3</span><span class="s1">]</span>
+            <span class="s0">if </span><span class="s1">bold </span><span class="s0">and </span><span class="s1">italic:</span>
+                <span class="s1">self._load_single_font_style(bold_italic_path</span><span class="s0">,</span>
+                                             <span class="s1">font_id</span><span class="s0">,</span>
+                                             <span class="s1">font_size</span><span class="s0">,</span>
+                                             <span class="s1">font_style={</span><span class="s3">'bold'</span><span class="s1">: </span><span class="s0">True,</span>
+                                                         <span class="s3">'italic'</span><span class="s1">: </span><span class="s0">True</span><span class="s1">}</span><span class="s0">,</span>
+                                             <span class="s1">force_immediate_load=force_immediate_load)</span>
+
+            <span class="s0">elif </span><span class="s1">bold:</span>
+                <span class="s1">self._load_single_font_style(bold_path</span><span class="s0">,</span>
+                                             <span class="s1">font_id</span><span class="s0">,</span>
+                                             <span class="s1">font_size</span><span class="s0">,</span>
+                                             <span class="s1">font_style={</span><span class="s3">'bold'</span><span class="s1">: </span><span class="s0">True,</span>
+                                                         <span class="s3">'italic'</span><span class="s1">: </span><span class="s0">False</span><span class="s1">}</span><span class="s0">,</span>
+                                             <span class="s1">force_immediate_load=force_immediate_load)</span>
+            <span class="s0">elif </span><span class="s1">italic:</span>
+                <span class="s1">self._load_single_font_style(italic_path</span><span class="s0">,</span>
+                                             <span class="s1">font_id</span><span class="s0">,</span>
+                                             <span class="s1">font_size</span><span class="s0">,</span>
+                                             <span class="s1">font_style={</span><span class="s3">'bold'</span><span class="s1">: </span><span class="s0">False,</span>
+                                                         <span class="s3">'italic'</span><span class="s1">: </span><span class="s0">True</span><span class="s1">}</span><span class="s0">,</span>
+                                             <span class="s1">force_immediate_load=force_immediate_load)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self._load_single_font_style(regular_path</span><span class="s0">,</span>
+                                             <span class="s1">font_id</span><span class="s0">,</span>
+                                             <span class="s1">font_size</span><span class="s0">,</span>
+                                             <span class="s1">font_style={</span><span class="s3">'bold'</span><span class="s1">: </span><span class="s0">False,</span>
+                                                         <span class="s3">'italic'</span><span class="s1">: </span><span class="s0">False</span><span class="s1">}</span><span class="s0">,</span>
+                                             <span class="s1">force_immediate_load=force_immediate_load)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">warnings.warn(</span><span class="s3">'Trying to pre-load font id:' </span><span class="s1">+ font_id + </span><span class="s3">' with no paths set'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">_load_single_font_style(self</span><span class="s0">,</span>
+                                <span class="s1">font_loc: Union[str</span><span class="s0">, </span><span class="s1">PackageResource</span><span class="s0">, </span><span class="s1">bytes]</span><span class="s0">,</span>
+                                <span class="s1">font_id: str</span><span class="s0">,</span>
+                                <span class="s1">font_size: int</span><span class="s0">,</span>
+                                <span class="s1">font_style: Dict[str</span><span class="s0">, </span><span class="s1">bool]</span><span class="s0">,</span>
+                                <span class="s1">force_immediate_load: bool = </span><span class="s0">False</span><span class="s1">):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Load a single font file with a given style. 
+ 
+        :param font_loc: Path to the font file. 
+        :param font_id: id for the font in the loaded fonts dictionary. 
+        :param font_size: pygame font size. 
+        :param font_style: style dictionary (italic, bold, both or neither) 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">resource = FontResource(font_id=font_id</span><span class="s0">,</span>
+                                <span class="s1">size=font_size</span><span class="s0">,</span>
+                                <span class="s1">style=font_style</span><span class="s0">,</span>
+                                <span class="s1">location=font_loc)</span>
+        <span class="s0">if </span><span class="s1">self._resource_loader.started() </span><span class="s0">or </span><span class="s1">force_immediate_load:</span>
+            <span class="s1">error = resource.load()</span>
+            <span class="s0">if </span><span class="s1">error </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">warnings.warn(str(error))</span>
+
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self._resource_loader.add_resource(resource)</span>
+
+        <span class="s1">self.loaded_fonts[font_id] = resource</span>
+
+    <span class="s0">def </span><span class="s1">add_font_path(self</span><span class="s0">,</span>
+                      <span class="s1">font_name: str</span><span class="s0">,</span>
+                      <span class="s1">font_path: Union[str</span><span class="s0">, </span><span class="s1">PackageResource]</span><span class="s0">,</span>
+                      <span class="s1">bold_path: Union[str</span><span class="s0">, </span><span class="s1">PackageResource] = </span><span class="s0">None,</span>
+                      <span class="s1">italic_path: Union[str</span><span class="s0">, </span><span class="s1">PackageResource] = </span><span class="s0">None,</span>
+                      <span class="s1">bold_italic_path: Union[str</span><span class="s0">, </span><span class="s1">PackageResource] = </span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Adds paths to different font files for a font name. 
+ 
+        :param font_name: The name to assign to these font files. 
+        :param font_path: The path to the font's file with no particular style. 
+        :param bold_path: The path to the font's file with a bold style. 
+        :param italic_path: The path to the font's file with an italic style. 
+        :param bold_italic_path: The path to the font's file with a bold and an italic style. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">font_name </span><span class="s0">in </span><span class="s1">self.known_font_paths:</span>
+            <span class="s0">return</span>
+
+        <span class="s0">if </span><span class="s1">isinstance(font_path</span><span class="s0">, </span><span class="s1">PackageResource):</span>
+            <span class="s1">regular_font_loc = font_path</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">regular_font_loc = os.path.abspath(font_path)</span>
+
+        <span class="s1">style_locations = [bold_path</span><span class="s0">, </span><span class="s1">italic_path</span><span class="s0">, </span><span class="s1">bold_italic_path]</span>
+        <span class="s0">for </span><span class="s1">index</span><span class="s0">, </span><span class="s1">location </span><span class="s0">in </span><span class="s1">enumerate(style_locations):</span>
+            <span class="s0">if </span><span class="s1">location </span><span class="s0">is None</span><span class="s1">:</span>
+                <span class="s1">style_locations[index] = regular_font_loc</span>
+            <span class="s0">elif not </span><span class="s1">isinstance(location</span><span class="s0">, </span><span class="s1">PackageResource):</span>
+                <span class="s1">style_locations[index] = os.path.abspath(location)</span>
+
+            <span class="s1">self.known_font_paths[font_name] = [regular_font_loc</span><span class="s0">,</span>
+                                                <span class="s1">style_locations[</span><span class="s5">0</span><span class="s1">]</span><span class="s0">,</span>
+                                                <span class="s1">style_locations[</span><span class="s5">1</span><span class="s1">]</span><span class="s0">,</span>
+                                                <span class="s1">style_locations[</span><span class="s5">2</span><span class="s1">]]</span>
+
+    <span class="s0">def </span><span class="s1">print_unused_loaded_fonts(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Can be called to check if the UI is loading any fonts that we haven't used by the point 
+        this function is called. If a font is truly unused then we can remove it from our loading 
+        and potentially speed up the overall loading of the program. 
+ 
+        This is not a foolproof check because this function could easily be called before we have 
+        explored all the code paths in a project that may use fonts. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">unused_font_ids = [key </span><span class="s0">for </span><span class="s1">key </span><span class="s0">in </span><span class="s1">self.loaded_fonts </span><span class="s0">if </span><span class="s1">key </span><span class="s0">not in </span><span class="s1">self.used_font_ids]</span>
+        <span class="s0">if </span><span class="s1">unused_font_ids:</span>
+            <span class="s1">print(</span><span class="s3">'Unused font ids:'</span><span class="s1">)</span>
+            <span class="s0">for </span><span class="s1">font_id </span><span class="s0">in </span><span class="s1">unused_font_ids:</span>
+                <span class="s1">point_size = int(font_id.split(</span><span class="s3">'_'</span><span class="s1">)[-</span><span class="s5">1</span><span class="s1">])</span>
+                <span class="s1">html_size = UIFontDictionary._html_font_sizes_reverse_lookup[point_size]</span>
+                <span class="s1">print(font_id + </span><span class="s3">'(HTML size: ' </span><span class="s1">+ str(html_size) + </span><span class="s3">')'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">convert_html_to_point_size(self</span><span class="s0">, </span><span class="s1">html_size: float) -&gt; int:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Takes in a HTML style font size and converts it into a point font size. 
+ 
+        :param html_size: Size in HTML style. 
+ 
+        :return int: A 'point' font size we can use with pygame.font 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">html_size </span><span class="s0">in </span><span class="s1">UIFontDictionary._html_font_sizes:</span>
+            <span class="s0">return </span><span class="s1">UIFontDictionary._html_font_sizes[html_size]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">self.default_font_size</span>
+
+    <span class="s0">def </span><span class="s1">check_font_preloaded(self</span><span class="s0">, </span><span class="s1">font_id: str) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Check if a font is already preloaded or not. 
+ 
+        :param font_id: The ID of the font to check for 
+ 
+        :return: True or False. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">font_id </span><span class="s0">in </span><span class="s1">self.loaded_fonts</span>
+
+    <span class="s0">def </span><span class="s1">ensure_debug_font_loaded(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Ensure the font we use for debugging purposes is loaded. Generally called after we start 
+        a debugging mode. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if not </span><span class="s1">self.check_font_preloaded(self.default_font_name + </span><span class="s3">'_'</span>
+                                         <span class="s1">+ self.default_font_style +</span>
+                                         <span class="s3">'_' </span><span class="s1">+ str(self.debug_font_size)):</span>
+            <span class="s1">self.preload_font(self.debug_font_size</span><span class="s0">, </span><span class="s1">self.default_font_name</span><span class="s0">,</span>
+                              <span class="s1">force_immediate_load=</span><span class="s0">True</span><span class="s1">)</span>
+</pre>
+</body>
+</html>

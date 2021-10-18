@@ -1,0 +1,49 @@
+<html>
+<head>
+<title>setup.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6a8759;}
+.s4 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+setup.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+Script for building the example. 
+ 
+Usage: 
+    python setup.py py2app 
+&quot;&quot;&quot;</span>
+<span class="s2">from </span><span class="s1">distutils.core </span><span class="s2">import </span><span class="s1">setup</span>
+<span class="s2">import </span><span class="s1">py2app</span>
+
+<span class="s1">NAME = </span><span class="s3">'aliens'</span>
+<span class="s1">VERSION = </span><span class="s3">'0.1'</span>
+
+<span class="s1">plist = dict(</span>
+    <span class="s1">CFBundleIconFile=NAME</span><span class="s2">,</span>
+    <span class="s1">CFBundleName=NAME</span><span class="s2">,</span>
+    <span class="s1">CFBundleShortVersionString=VERSION</span><span class="s2">,</span>
+    <span class="s1">CFBundleGetInfoString=</span><span class="s3">' '</span><span class="s1">.join([NAME</span><span class="s2">, </span><span class="s1">VERSION])</span><span class="s2">,</span>
+    <span class="s1">CFBundleExecutable=NAME</span><span class="s2">,</span>
+    <span class="s1">CFBundleIdentifier=</span><span class="s3">'org.pygame.examples.aliens'</span><span class="s2">,</span>
+<span class="s1">)</span>
+
+<span class="s1">setup(</span>
+    <span class="s1">data_files=[</span><span class="s3">'English.lproj'</span><span class="s2">, </span><span class="s3">'../../data'</span><span class="s1">]</span><span class="s2">,</span>
+    <span class="s1">app=[</span>
+        <span class="s4">#dict(script=&quot;aliens_bootstrap.py&quot;, plist=plist),</span>
+        <span class="s1">dict(script=</span><span class="s3">&quot;aliens.py&quot;</span><span class="s2">, </span><span class="s1">plist=plist)</span><span class="s2">,</span>
+    <span class="s1">]</span><span class="s2">,</span>
+<span class="s1">)</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<html>
+<head>
+<title>temp_dir.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6a8759;}
+.s4 { color: #808080;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+temp_dir.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span>
+
+<span class="s0">import </span><span class="s1">errno</span>
+<span class="s0">import </span><span class="s1">itertools</span>
+<span class="s0">import </span><span class="s1">logging</span>
+<span class="s0">import </span><span class="s1">os.path</span>
+<span class="s0">import </span><span class="s1">tempfile</span>
+
+<span class="s0">from </span><span class="s1">pip._internal.utils.misc </span><span class="s0">import </span><span class="s1">rmtree</span>
+
+<span class="s1">logger = logging.getLogger(__name__)</span>
+
+
+<span class="s0">class </span><span class="s1">TempDirectory(object):</span>
+    <span class="s2">&quot;&quot;&quot;Helper class that owns and cleans up a temporary directory. 
+ 
+    This class can be used as a context manager or as an OO representation of a 
+    temporary directory. 
+ 
+    Attributes: 
+        path 
+            Location to the created temporary directory or None 
+        delete 
+            Whether the directory should be deleted when exiting 
+            (when used as a contextmanager) 
+ 
+    Methods: 
+        create() 
+            Creates a temporary directory and stores its path in the path 
+            attribute. 
+        cleanup() 
+            Deletes the temporary directory and sets path attribute to None 
+ 
+    When used as a context manager, a temporary directory is created on 
+    entering the context and, if the delete attribute is True, on exiting the 
+    context the created directory is deleted. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">path=</span><span class="s0">None, </span><span class="s1">delete=</span><span class="s0">None, </span><span class="s1">kind=</span><span class="s3">&quot;temp&quot;</span><span class="s1">):</span>
+        <span class="s1">super(TempDirectory</span><span class="s0">, </span><span class="s1">self).__init__()</span>
+
+        <span class="s0">if </span><span class="s1">path </span><span class="s0">is None and </span><span class="s1">delete </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s4"># If we were not given an explicit directory, and we were not given</span>
+            <span class="s4"># an explicit delete option, then we'll default to deleting.</span>
+            <span class="s1">delete = </span><span class="s0">True</span>
+
+        <span class="s1">self.path = path</span>
+        <span class="s1">self.delete = delete</span>
+        <span class="s1">self.kind = kind</span>
+
+    <span class="s0">def </span><span class="s1">__repr__(self):</span>
+        <span class="s0">return </span><span class="s3">&quot;&lt;{} {!r}&gt;&quot;</span><span class="s1">.format(self.__class__.__name__</span><span class="s0">, </span><span class="s1">self.path)</span>
+
+    <span class="s0">def </span><span class="s1">__enter__(self):</span>
+        <span class="s1">self.create()</span>
+        <span class="s0">return </span><span class="s1">self</span>
+
+    <span class="s0">def </span><span class="s1">__exit__(self</span><span class="s0">, </span><span class="s1">exc</span><span class="s0">, </span><span class="s1">value</span><span class="s0">, </span><span class="s1">tb):</span>
+        <span class="s0">if </span><span class="s1">self.delete:</span>
+            <span class="s1">self.cleanup()</span>
+
+    <span class="s0">def </span><span class="s1">create(self):</span>
+        <span class="s2">&quot;&quot;&quot;Create a temporary directory and store its path in self.path 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.path </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">logger.debug(</span>
+                <span class="s3">&quot;Skipped creation of temporary directory: {}&quot;</span><span class="s1">.format(self.path)</span>
+            <span class="s1">)</span>
+            <span class="s0">return</span>
+        <span class="s4"># We realpath here because some systems have their default tmpdir</span>
+        <span class="s4"># symlinked to another directory.  This tends to confuse build</span>
+        <span class="s4"># scripts, so we canonicalize the path by traversing potential</span>
+        <span class="s4"># symlinks here.</span>
+        <span class="s1">self.path = os.path.realpath(</span>
+            <span class="s1">tempfile.mkdtemp(prefix=</span><span class="s3">&quot;pip-{}-&quot;</span><span class="s1">.format(self.kind))</span>
+        <span class="s1">)</span>
+        <span class="s1">logger.debug(</span><span class="s3">&quot;Created temporary directory: {}&quot;</span><span class="s1">.format(self.path))</span>
+
+    <span class="s0">def </span><span class="s1">cleanup(self):</span>
+        <span class="s2">&quot;&quot;&quot;Remove the temporary directory created and reset state 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.path </span><span class="s0">is not None and </span><span class="s1">os.path.exists(self.path):</span>
+            <span class="s1">rmtree(self.path)</span>
+        <span class="s1">self.path = </span><span class="s0">None</span>
+
+
+<span class="s0">class </span><span class="s1">AdjacentTempDirectory(TempDirectory):</span>
+    <span class="s2">&quot;&quot;&quot;Helper class that creates a temporary directory adjacent to a real one. 
+ 
+    Attributes: 
+        original 
+            The original directory to create a temp directory for. 
+        path 
+            After calling create() or entering, contains the full 
+            path to the temporary directory. 
+        delete 
+            Whether the directory should be deleted when exiting 
+            (when used as a contextmanager) 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s4"># The characters that may be used to name the temp directory</span>
+    <span class="s4"># We always prepend a ~ and then rotate through these until</span>
+    <span class="s4"># a usable name is found.</span>
+    <span class="s4"># pkg_resources raises a different error for .dist-info folder</span>
+    <span class="s4"># with leading '-' and invalid metadata</span>
+    <span class="s1">LEADING_CHARS = </span><span class="s3">&quot;-~.=%0123456789&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">original</span><span class="s0">, </span><span class="s1">delete=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">super(AdjacentTempDirectory</span><span class="s0">, </span><span class="s1">self).__init__(delete=delete)</span>
+        <span class="s1">self.original = original.rstrip(</span><span class="s3">'/</span><span class="s0">\\</span><span class="s3">'</span><span class="s1">)</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">_generate_names(cls</span><span class="s0">, </span><span class="s1">name):</span>
+        <span class="s2">&quot;&quot;&quot;Generates a series of temporary names. 
+ 
+        The algorithm replaces the leading characters in the name 
+        with ones that are valid filesystem characters, but are not 
+        valid package names (for both Python and pip definitions of 
+        package). 
+        &quot;&quot;&quot;</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(</span><span class="s5">1</span><span class="s0">, </span><span class="s1">len(name)):</span>
+            <span class="s0">for </span><span class="s1">candidate </span><span class="s0">in </span><span class="s1">itertools.combinations_with_replacement(</span>
+                    <span class="s1">cls.LEADING_CHARS</span><span class="s0">, </span><span class="s1">i - </span><span class="s5">1</span><span class="s1">):</span>
+                <span class="s1">new_name = </span><span class="s3">'~' </span><span class="s1">+ </span><span class="s3">''</span><span class="s1">.join(candidate) + name[i:]</span>
+                <span class="s0">if </span><span class="s1">new_name != name:</span>
+                    <span class="s0">yield </span><span class="s1">new_name</span>
+
+        <span class="s4"># If we make it this far, we will have to make a longer name</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(len(cls.LEADING_CHARS)):</span>
+            <span class="s0">for </span><span class="s1">candidate </span><span class="s0">in </span><span class="s1">itertools.combinations_with_replacement(</span>
+                    <span class="s1">cls.LEADING_CHARS</span><span class="s0">, </span><span class="s1">i):</span>
+                <span class="s1">new_name = </span><span class="s3">'~' </span><span class="s1">+ </span><span class="s3">''</span><span class="s1">.join(candidate) + name</span>
+                <span class="s0">if </span><span class="s1">new_name != name:</span>
+                    <span class="s0">yield </span><span class="s1">new_name</span>
+
+    <span class="s0">def </span><span class="s1">create(self):</span>
+        <span class="s1">root</span><span class="s0">, </span><span class="s1">name = os.path.split(self.original)</span>
+        <span class="s0">for </span><span class="s1">candidate </span><span class="s0">in </span><span class="s1">self._generate_names(name):</span>
+            <span class="s1">path = os.path.join(root</span><span class="s0">, </span><span class="s1">candidate)</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">os.mkdir(path)</span>
+            <span class="s0">except </span><span class="s1">OSError </span><span class="s0">as </span><span class="s1">ex:</span>
+                <span class="s4"># Continue if the name exists already</span>
+                <span class="s0">if </span><span class="s1">ex.errno != errno.EEXIST:</span>
+                    <span class="s0">raise</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.path = os.path.realpath(path)</span>
+                <span class="s0">break</span>
+
+        <span class="s0">if not </span><span class="s1">self.path:</span>
+            <span class="s4"># Final fallback on the default behavior.</span>
+            <span class="s1">self.path = os.path.realpath(</span>
+                <span class="s1">tempfile.mkdtemp(prefix=</span><span class="s3">&quot;pip-{}-&quot;</span><span class="s1">.format(self.kind))</span>
+            <span class="s1">)</span>
+        <span class="s1">logger.debug(</span><span class="s3">&quot;Created temporary directory: {}&quot;</span><span class="s1">.format(self.path))</span>
+</pre>
+</body>
+</html>

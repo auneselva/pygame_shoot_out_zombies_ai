@@ -1,0 +1,623 @@
+<html>
+<head>
+<title>utility.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #808080;}
+.s4 { color: #6a8759;}
+.s5 { color: #6897bb;}
+.s6 { color: #a5c261;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+utility.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+This code owes a lot to pyperclip by Al Sweigart al@inventwithpython.com. 
+ 
+&quot;&quot;&quot;</span>
+<span class="s2">import </span><span class="s1">platform</span>
+<span class="s2">import </span><span class="s1">subprocess</span>
+<span class="s2">import </span><span class="s1">time</span>
+<span class="s2">import </span><span class="s1">contextlib</span>
+<span class="s2">import </span><span class="s1">os</span>
+<span class="s2">import </span><span class="s1">sys</span>
+<span class="s2">import </span><span class="s1">io</span>
+<span class="s2">import </span><span class="s1">re</span>
+<span class="s2">import </span><span class="s1">base64</span>
+
+<span class="s2">from </span><span class="s1">pathlib </span><span class="s2">import </span><span class="s1">Path</span>
+<span class="s2">from </span><span class="s1">typing </span><span class="s2">import </span><span class="s1">Union</span><span class="s2">, </span><span class="s1">Dict</span><span class="s2">, </span><span class="s1">Tuple</span>
+
+<span class="s2">from </span><span class="s1">threading </span><span class="s2">import </span><span class="s1">Thread</span>
+<span class="s2">from </span><span class="s1">queue </span><span class="s2">import </span><span class="s1">Queue</span>
+
+<span class="s2">import </span><span class="s1">pygame</span>
+
+<span class="s3"># Only use pre-multiplied alpha if we are using SDL2 past dev 10 where it is decently fast.</span>
+<span class="s2">if </span><span class="s4">'dev' </span><span class="s2">in </span><span class="s1">pygame.ver.split(</span><span class="s4">'.'</span><span class="s1">)[-</span><span class="s5">1</span><span class="s1">]:</span>
+    <span class="s1">PYGAME_DEV_NUM = int(re.findall(</span><span class="s4">r'\d+'</span><span class="s2">, </span><span class="s1">pygame.ver.split(</span><span class="s4">'.'</span><span class="s1">)[-</span><span class="s5">1</span><span class="s1">])[</span><span class="s5">0</span><span class="s1">])</span>
+<span class="s2">else</span><span class="s1">:</span>
+    <span class="s1">PYGAME_DEV_NUM = </span><span class="s5">10</span>
+
+<span class="s1">USE_PREMULTIPLIED_ALPHA = pygame.version.vernum[</span><span class="s5">0</span><span class="s1">] &gt;= </span><span class="s5">2 </span><span class="s2">and </span><span class="s1">PYGAME_DEV_NUM &gt;= </span><span class="s5">10</span>
+
+<span class="s1">USE_IMPORT_LIB_RESOURCE = </span><span class="s2">False</span>
+<span class="s1">USE_FILE_PATH = </span><span class="s2">False</span>
+<span class="s2">try</span><span class="s1">:</span>
+    <span class="s2">from </span><span class="s1">importlib.resources </span><span class="s2">import </span><span class="s1">open_binary</span><span class="s2">, </span><span class="s1">read_binary</span>
+    <span class="s1">USE_IMPORT_LIB_RESOURCE = </span><span class="s2">True</span>
+<span class="s2">except </span><span class="s1">ImportError:</span>
+    <span class="s2">try</span><span class="s1">:</span>
+        <span class="s2">from </span><span class="s1">importlib_resources </span><span class="s2">import </span><span class="s1">open_binary</span><span class="s2">, </span><span class="s1">read_binary</span>
+        <span class="s1">USE_IMPORT_LIB_RESOURCE = </span><span class="s2">True</span>
+    <span class="s2">except </span><span class="s1">ImportError:</span>
+        <span class="s1">USE_FILE_PATH = </span><span class="s2">True</span>
+
+<span class="s1">ROOT_PATH = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))</span>
+
+<span class="s1">PLATFORM = platform.system().upper()</span>
+<span class="s2">if </span><span class="s1">PLATFORM == </span><span class="s4">'WINDOWS'</span><span class="s1">:</span>
+    <span class="s2">import </span><span class="s1">ctypes</span>
+    <span class="s3"># from ctypes import c_size_t, sizeof, c_wchar_p, c_wchar</span>
+    <span class="s2">from </span><span class="s1">ctypes.wintypes </span><span class="s2">import </span><span class="s1">HGLOBAL</span><span class="s2">, </span><span class="s1">LPVOID</span><span class="s2">, </span><span class="s1">BOOL</span><span class="s2">, </span><span class="s1">UINT</span><span class="s2">, </span><span class="s1">HANDLE</span><span class="s2">, </span><span class="s1">HWND</span>
+    <span class="s2">from </span><span class="s1">ctypes.wintypes </span><span class="s2">import </span><span class="s1">DWORD</span><span class="s2">, </span><span class="s1">INT</span><span class="s2">, </span><span class="s1">HMENU</span><span class="s2">, </span><span class="s1">HINSTANCE</span><span class="s2">, </span><span class="s1">LPCSTR</span>
+
+    <span class="s1">@contextlib.contextmanager</span>
+    <span class="s2">def </span><span class="s1">__windows_clipboard(hwnd):</span>
+        <span class="s1">ctypes.windll.user32.OpenClipboard.argtypes = [HWND]</span>
+        <span class="s1">ctypes.windll.user32.OpenClipboard.restype = BOOL</span>
+
+        <span class="s1">ctypes.windll.user32.CloseClipboard.argtypes = []</span>
+        <span class="s1">ctypes.windll.user32.CloseClipboard.restype = BOOL</span>
+
+        <span class="s1">time_to_stop_checking = time.time() + </span><span class="s5">0.5</span>
+        <span class="s1">success = </span><span class="s2">False</span>
+        <span class="s2">while </span><span class="s1">time.time() &lt; time_to_stop_checking:</span>
+            <span class="s1">success = ctypes.windll.user32.OpenClipboard(hwnd)</span>
+            <span class="s2">if </span><span class="s1">success:</span>
+                <span class="s2">break</span>
+            <span class="s1">time.sleep(</span><span class="s5">0.01</span><span class="s1">)</span>
+        <span class="s2">if not </span><span class="s1">success:</span>
+            <span class="s2">raise </span><span class="s1">Exception</span>
+
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s2">yield</span>
+        <span class="s2">finally</span><span class="s1">:</span>
+            <span class="s1">ctypes.windll.user32.CloseClipboard()</span>
+
+    <span class="s2">def </span><span class="s1">__windows_paste():</span>
+        <span class="s1">ctypes.windll.user32.GetClipboardData.argtypes = [UINT]</span>
+        <span class="s1">ctypes.windll.user32.GetClipboardData.restype = HANDLE</span>
+        <span class="s2">with </span><span class="s1">__windows_clipboard(</span><span class="s2">None</span><span class="s1">):</span>
+            <span class="s1">cf_unicode_text = </span><span class="s5">13</span>
+            <span class="s1">handle = ctypes.windll.user32.GetClipboardData(cf_unicode_text)</span>
+            <span class="s2">if not </span><span class="s1">handle:</span>
+                <span class="s2">return </span><span class="s4">&quot;&quot;</span>
+            <span class="s2">return </span><span class="s1">ctypes.c_wchar_p(handle).value</span>
+
+    <span class="s3"># noinspection PyUnresolvedReferences</span>
+    <span class="s3"># pylint: disable=no-member</span>
+    <span class="s2">class </span><span class="s1">CheckedCall:</span>
+        <span class="s0">&quot;&quot;&quot; 
+        Wrapper for platform functions. 
+        &quot;&quot;&quot;</span>
+        <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">func):</span>
+            <span class="s1">super(CheckedCall</span><span class="s2">, </span><span class="s1">self).__setattr__(</span><span class="s4">&quot;func&quot;</span><span class="s2">, </span><span class="s1">func)</span>
+            <span class="s1">self.argtypes = []</span>
+            <span class="s1">self.restype = </span><span class="s2">None</span>
+
+        <span class="s2">def </span><span class="s1">__call__(self</span><span class="s2">, </span><span class="s1">*args):</span>
+            <span class="s2">return </span><span class="s1">self.func(*args)</span>
+
+        <span class="s2">def </span><span class="s1">__setattr__(self</span><span class="s2">, </span><span class="s1">key</span><span class="s2">, </span><span class="s1">value):</span>
+            <span class="s1">setattr(self.func</span><span class="s2">, </span><span class="s1">key</span><span class="s2">, </span><span class="s1">value)</span>
+
+    <span class="s2">def </span><span class="s1">__windows_copy(data: str):</span>
+        <span class="s1">msvcrt = ctypes.CDLL(</span><span class="s4">'msvcrt'</span><span class="s1">)</span>
+
+        <span class="s1">safe_create_window = CheckedCall(ctypes.windll.user32.CreateWindowExA)</span>
+        <span class="s1">safe_create_window.argtypes = [DWORD</span><span class="s2">, </span><span class="s1">LPCSTR</span><span class="s2">, </span><span class="s1">LPCSTR</span><span class="s2">, </span><span class="s1">DWORD</span><span class="s2">, </span><span class="s1">INT</span><span class="s2">, </span><span class="s1">INT</span><span class="s2">,</span>
+                                       <span class="s1">INT</span><span class="s2">, </span><span class="s1">INT</span><span class="s2">, </span><span class="s1">HWND</span><span class="s2">, </span><span class="s1">HMENU</span><span class="s2">, </span><span class="s1">HINSTANCE</span><span class="s2">, </span><span class="s1">LPVOID]</span>
+        <span class="s1">safe_create_window.restype = HWND</span>
+
+        <span class="s1">safe_destroy_window = CheckedCall(ctypes.windll.user32.DestroyWindow)</span>
+        <span class="s1">safe_destroy_window.argtypes = [HWND]</span>
+        <span class="s1">safe_destroy_window.restype = BOOL</span>
+
+        <span class="s1">safe_empty = ctypes.windll.user32.EmptyClipboard</span>
+        <span class="s1">safe_empty.argtypes = []</span>
+        <span class="s1">safe_empty.restype = BOOL</span>
+
+        <span class="s1">safe_alloc = CheckedCall(ctypes.windll.kernel32.GlobalAlloc)</span>
+        <span class="s1">safe_alloc.argtypes = [UINT</span><span class="s2">, </span><span class="s1">ctypes.c_size_t]</span>
+        <span class="s1">safe_alloc.restype = HGLOBAL</span>
+
+        <span class="s1">safe_lock = CheckedCall(ctypes.windll.kernel32.GlobalLock)</span>
+        <span class="s1">safe_lock.argtypes = [HGLOBAL]</span>
+        <span class="s1">safe_lock.restype = LPVOID</span>
+
+        <span class="s1">safe_unlock = CheckedCall(ctypes.windll.kernel32.GlobalUnlock)</span>
+        <span class="s1">safe_unlock.argtypes = [HGLOBAL]</span>
+        <span class="s1">safe_unlock.restype = BOOL</span>
+
+        <span class="s1">safe_set_clipboard = CheckedCall(ctypes.windll.user32.SetClipboardData)</span>
+        <span class="s1">safe_set_clipboard.argtypes = [UINT</span><span class="s2">, </span><span class="s1">HANDLE]</span>
+        <span class="s1">safe_set_clipboard.restype = HANDLE</span>
+
+        <span class="s1">wcslen = msvcrt.wcslen</span>
+        <span class="s1">wcslen.argtypes = [ctypes.c_wchar_p]</span>
+        <span class="s1">wcslen.restype = UINT</span>
+
+        <span class="s3"># weirdly this temporary window handle seems to work for pasting where the</span>
+        <span class="s3"># normal pygame window handle does not</span>
+        <span class="s1">hwnd = safe_create_window(</span><span class="s5">0</span><span class="s2">, </span><span class="s6">b&quot;STATIC&quot;</span><span class="s2">, None, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">,</span>
+                                  <span class="s2">None, None, None, None</span><span class="s1">)</span>
+
+        <span class="s2">with </span><span class="s1">__windows_clipboard(hwnd):</span>
+            <span class="s1">safe_empty()</span>
+
+            <span class="s1">data = str(data)</span>
+            <span class="s2">if </span><span class="s1">data:</span>
+                <span class="s1">count = wcslen(data) + </span><span class="s5">1</span>
+                <span class="s1">handle = safe_alloc(</span><span class="s5">0x0002</span><span class="s2">, </span><span class="s1">count * ctypes.sizeof(ctypes.c_wchar))</span>
+
+                <span class="s1">ctypes.memmove(ctypes.c_wchar_p(safe_lock(handle))</span><span class="s2">,</span>
+                               <span class="s1">ctypes.c_wchar_p(data)</span><span class="s2">,</span>
+                               <span class="s1">count * ctypes.sizeof(ctypes.c_wchar))</span>
+
+                <span class="s1">safe_unlock(handle)</span>
+                <span class="s1">safe_set_clipboard(</span><span class="s5">13</span><span class="s2">, </span><span class="s1">handle)  </span><span class="s3"># cf_unicode_text = 13</span>
+
+        <span class="s1">safe_destroy_window(hwnd)</span>
+<span class="s2">elif </span><span class="s1">PLATFORM == </span><span class="s4">'LINUX'</span><span class="s1">:</span>
+
+    <span class="s2">def </span><span class="s1">__linux_copy(data: str):</span>
+        <span class="s1">process = subprocess.Popen([</span><span class="s4">'xsel'</span><span class="s2">, </span><span class="s4">'-b'</span><span class="s2">, </span><span class="s4">'-i'</span><span class="s1">]</span><span class="s2">, </span><span class="s1">stdin=subprocess.PIPE</span><span class="s2">, </span><span class="s1">close_fds=</span><span class="s2">True</span><span class="s1">)</span>
+        <span class="s1">process.communicate(input=data.encode(</span><span class="s4">'utf-8'</span><span class="s1">))</span>
+
+    <span class="s2">def </span><span class="s1">__linux_paste():</span>
+        <span class="s1">process = subprocess.Popen([</span><span class="s4">'xsel'</span><span class="s2">, </span><span class="s4">'-b'</span><span class="s2">, </span><span class="s4">'-o'</span><span class="s1">]</span><span class="s2">, </span><span class="s1">stdout=subprocess.PIPE</span><span class="s2">, </span><span class="s1">close_fds=</span><span class="s2">True</span><span class="s1">)</span>
+        <span class="s1">stdout</span><span class="s2">, </span><span class="s1">_ = process.communicate()</span>
+        <span class="s2">return </span><span class="s1">stdout.decode(</span><span class="s4">'utf-8'</span><span class="s1">)</span>
+
+<span class="s2">else</span><span class="s1">:</span>
+    <span class="s2">def </span><span class="s1">__mac_copy(data: str):</span>
+        <span class="s1">process = subprocess.Popen(</span>
+            <span class="s4">'pbcopy'</span><span class="s2">, </span><span class="s1">env={</span><span class="s4">'LANG'</span><span class="s1">: </span><span class="s4">'en_US.UTF-8'</span><span class="s1">}</span><span class="s2">, </span><span class="s1">stdin=subprocess.PIPE)</span>
+        <span class="s1">process.communicate(data.encode(</span><span class="s4">'utf-8'</span><span class="s1">))</span>
+
+    <span class="s2">def </span><span class="s1">__mac_paste():</span>
+        <span class="s2">return </span><span class="s1">subprocess.check_output(</span>
+            <span class="s4">'pbpaste'</span><span class="s2">, </span><span class="s1">env={</span><span class="s4">'LANG'</span><span class="s1">: </span><span class="s4">'en_US.UTF-8'</span><span class="s1">}).decode(</span><span class="s4">'utf-8'</span><span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">clipboard_copy(data: str):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Hopefully cross platform, copy to a clipboard. 
+ 
+    :return: A platform specific copy function. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s1">current_platform = platform.system().upper()</span>
+    <span class="s2">if </span><span class="s1">current_platform == </span><span class="s4">'WINDOWS'</span><span class="s1">:</span>
+        <span class="s1">__windows_copy(data)</span>
+    <span class="s2">elif </span><span class="s1">current_platform == </span><span class="s4">'LINUX'</span><span class="s1">:</span>
+        <span class="s1">__linux_copy(data)</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s1">__mac_copy(data)</span>
+
+
+<span class="s2">def </span><span class="s1">clipboard_paste():</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Hopefully cross platform, paste from a clipboard. 
+ 
+    :return: A platform specific paste function. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s1">current_platform = platform.system().upper()</span>
+    <span class="s2">if </span><span class="s1">current_platform == </span><span class="s4">'WINDOWS'</span><span class="s1">:</span>
+        <span class="s2">return </span><span class="s1">__windows_paste()</span>
+    <span class="s2">elif </span><span class="s1">current_platform == </span><span class="s4">'LINUX'</span><span class="s1">:</span>
+        <span class="s2">return </span><span class="s1">__linux_paste()</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s2">return </span><span class="s1">__mac_paste()</span>
+
+
+<span class="s2">def </span><span class="s1">create_resource_path(relative_path: Union[str</span><span class="s2">, </span><span class="s1">Path]):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Get absolute path to resource, works for dev and for PyInstaller's 'onefile' mode 
+ 
+    :param relative_path: A relative path to a file of some kind. 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s2">try</span><span class="s1">:</span>
+        <span class="s3"># PyInstaller creates a temp folder and stores path in _MEIPASS</span>
+        <span class="s1">base_path = sys._MEIPASS  </span><span class="s3"># pylint: disable=no-member,protected-access</span>
+    <span class="s2">except </span><span class="s1">AttributeError:</span>
+        <span class="s1">base_path = os.path.abspath(</span><span class="s4">&quot;.&quot;</span><span class="s1">)</span>
+
+    <span class="s2">return </span><span class="s1">os.path.join(base_path</span><span class="s2">, </span><span class="s1">relative_path)</span>
+
+
+<span class="s2">def </span><span class="s1">premul_col(original_colour: pygame.Color) -&gt; pygame.Color:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Perform a pre-multiply alpha operation on a pygame colour 
+    &quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">USE_PREMULTIPLIED_ALPHA:</span>
+        <span class="s1">alpha_mul = original_colour.a / </span><span class="s5">255</span>
+        <span class="s2">return </span><span class="s1">pygame.Color(int(original_colour.r * alpha_mul)</span><span class="s2">,</span>
+                            <span class="s1">int(original_colour.g * alpha_mul)</span><span class="s2">,</span>
+                            <span class="s1">int(original_colour.b * alpha_mul)</span><span class="s2">,</span>
+                            <span class="s1">original_colour.a)</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s2">return </span><span class="s1">original_colour</span>
+
+
+<span class="s2">def </span><span class="s1">restore_premul_col(premul_colour: pygame.Color) -&gt; pygame.Color:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Restore a pre-multiplied alpha colour back to an approximation of it's initial value. 
+ 
+    NOTE: Because of the rounding to integers this cannot be exact. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">USE_PREMULTIPLIED_ALPHA:</span>
+        <span class="s1">inverse_alpha_mul = </span><span class="s5">1.0 </span><span class="s1">/ max(</span><span class="s5">0.001</span><span class="s2">, </span><span class="s1">(premul_colour.a / </span><span class="s5">255</span><span class="s1">))</span>
+
+        <span class="s2">return </span><span class="s1">pygame.Color(int(premul_colour.r * inverse_alpha_mul)</span><span class="s2">,</span>
+                            <span class="s1">int(premul_colour.g * inverse_alpha_mul)</span><span class="s2">,</span>
+                            <span class="s1">int(premul_colour.b * inverse_alpha_mul)</span><span class="s2">,</span>
+                            <span class="s1">premul_colour.a)</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s2">return </span><span class="s1">premul_colour</span>
+
+
+<span class="s2">def </span><span class="s1">premul_alpha_surface(surface: pygame.surface.Surface) -&gt; pygame.surface.Surface:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Perform a pre-multiply alpha operation on a pygame surface's colours. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">USE_PREMULTIPLIED_ALPHA:</span>
+        <span class="s1">surf_copy = surface.copy()</span>
+        <span class="s1">surf_copy.fill(pygame.Color(</span><span class="s4">'#FFFFFF00'</span><span class="s1">)</span><span class="s2">, </span><span class="s1">special_flags=pygame.BLEND_RGB_MAX)</span>
+        <span class="s1">manipulate_surf = pygame.surface.Surface(surf_copy.get_size()</span><span class="s2">,</span>
+                                                 <span class="s1">flags=pygame.SRCALPHA</span><span class="s2">, </span><span class="s1">depth=</span><span class="s5">32</span><span class="s1">)</span>
+        <span class="s3"># Can't be exactly transparent black or we trigger SDL1 'bug'</span>
+        <span class="s1">manipulate_surf.fill(pygame.Color(</span><span class="s4">'#00000001'</span><span class="s1">))</span>
+        <span class="s1">manipulate_surf.blit(surf_copy</span><span class="s2">, </span><span class="s1">(</span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s1">))</span>
+        <span class="s1">surface.blit(manipulate_surf</span><span class="s2">, </span><span class="s1">(</span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">special_flags=pygame.BLEND_RGB_MULT)</span>
+    <span class="s2">return </span><span class="s1">surface</span>
+
+
+<span class="s2">def </span><span class="s1">render_white_text_alpha_black_bg(font: pygame.font.Font</span><span class="s2">, </span><span class="s1">text: str) -&gt; pygame.surface.Surface:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Render text with a zero alpha background with 0 in the other colour channels. Appropriate for 
+    use with BLEND_PREMULTIPLIED and for colour/gradient multiplication. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">USE_PREMULTIPLIED_ALPHA:</span>
+        <span class="s1">text_render = font.render(text</span><span class="s2">, True, </span><span class="s1">pygame.Color(</span><span class="s4">'#FFFFFFFF'</span><span class="s1">))</span>
+        <span class="s1">final_surface = pygame.surface.Surface(text_render.get_size()</span><span class="s2">,</span>
+                                               <span class="s1">flags=pygame.SRCALPHA</span><span class="s2">, </span><span class="s1">depth=</span><span class="s5">32</span><span class="s1">)</span>
+        <span class="s3"># Can't be exactly transparent black or we trigger SDL1 'bug'</span>
+        <span class="s1">final_surface.fill(pygame.Color(</span><span class="s4">'#00000001'</span><span class="s1">))</span>
+        <span class="s1">final_surface.blit(text_render</span><span class="s2">, </span><span class="s1">(</span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s1">))</span>
+        <span class="s2">return </span><span class="s1">final_surface</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s2">return </span><span class="s1">font.render(text</span><span class="s2">, True, </span><span class="s1">pygame.Color(</span><span class="s4">'#FFFFFFFF'</span><span class="s1">))</span>
+
+
+<span class="s2">def </span><span class="s1">basic_blit(destination: pygame.surface.Surface</span><span class="s2">,</span>
+               <span class="s1">source: pygame.surface.Surface</span><span class="s2">,</span>
+               <span class="s1">pos: Union[Tuple[int</span><span class="s2">, </span><span class="s1">int]</span><span class="s2">, </span><span class="s1">pygame.Rect]</span><span class="s2">,</span>
+               <span class="s1">area: Union[pygame.Rect</span><span class="s2">, None</span><span class="s1">] = </span><span class="s2">None</span><span class="s1">):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    The basic blitting function to use. WE need to wrap this so we can support pre-multiplied alpha 
+    on post 2.0.0.dev10 versions of pygame and regular blitting on earlier versions. 
+ 
+    :param destination: Destination surface to blit on to. 
+    :param source: Source surface to blit from. 
+    :param pos: The position of our blit. 
+    :param area: The area of the source to blit from. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">USE_PREMULTIPLIED_ALPHA:</span>
+        <span class="s1">destination.blit(source</span><span class="s2">, </span><span class="s1">pos</span><span class="s2">, </span><span class="s1">area</span><span class="s2">, </span><span class="s1">special_flags=pygame.BLEND_PREMULTIPLIED)</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s1">destination.blit(source</span><span class="s2">, </span><span class="s1">pos</span><span class="s2">, </span><span class="s1">area)</span>
+
+
+<span class="s2">def </span><span class="s1">apply_colour_to_surface(colour: pygame.Color</span><span class="s2">,</span>
+                            <span class="s1">shape_surface: pygame.surface.Surface</span><span class="s2">,</span>
+                            <span class="s1">rect: Union[pygame.Rect</span><span class="s2">, None</span><span class="s1">] = </span><span class="s2">None</span><span class="s1">):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Apply a colour to a shape surface by multiplication blend. This works best when the shape 
+    surface is predominantly white. 
+ 
+    :param colour: The colour to apply. 
+    :param shape_surface: The shape surface to apply the colour to. 
+    :param rect: A rectangle to apply the colour inside of. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">rect </span><span class="s2">is not None</span><span class="s1">:</span>
+        <span class="s1">colour_surface = pygame.surface.Surface(rect.size</span><span class="s2">, </span><span class="s1">flags=pygame.SRCALPHA</span><span class="s2">, </span><span class="s1">depth=</span><span class="s5">32</span><span class="s1">)</span>
+        <span class="s1">colour_surface.fill(colour)</span>
+        <span class="s1">shape_surface.blit(colour_surface</span><span class="s2">, </span><span class="s1">rect</span><span class="s2">, </span><span class="s1">special_flags=pygame.BLEND_RGBA_MULT)</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s1">colour_surface = pygame.surface.Surface(shape_surface.get_size()</span><span class="s2">,</span>
+                                                <span class="s1">flags=pygame.SRCALPHA</span><span class="s2">, </span><span class="s1">depth=</span><span class="s5">32</span><span class="s1">)</span>
+        <span class="s1">colour_surface.fill(colour)</span>
+        <span class="s1">shape_surface.blit(colour_surface</span><span class="s2">, </span><span class="s1">(</span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">special_flags=pygame.BLEND_RGBA_MULT)</span>
+
+
+<span class="s2">class </span><span class="s1">PackageResource:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    A data class to handle input for importlib.resources as single parameter. 
+ 
+    :param package: The python package our resource is located in (e.g. 'pygame_gui.data') 
+    :param resource: The name of the resource (e.g. 'default_theme.json') 
+    &quot;&quot;&quot;</span>
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">package: str</span><span class="s2">, </span><span class="s1">resource: str):</span>
+        <span class="s1">self.package = package</span>
+        <span class="s1">self.resource = resource</span>
+
+    <span class="s2">def </span><span class="s1">to_path(self) -&gt; str:</span>
+        <span class="s0">&quot;&quot;&quot; 
+        If we don't have any importlib module to use, we can try to turn the resource into a file 
+        path. 
+ 
+        :return: A string path. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">root_path = </span><span class="s4">''</span>
+        <span class="s1">relative_path = self.package.replace(</span><span class="s4">'.'</span><span class="s2">, </span><span class="s4">'/'</span><span class="s1">) + </span><span class="s4">'/' </span><span class="s1">+ self.resource</span>
+        <span class="s2">if </span><span class="s1">self.package.find(</span><span class="s4">'pygame_gui'</span><span class="s1">) == </span><span class="s5">0</span><span class="s1">:</span>
+            <span class="s3"># This is default data from pygame_gui so relative to pygame_gui rather than app</span>
+            <span class="s1">root_path = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))</span>
+        <span class="s2">return </span><span class="s1">create_resource_path(os.path.join(root_path</span><span class="s2">, </span><span class="s1">relative_path))</span>
+
+
+<span class="s2">class </span><span class="s1">FontResource:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    A resource class to handle all the data we need to load a python font object from a 
+    file. 
+ 
+    :param font_id: A string ID for the font so we can find it again. 
+    :param size: The font size. 
+    :param style: A Style dictionary for bold and italic styling. 
+    :param location: A location for the font file - a PackageResource, or a file path. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">,</span>
+                 <span class="s1">font_id: str</span><span class="s2">,</span>
+                 <span class="s1">size: int</span><span class="s2">,</span>
+                 <span class="s1">style: Dict[str</span><span class="s2">, </span><span class="s1">bool]</span><span class="s2">,</span>
+                 <span class="s1">location: Union[PackageResource</span><span class="s2">, </span><span class="s1">str]):</span>
+
+        <span class="s1">self.font_id = font_id</span>
+        <span class="s1">self.size = size</span>
+        <span class="s1">self.style = style</span>
+        <span class="s1">self.location = location</span>
+        <span class="s1">self.loaded_font = </span><span class="s2">None  </span><span class="s3"># type: Union[pygame.font.Font, None]</span>
+
+    <span class="s2">def </span><span class="s1">load(self):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        Load the font from wherever it is located. 
+ 
+        :return: An exception. We don't handle this here because exception handling in threads 
+                 seems to be a bit of a mess. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">error = </span><span class="s2">None</span>
+        <span class="s2">if </span><span class="s1">isinstance(self.location</span><span class="s2">, </span><span class="s1">PackageResource):</span>
+            <span class="s2">if </span><span class="s1">USE_IMPORT_LIB_RESOURCE:</span>
+                <span class="s2">try</span><span class="s1">:</span>
+                    <span class="s1">self.loaded_font = pygame.font.Font(</span>
+                        <span class="s1">io.BytesIO(read_binary(self.location.package</span><span class="s2">,</span>
+                                               <span class="s1">self.location.resource))</span><span class="s2">, </span><span class="s1">self.size)</span>
+                    <span class="s1">self.loaded_font.set_bold(self.style[</span><span class="s4">'bold'</span><span class="s1">])</span>
+                    <span class="s1">self.loaded_font.set_italic(self.style[</span><span class="s4">'italic'</span><span class="s1">])</span>
+                <span class="s2">except </span><span class="s1">(pygame.error</span><span class="s2">, </span><span class="s1">FileNotFoundError</span><span class="s2">, </span><span class="s1">OSError):</span>
+                    <span class="s1">error = FileNotFoundError(</span><span class="s4">'Unable to load resource with path: ' </span><span class="s1">+</span>
+                                              <span class="s1">str(self.location))</span>
+            <span class="s2">elif </span><span class="s1">USE_FILE_PATH:</span>
+                <span class="s2">try</span><span class="s1">:</span>
+                    <span class="s1">self.loaded_font = pygame.font.Font(self.location.to_path()</span><span class="s2">, </span><span class="s1">self.size)</span>
+                    <span class="s1">self.loaded_font.set_bold(self.style[</span><span class="s4">'bold'</span><span class="s1">])</span>
+                    <span class="s1">self.loaded_font.set_italic(self.style[</span><span class="s4">'italic'</span><span class="s1">])</span>
+                <span class="s2">except </span><span class="s1">(pygame.error</span><span class="s2">, </span><span class="s1">FileNotFoundError</span><span class="s2">, </span><span class="s1">OSError):</span>
+                    <span class="s1">error = FileNotFoundError(</span><span class="s4">'Unable to load resource with path: ' </span><span class="s1">+</span>
+                                              <span class="s1">str(self.location.to_path()))</span>
+
+        <span class="s2">elif </span><span class="s1">isinstance(self.location</span><span class="s2">, </span><span class="s1">str):</span>
+            <span class="s2">try</span><span class="s1">:</span>
+                <span class="s1">self.loaded_font = pygame.font.Font(self.location</span><span class="s2">, </span><span class="s1">self.size)</span>
+                <span class="s1">self.loaded_font.set_bold(self.style[</span><span class="s4">'bold'</span><span class="s1">])</span>
+                <span class="s1">self.loaded_font.set_italic(self.style[</span><span class="s4">'italic'</span><span class="s1">])</span>
+            <span class="s2">except </span><span class="s1">(pygame.error</span><span class="s2">, </span><span class="s1">FileNotFoundError</span><span class="s2">, </span><span class="s1">OSError):</span>
+                <span class="s1">error = FileNotFoundError(</span><span class="s4">'Unable to load resource with path: ' </span><span class="s1">+</span>
+                                          <span class="s1">str(self.location))</span>
+
+        <span class="s2">elif </span><span class="s1">isinstance(self.location</span><span class="s2">, </span><span class="s1">bytes):</span>
+            <span class="s2">try</span><span class="s1">:</span>
+                <span class="s1">file_obj = io.BytesIO(base64.standard_b64decode(self.location))</span>
+                <span class="s1">self.loaded_font = pygame.font.Font(file_obj</span><span class="s2">, </span><span class="s1">self.size)</span>
+                <span class="s1">self.loaded_font.set_bold(self.style[</span><span class="s4">'bold'</span><span class="s1">])</span>
+                <span class="s1">self.loaded_font.set_italic(self.style[</span><span class="s4">'italic'</span><span class="s1">])</span>
+            <span class="s2">except </span><span class="s1">(pygame.error</span><span class="s2">, </span><span class="s1">FileNotFoundError</span><span class="s2">, </span><span class="s1">OSError):</span>
+                <span class="s1">error = FileNotFoundError(</span><span class="s4">'Unable to load resource with path: ' </span><span class="s1">+</span>
+                                          <span class="s1">str(self.location))</span>
+
+        <span class="s2">return </span><span class="s1">error</span>
+
+
+<span class="s2">class </span><span class="s1">ImageResource:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Resource representing an image to be loaded into memory. 
+ 
+    This is an intermediate state for our final Surface resources because many sub surfaces may 
+    refer to a single Image surface. 
+ 
+    :param image_id: A string ID for identifying this image in particular. 
+    :param location: A location for this image, a PackageResource, or a file path. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">,</span>
+                 <span class="s1">image_id: str</span><span class="s2">,</span>
+                 <span class="s1">location: Union[PackageResource</span><span class="s2">, </span><span class="s1">str]):</span>
+        <span class="s1">self.image_id = image_id</span>
+        <span class="s1">self.location = location</span>
+        <span class="s1">self.loaded_surface = </span><span class="s2">None</span>
+
+    <span class="s2">def </span><span class="s1">load(self) -&gt; Union[Exception</span><span class="s2">, None</span><span class="s1">]:</span>
+        <span class="s0">&quot;&quot;&quot; 
+        Load the image from wherever it is located. 
+ 
+        :return: An exception. We don't handle this here because exception handling in threads 
+                 seems to be a bit of a mess. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">error = </span><span class="s2">None</span>
+        <span class="s2">if </span><span class="s1">isinstance(self.location</span><span class="s2">, </span><span class="s1">PackageResource):</span>
+            <span class="s2">if </span><span class="s1">USE_IMPORT_LIB_RESOURCE:</span>
+                <span class="s2">try</span><span class="s1">:</span>
+                    <span class="s2">with </span><span class="s1">open_binary(self.location.package</span><span class="s2">,</span>
+                                     <span class="s1">self.location.resource) </span><span class="s2">as </span><span class="s1">open_resource:</span>
+                        <span class="s1">self.loaded_surface = pygame.image.load(open_resource).convert_alpha()</span>
+                <span class="s2">except </span><span class="s1">(pygame.error</span><span class="s2">, </span><span class="s1">FileNotFoundError</span><span class="s2">, </span><span class="s1">OSError):</span>
+                    <span class="s1">error = FileNotFoundError(</span><span class="s4">'Unable to load resource with path: ' </span><span class="s1">+</span>
+                                              <span class="s1">str(self.location))</span>
+
+            <span class="s2">elif </span><span class="s1">USE_FILE_PATH:</span>
+                <span class="s2">try</span><span class="s1">:</span>
+                    <span class="s1">self.loaded_surface = pygame.image.load(self.location.to_path()).convert_alpha()</span>
+                <span class="s2">except </span><span class="s1">(pygame.error</span><span class="s2">, </span><span class="s1">FileNotFoundError</span><span class="s2">, </span><span class="s1">OSError):</span>
+                    <span class="s1">error = FileNotFoundError(</span><span class="s4">'Unable to load resource with path: ' </span><span class="s1">+</span>
+                                              <span class="s1">str(self.location))</span>
+
+        <span class="s2">elif </span><span class="s1">isinstance(self.location</span><span class="s2">, </span><span class="s1">str):</span>
+            <span class="s2">try</span><span class="s1">:</span>
+                <span class="s1">self.loaded_surface = pygame.image.load(self.location).convert_alpha()</span>
+            <span class="s2">except </span><span class="s1">(pygame.error</span><span class="s2">, </span><span class="s1">FileNotFoundError</span><span class="s2">, </span><span class="s1">OSError):</span>
+                <span class="s1">error = FileNotFoundError(</span><span class="s4">'Unable to load resource with path: ' </span><span class="s1">+</span>
+                                          <span class="s1">str(self.location))</span>
+
+        <span class="s3"># perform pre-multiply alpha operation</span>
+        <span class="s2">if </span><span class="s1">error </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">premul_alpha_surface(self.loaded_surface)</span>
+
+        <span class="s2">return </span><span class="s1">error</span>
+
+
+<span class="s2">class </span><span class="s1">SurfaceResource:</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Resource representing a finished, ready-for-use surface. 
+ 
+    Because a surface may be a sub-surface of another one, these SurfaceResource are 
+    'loaded' after images are loaded from files. 
+ 
+    :param image_resource: The parent ImageResource of this surface. 
+    :param sub_surface_rect: An optional Rect for sub-surfacing. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">,</span>
+                 <span class="s1">image_resource: ImageResource</span><span class="s2">,</span>
+                 <span class="s1">sub_surface_rect: pygame.Rect = </span><span class="s2">None</span><span class="s1">):</span>
+
+        <span class="s1">self.image_resource = image_resource</span>
+        <span class="s1">self.sub_surface_rect = sub_surface_rect</span>
+        <span class="s1">self._surface = </span><span class="s2">None</span>
+
+    <span class="s2">def </span><span class="s1">load(self) -&gt; Union[Exception</span><span class="s2">, None</span><span class="s1">]:</span>
+        <span class="s0">&quot;&quot;&quot; 
+        'Load' the surface. Basically performs the subsurface operation, if it is required. 
+        :return: An Exception if something went wrong, we bubble it out of the danger zone of 
+                 Threads to handle neatly later. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">error = </span><span class="s2">None</span>
+        <span class="s2">if </span><span class="s1">self.sub_surface_rect:</span>
+            <span class="s2">try</span><span class="s1">:</span>
+                <span class="s1">self.surface = self.image_resource.loaded_surface.subsurface(self.sub_surface_rect)</span>
+            <span class="s2">except</span><span class="s1">(pygame.error</span><span class="s2">, </span><span class="s1">OSError) </span><span class="s2">as </span><span class="s1">err:</span>
+                <span class="s1">error = err</span>
+        <span class="s2">return </span><span class="s1">error</span>
+
+    <span class="s1">@property</span>
+    <span class="s2">def </span><span class="s1">surface(self) -&gt; pygame.surface.Surface:</span>
+        <span class="s0">&quot;&quot;&quot; 
+        Get the Pygame Surface 
+        &quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self._surface </span><span class="s2">if </span><span class="s1">self._surface </span><span class="s2">is not None else </span><span class="s1">self.image_resource.loaded_surface</span>
+
+    <span class="s1">@surface.setter</span>
+    <span class="s2">def </span><span class="s1">surface(self</span><span class="s2">, </span><span class="s1">surface: pygame.surface.Surface):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        Set the Pygame surface. 
+ 
+        :param surface: The Surface to set to. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self._surface = surface</span>
+
+
+<span class="s2">class </span><span class="s1">ClosableQueue(Queue):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    A synchronised Queue for loading resources in (sort-of) parallel. 
+ 
+    The idea is that there is some time spent waiting for OS's to respond to file loading requests 
+    and it is worth firing off a bunch of them in different threads to improve loading performance. 
+ 
+    It seems to work OK. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">SENTINEL = object()</span>
+
+    <span class="s2">def </span><span class="s1">close(self):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        Close this queue to new items. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.put(self.SENTINEL)</span>
+
+    <span class="s2">def </span><span class="s1">__iter__(self):</span>
+        <span class="s2">while True</span><span class="s1">:</span>
+            <span class="s1">item = self.get()</span>
+            <span class="s2">try</span><span class="s1">:</span>
+                <span class="s2">if </span><span class="s1">item </span><span class="s2">is </span><span class="s1">self.SENTINEL:</span>
+                    <span class="s2">return  </span><span class="s3"># Cause the thread to exit</span>
+                <span class="s2">yield </span><span class="s1">item</span>
+            <span class="s2">finally</span><span class="s1">:</span>
+                <span class="s1">self.task_done()</span>
+
+
+<span class="s2">class </span><span class="s1">StoppableOutputWorker(Thread):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    A worker thread that loads resources. 
+ 
+    :param func: The loading function. 
+    :param in_queue: Queue of resources to load. 
+    :param out_queue: Queue of resources finished loading. 
+    :param error_queue: A Queue of any errors generated while loading to display at the end. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">,</span>
+                 <span class="s1">func</span><span class="s2">,</span>
+                 <span class="s1">in_queue: ClosableQueue</span><span class="s2">,</span>
+                 <span class="s1">out_queue: ClosableQueue</span><span class="s2">,</span>
+                 <span class="s1">error_queue: ClosableQueue):</span>
+
+        <span class="s1">super().__init__()</span>
+        <span class="s1">self.func = func</span>
+        <span class="s1">self.in_queue = in_queue</span>
+        <span class="s1">self.out_list = out_queue</span>
+        <span class="s1">self.errors = error_queue</span>
+
+    <span class="s2">def </span><span class="s1">run(self):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        Runs the thread, taking resources off the load queue, loading them and then putting 
+        them onto the out queue. 
+ 
+        The queues are shared between multiple threads. 
+        &quot;&quot;&quot;</span>
+        <span class="s2">for </span><span class="s1">item </span><span class="s2">in </span><span class="s1">self.in_queue:</span>
+            <span class="s1">result</span><span class="s2">, </span><span class="s1">error = self.func(item)</span>
+            <span class="s1">self.out_list.put(result)</span>
+            <span class="s2">if </span><span class="s1">error:</span>
+                <span class="s1">self.errors.put(error)</span>
+</pre>
+</body>
+</html>

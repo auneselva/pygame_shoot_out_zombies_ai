@@ -1,0 +1,336 @@
+<html>
+<head>
+<title>ui_shadow.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+ui_shadow.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">warnings</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Tuple</span><span class="s0">, </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Dict</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+
+<span class="s0">class </span><span class="s1">ShadowGenerator:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A class to generate surfaces that work as a 'shadow' for rectangular UI elements. Base shadow 
+    surface are generated with an algorithm, then when one is requested at a specific size the 
+    closest pre-generated shadow surface is picked and then scaled to the exact size requested. 
+ 
+    By default it creates a four base shadows in a small range of sizes. If you find the shadow 
+    appearance unsatisfactory then it is possible to create more closer to the size of the 
+    elements you are having trouble with. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self):</span>
+        <span class="s1">self.created_ellipse_shadows = {}</span>
+        <span class="s1">self.preloaded_shadow_corners = {}</span>
+
+        <span class="s1">self.short_term_rect_cache = {}</span>
+
+    <span class="s0">def </span><span class="s1">clear_short_term_caches(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Empties short term caches so we aren't hanging on to so many surfaces. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.short_term_rect_cache.clear()</span>
+        <span class="s1">self.created_ellipse_shadows.clear()</span>
+
+    <span class="s0">def </span><span class="s1">create_shadow_corners(self</span><span class="s0">,</span>
+                              <span class="s1">shadow_width_param: int</span><span class="s0">,</span>
+                              <span class="s1">corner_radius_param: int</span><span class="s0">,</span>
+                              <span class="s1">aa_amount=</span><span class="s3">4</span><span class="s1">) -&gt; Dict[str</span><span class="s0">, </span><span class="s1">pygame.surface.Surface]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Create corners for our rectangular shadows. These can be used across many sizes of shadow 
+        with the same shadow width and corner radius. 
+ 
+        :param shadow_width_param: Width of the shadow. 
+        :param corner_radius_param: Corner radius of the shadow. 
+        :param aa_amount: Anti-aliasing amount. Defaults to 4x. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">shadow_width_param &lt;= </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">shadow_width_param = </span><span class="s3">1</span>
+            <span class="s1">warnings.warn(</span><span class="s4">&quot;Tried to make shadow with width &lt;= 0&quot;</span><span class="s1">)</span>
+
+        <span class="s1">corner_rect = pygame.Rect(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">,</span>
+                                  <span class="s1">corner_radius_param * aa_amount</span><span class="s0">,</span>
+                                  <span class="s1">corner_radius_param * aa_amount)</span>
+
+        <span class="s1">corner_surface</span><span class="s0">, </span><span class="s1">edge_surface = self._create_single_corner_and_edge(aa_amount</span><span class="s0">,</span>
+                                                                           <span class="s1">corner_radius_param</span><span class="s0">,</span>
+                                                                           <span class="s1">corner_rect</span><span class="s0">,</span>
+                                                                           <span class="s1">shadow_width_param)</span>
+
+        <span class="s1">sub_radius = ((corner_radius_param - shadow_width_param) * aa_amount)</span>
+        <span class="s1">top_edge = pygame.transform.smoothscale(edge_surface</span><span class="s0">,</span>
+                                                <span class="s1">(shadow_width_param</span><span class="s0">, </span><span class="s1">shadow_width_param))</span>
+        <span class="s1">left_edge = pygame.transform.rotate(top_edge</span><span class="s0">, </span><span class="s3">90</span><span class="s1">)</span>
+
+        <span class="s1">tl_corner = pygame.transform.smoothscale(corner_surface</span><span class="s0">,</span>
+                                                 <span class="s1">(corner_radius_param</span><span class="s0">,</span>
+                                                  <span class="s1">corner_radius_param))</span>
+
+        <span class="s0">if </span><span class="s1">sub_radius &gt; </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">corner_sub_surface = pygame.surface.Surface(corner_rect.size</span><span class="s0">,</span>
+                                                        <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                        <span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+            <span class="s1">corner_sub_surface.fill(pygame.Color(</span><span class="s4">'#00000000'</span><span class="s1">))</span>
+
+            <span class="s1">pygame.draw.circle(corner_sub_surface</span><span class="s0">,</span>
+                               <span class="s1">pygame.Color(</span><span class="s4">'#FFFFFFFF'</span><span class="s1">)</span><span class="s0">,</span>
+                               <span class="s1">corner_rect.size</span><span class="s0">,</span>
+                               <span class="s1">sub_radius)</span>
+
+            <span class="s1">corner_small_sub_surface = pygame.transform.smoothscale(corner_sub_surface</span><span class="s0">,</span>
+                                                                    <span class="s1">(corner_radius_param</span><span class="s0">,</span>
+                                                                     <span class="s1">corner_radius_param))</span>
+
+            <span class="s1">tl_corner.blit(corner_small_sub_surface</span><span class="s0">,</span>
+                           <span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                           <span class="s1">special_flags=pygame.BLEND_RGBA_SUB)</span>
+
+        <span class="s1">corners_and_edges = {</span><span class="s4">&quot;top&quot;</span><span class="s1">: top_edge</span><span class="s0">,</span>
+                             <span class="s4">&quot;bottom&quot;</span><span class="s1">: pygame.transform.flip(top_edge</span><span class="s0">, False, True</span><span class="s1">)</span><span class="s0">,</span>
+                             <span class="s4">&quot;left&quot;</span><span class="s1">: left_edge</span><span class="s0">,</span>
+                             <span class="s4">&quot;right&quot;</span><span class="s1">: pygame.transform.flip(left_edge</span><span class="s0">, True, False</span><span class="s1">)</span><span class="s0">,</span>
+                             <span class="s4">&quot;top_left&quot;</span><span class="s1">: tl_corner</span><span class="s0">,</span>
+                             <span class="s4">&quot;top_right&quot;</span><span class="s1">: pygame.transform.flip(tl_corner</span><span class="s0">, True, False</span><span class="s1">)</span><span class="s0">,</span>
+                             <span class="s4">&quot;bottom_left&quot;</span><span class="s1">: pygame.transform.flip(tl_corner</span><span class="s0">, False, True</span><span class="s1">)</span><span class="s0">,</span>
+                             <span class="s4">&quot;bottom_right&quot;</span><span class="s1">: pygame.transform.flip(tl_corner</span><span class="s0">, True, True</span><span class="s1">)}</span>
+        <span class="s1">self.preloaded_shadow_corners[(str(shadow_width_param) +</span>
+                                       <span class="s4">'x' </span><span class="s1">+</span>
+                                       <span class="s1">str(corner_radius_param))] = corners_and_edges</span>
+
+        <span class="s0">return </span><span class="s1">corners_and_edges</span>
+
+    <span class="s1">@staticmethod</span>
+    <span class="s0">def </span><span class="s1">_create_single_corner_and_edge(aa_amount</span><span class="s0">, </span><span class="s1">corner_radius_param</span><span class="s0">, </span><span class="s1">corner_rect</span><span class="s0">,</span>
+                                       <span class="s1">shadow_width_param):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Creates a single corner surface and a single edge surface for a shadow. 
+ 
+        :param aa_amount: Amount of anti-aliasing 
+        :param corner_radius_param: Radius of a corner this shadow will go around. 
+        :param corner_rect: Rectangular size of corner 
+        :param shadow_width_param: Width of shadow. 
+ 
+        :return: A tuple of the corner surface and the edge surface 
+        &quot;&quot;&quot;</span>
+        <span class="s1">final_corner_surface = pygame.surface.Surface((corner_radius_param * aa_amount</span><span class="s0">,</span>
+                                                       <span class="s1">corner_radius_param * aa_amount)</span><span class="s0">,</span>
+                                                      <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">final_corner_surface.fill(pygame.Color(</span><span class="s4">'#00000000'</span><span class="s1">))</span>
+        <span class="s1">final_edge_surface = pygame.surface.Surface((shadow_width_param * aa_amount</span><span class="s0">,</span>
+                                                     <span class="s1">shadow_width_param * aa_amount)</span><span class="s0">,</span>
+                                                    <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">final_edge_surface.fill(pygame.Color(</span><span class="s4">'#00000000'</span><span class="s1">))</span>
+        <span class="s1">corner_radius = corner_radius_param * aa_amount</span>
+        <span class="s1">corner_centre = (corner_radius</span><span class="s0">, </span><span class="s1">corner_radius)</span>
+        <span class="s1">edge_rect = pygame.Rect(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">,</span>
+                                <span class="s1">shadow_width_param * aa_amount</span><span class="s0">,</span>
+                                <span class="s1">shadow_width_param * aa_amount)</span>
+        <span class="s1">edge_shadow_fade_height = edge_rect.width</span>
+
+        <span class="s1">alpha_increment = </span><span class="s3">20.0 </span><span class="s1">/ (shadow_width_param ** </span><span class="s3">1.5</span><span class="s1">)</span>
+        <span class="s1">shadow_alpha = alpha_increment</span>
+        <span class="s0">for </span><span class="s1">_ </span><span class="s0">in </span><span class="s1">range(shadow_width_param):</span>
+            <span class="s0">if </span><span class="s1">corner_rect.width &gt; </span><span class="s3">0 </span><span class="s0">and </span><span class="s1">corner_rect.height &gt; </span><span class="s3">0 </span><span class="s0">and </span><span class="s1">corner_radius &gt; </span><span class="s3">0</span><span class="s1">:</span>
+                <span class="s5"># Edge</span>
+                <span class="s1">edge_shadow_surface = pygame.surface.Surface(edge_rect.size</span><span class="s0">,</span>
+                                                             <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                             <span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+                <span class="s1">edge_shadow_surface.fill(pygame.Color(</span><span class="s4">'#00000000'</span><span class="s1">))</span>
+                <span class="s1">edge_shadow_surface.fill(pygame.Color(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s1">int(shadow_alpha))</span><span class="s0">,</span>
+                                         <span class="s1">pygame.Rect(</span><span class="s3">0</span><span class="s0">,</span>
+                                                     <span class="s1">edge_rect.height - edge_shadow_fade_height</span><span class="s0">,</span>
+                                                     <span class="s1">edge_rect.width</span><span class="s0">,</span>
+                                                     <span class="s1">edge_shadow_fade_height))</span>
+
+                <span class="s1">final_edge_surface.blit(edge_shadow_surface</span><span class="s0">,</span>
+                                        <span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                                        <span class="s1">special_flags=pygame.BLEND_RGBA_ADD)</span>
+
+                <span class="s5"># corner</span>
+                <span class="s1">corner_shadow_surface = pygame.surface.Surface(corner_rect.size</span><span class="s0">,</span>
+                                                               <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                               <span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+                <span class="s1">corner_shadow_surface.fill(pygame.Color(</span><span class="s4">'#00000000'</span><span class="s1">))</span>
+                <span class="s1">pygame.draw.circle(corner_shadow_surface</span><span class="s0">,</span>
+                                   <span class="s1">pygame.Color(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s1">int(shadow_alpha))</span><span class="s0">,</span>
+                                   <span class="s1">corner_centre</span><span class="s0">,</span>
+                                   <span class="s1">corner_radius)</span>
+
+                <span class="s1">final_corner_surface.blit(corner_shadow_surface</span><span class="s0">,</span>
+                                          <span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                                          <span class="s1">special_flags=pygame.BLEND_RGBA_ADD)</span>
+
+                <span class="s5"># increments/decrements</span>
+                <span class="s1">shadow_alpha += alpha_increment</span>
+                <span class="s1">corner_radius -= aa_amount</span>
+                <span class="s1">edge_shadow_fade_height -= aa_amount</span>
+        <span class="s0">return </span><span class="s1">final_corner_surface</span><span class="s0">, </span><span class="s1">final_edge_surface</span>
+
+    <span class="s0">def </span><span class="s1">create_new_rectangle_shadow(self</span><span class="s0">,</span>
+                                    <span class="s1">width: int</span><span class="s0">,</span>
+                                    <span class="s1">height: int</span><span class="s0">,</span>
+                                    <span class="s1">shadow_width_param: int</span><span class="s0">,</span>
+                                    <span class="s1">corner_radius_param: int</span><span class="s0">,</span>
+                                    <span class="s1">) -&gt; Union[pygame.surface.Surface</span><span class="s0">, None</span><span class="s1">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Creates a rectangular shadow surface at the specified size and stores it for later use. 
+ 
+        :param width: The width of the base shadow to create. 
+        :param height: The height of the base shadow to create. 
+        :param shadow_width_param: The width of the shadowed edge. 
+        :param corner_radius_param: The radius of the rectangular shadow's corners. 
+ 
+        &quot;&quot;&quot;</span>
+
+        <span class="s0">if </span><span class="s1">width &lt; corner_radius_param </span><span class="s0">or </span><span class="s1">height &lt; corner_radius_param:</span>
+            <span class="s0">return None</span>
+        <span class="s1">params = [width</span><span class="s0">, </span><span class="s1">height</span><span class="s0">, </span><span class="s1">shadow_width_param</span><span class="s0">, </span><span class="s1">corner_radius_param]</span>
+        <span class="s1">shadow_id = </span><span class="s4">'_'</span><span class="s1">.join(str(param) </span><span class="s0">for </span><span class="s1">param </span><span class="s0">in </span><span class="s1">params)</span>
+        <span class="s0">if </span><span class="s1">shadow_id </span><span class="s0">in </span><span class="s1">self.short_term_rect_cache:</span>
+            <span class="s0">return </span><span class="s1">self.short_term_rect_cache[shadow_id]</span>
+        <span class="s1">final_surface = pygame.surface.Surface((width</span><span class="s0">, </span><span class="s1">height)</span><span class="s0">, </span><span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">final_surface.fill(pygame.Color(</span><span class="s4">'#00000000'</span><span class="s1">))</span>
+
+        <span class="s1">corner_index_id = str(shadow_width_param) + </span><span class="s4">'x' </span><span class="s1">+ str(corner_radius_param)</span>
+        <span class="s0">if </span><span class="s1">corner_index_id </span><span class="s0">in </span><span class="s1">self.preloaded_shadow_corners:</span>
+            <span class="s1">edges_and_corners = self.preloaded_shadow_corners[corner_index_id]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">edges_and_corners = self.create_shadow_corners(shadow_width_param</span><span class="s0">, </span><span class="s1">corner_radius_param)</span>
+
+        <span class="s1">final_surface.blit(edges_and_corners[</span><span class="s4">&quot;top_left&quot;</span><span class="s1">]</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">final_surface.blit(edges_and_corners[</span><span class="s4">&quot;top_right&quot;</span><span class="s1">]</span><span class="s0">, </span><span class="s1">(width - corner_radius_param</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+
+        <span class="s1">final_surface.blit(edges_and_corners[</span><span class="s4">&quot;bottom_left&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                           <span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s1">height - corner_radius_param))</span>
+        <span class="s1">final_surface.blit(edges_and_corners[</span><span class="s4">&quot;bottom_right&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                           <span class="s1">(width - corner_radius_param</span><span class="s0">, </span><span class="s1">height - corner_radius_param))</span>
+
+        <span class="s0">if </span><span class="s1">width - (</span><span class="s3">2 </span><span class="s1">* corner_radius_param) &gt; </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">top_edge = pygame.transform.scale(edges_and_corners[</span><span class="s4">&quot;top&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                                              <span class="s1">(width - (</span><span class="s3">2 </span><span class="s1">* corner_radius_param)</span><span class="s0">,</span>
+                                               <span class="s1">shadow_width_param))</span>
+            <span class="s1">bottom_edge = pygame.transform.scale(edges_and_corners[</span><span class="s4">&quot;bottom&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                                                 <span class="s1">(width - (</span><span class="s3">2 </span><span class="s1">* corner_radius_param)</span><span class="s0">,</span>
+                                                  <span class="s1">shadow_width_param))</span>
+            <span class="s1">final_surface.blit(top_edge</span><span class="s0">, </span><span class="s1">(corner_radius_param</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+            <span class="s1">final_surface.blit(bottom_edge</span><span class="s0">, </span><span class="s1">(corner_radius_param</span><span class="s0">, </span><span class="s1">height - shadow_width_param))</span>
+
+        <span class="s0">if </span><span class="s1">height - (</span><span class="s3">2 </span><span class="s1">* corner_radius_param) &gt; </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">left_edge = pygame.transform.scale(edges_and_corners[</span><span class="s4">&quot;left&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                                               <span class="s1">(shadow_width_param</span><span class="s0">,</span>
+                                                <span class="s1">height - (</span><span class="s3">2 </span><span class="s1">* corner_radius_param)))</span>
+            <span class="s1">right_edge = pygame.transform.scale(edges_and_corners[</span><span class="s4">&quot;right&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                                                <span class="s1">(shadow_width_param</span><span class="s0">,</span>
+                                                 <span class="s1">height - (</span><span class="s3">2 </span><span class="s1">* corner_radius_param)))</span>
+
+            <span class="s1">final_surface.blit(left_edge</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s1">corner_radius_param))</span>
+            <span class="s1">final_surface.blit(right_edge</span><span class="s0">, </span><span class="s1">(width - shadow_width_param</span><span class="s0">,</span>
+                                            <span class="s1">corner_radius_param))</span>
+
+        <span class="s1">self.short_term_rect_cache[shadow_id] = final_surface</span>
+        <span class="s0">return </span><span class="s1">final_surface</span>
+
+    <span class="s0">def </span><span class="s1">create_new_ellipse_shadow(self</span><span class="s0">, </span><span class="s1">width: int</span><span class="s0">,</span>
+                                  <span class="s1">height: int</span><span class="s0">,</span>
+                                  <span class="s1">shadow_width_param: int</span><span class="s0">,</span>
+                                  <span class="s1">aa_amount: int = </span><span class="s3">4</span><span class="s1">) -&gt; pygame.surface.Surface:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Creates a ellipse shaped shadow surface at the specified size and stores it for later use. 
+ 
+        :param width: The width of the shadow to create. 
+        :param height: The height of the shadow to create. 
+        :param shadow_width_param: The width of the shadowed edge. 
+        :param aa_amount: The amount of anti-aliasing to use, defaults to 4. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">shadow_surface = pygame.surface.Surface((width * aa_amount</span><span class="s0">, </span><span class="s1">height * aa_amount)</span><span class="s0">,</span>
+                                                <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">shadow_surface.fill(pygame.Color(</span><span class="s4">'#00000000'</span><span class="s1">))</span>
+
+        <span class="s1">alpha_increment = max(</span><span class="s3">1</span><span class="s0">, </span><span class="s1">int(</span><span class="s3">20 </span><span class="s1">/ shadow_width_param))</span>
+        <span class="s1">shadow_alpha = alpha_increment</span>
+        <span class="s1">shadow_width = width * aa_amount</span>
+        <span class="s1">shadow_height = height * aa_amount</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(shadow_width_param):</span>
+            <span class="s0">if </span><span class="s1">shadow_width &gt; </span><span class="s3">0 </span><span class="s0">and </span><span class="s1">shadow_height &gt; </span><span class="s3">0</span><span class="s1">:</span>
+                <span class="s1">shadow_rect = pygame.Rect(i * aa_amount</span><span class="s0">,</span>
+                                          <span class="s1">i * aa_amount</span><span class="s0">,</span>
+                                          <span class="s1">shadow_width</span><span class="s0">,</span>
+                                          <span class="s1">shadow_height)</span>
+                <span class="s1">pygame.draw.ellipse(shadow_surface</span><span class="s0">,</span>
+                                    <span class="s1">pygame.Color(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s1">shadow_alpha)</span><span class="s0">, </span><span class="s1">shadow_rect)</span>
+                <span class="s1">shadow_width -= (</span><span class="s3">2 </span><span class="s1">* aa_amount)</span>
+                <span class="s1">shadow_height -= (</span><span class="s3">2 </span><span class="s1">* aa_amount)</span>
+                <span class="s1">shadow_alpha += alpha_increment</span>
+
+        <span class="s1">final_surface = pygame.transform.smoothscale(shadow_surface</span><span class="s0">, </span><span class="s1">(width</span><span class="s0">, </span><span class="s1">height))</span>
+        <span class="s1">self.created_ellipse_shadows[(str(width) +</span>
+                                      <span class="s4">'x' </span><span class="s1">+</span>
+                                      <span class="s1">str(height) +</span>
+                                      <span class="s4">'x' </span><span class="s1">+</span>
+                                      <span class="s1">str(shadow_width_param))] = final_surface</span>
+        <span class="s0">return </span><span class="s1">final_surface</span>
+
+    <span class="s0">def </span><span class="s1">find_closest_shadow_scale_to_size(self</span><span class="s0">,</span>
+                                          <span class="s1">size: Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                          <span class="s1">shadow_width: int = </span><span class="s3">2</span><span class="s0">,</span>
+                                          <span class="s1">shape: str = </span><span class="s4">&quot;rectangle&quot;</span><span class="s0">,</span>
+                                          <span class="s1">corner_radius: int = </span><span class="s3">2</span><span class="s0">,</span>
+                                          <span class="s1">) -&gt; Union[pygame.surface.Surface</span><span class="s0">, None</span><span class="s1">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        This function searches through our dictionary of created shadows, grabs the closest one 
+        to the size we request and then scales that shadow to the exact size we need. 
+ 
+        :param size: The size of the element we are finding a shadow for. 
+        :param shadow_width: The width of the shadow to find. 
+        :param shape: The shape of the shadow to find. 
+        :param corner_radius: The radius of the corners if this is a rectangular shadow. 
+ 
+        :return: The shadow surface we asked for scaled to the size we requested, or None 
+                 if no shadows exist. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">lowest_diff = </span><span class="s3">1000000000000</span>
+        <span class="s1">closest_key = </span><span class="s0">None</span>
+        <span class="s0">if </span><span class="s1">shape == </span><span class="s4">'rectangle'</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">self.create_new_rectangle_shadow(size[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">size[</span><span class="s3">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">shadow_width</span><span class="s0">, </span><span class="s1">corner_radius)</span>
+
+        <span class="s0">if </span><span class="s1">shape == </span><span class="s4">'ellipse'</span><span class="s1">:</span>
+            <span class="s0">for </span><span class="s1">key </span><span class="s0">in </span><span class="s1">self.created_ellipse_shadows:</span>
+                <span class="s1">dimension_strings = key.split(</span><span class="s4">'x'</span><span class="s1">)</span>
+                <span class="s1">width = int(dimension_strings[</span><span class="s3">0</span><span class="s1">])</span>
+                <span class="s1">height = int(dimension_strings[</span><span class="s3">1</span><span class="s1">])</span>
+                <span class="s1">shadow_size = int(dimension_strings[</span><span class="s3">2</span><span class="s1">])</span>
+
+                <span class="s1">width_diff = abs(width - size[</span><span class="s3">0</span><span class="s1">])</span>
+                <span class="s1">height_diff = abs(height - size[</span><span class="s3">1</span><span class="s1">])</span>
+                <span class="s1">total_diff = width_diff + height_diff + (abs(shadow_size - shadow_width) * </span><span class="s3">50</span><span class="s1">)</span>
+                <span class="s0">if </span><span class="s1">total_diff &lt; lowest_diff:</span>
+                    <span class="s1">lowest_diff = total_diff</span>
+                    <span class="s0">if </span><span class="s1">max(width_diff</span><span class="s0">, </span><span class="s1">height_diff) &lt; </span><span class="s3">10</span><span class="s1">:</span>
+                        <span class="s1">closest_key = key</span>
+
+            <span class="s0">if </span><span class="s1">closest_key </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s0">return </span><span class="s1">pygame.transform.smoothscale(self.created_ellipse_shadows[closest_key]</span><span class="s0">, </span><span class="s1">size)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s0">return </span><span class="s1">self.create_new_ellipse_shadow(size[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">size[</span><span class="s3">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">shadow_width)</span>
+
+        <span class="s0">return None</span>
+</pre>
+</body>
+</html>

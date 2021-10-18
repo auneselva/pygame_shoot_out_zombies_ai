@@ -1,0 +1,144 @@
+<html>
+<head>
+<title>dropdownlistlauncher.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+dropdownlistlauncher.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">pygame</span>
+<span class="s0">from </span><span class="s1">thorpy.elements.clickable </span><span class="s0">import </span><span class="s1">Clickable</span>
+<span class="s0">from </span><span class="s1">thorpy.elements.ddlf </span><span class="s0">import </span><span class="s1">DropDownListFast</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">constants</span><span class="s0">, </span><span class="s1">parameters</span><span class="s0">, </span><span class="s1">style</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.reaction </span><span class="s0">import </span><span class="s1">Reaction</span><span class="s0">, </span><span class="s1">ConstantReaction</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.launchers </span><span class="s0">import </span><span class="s1">launcher </span><span class="s0">as </span><span class="s1">launchmod</span>
+
+<span class="s1">DONE</span><span class="s0">, </span><span class="s1">CANCEL</span><span class="s0">, </span><span class="s1">CLICK_QUIT = launchmod.DONE</span><span class="s0">, </span><span class="s1">launchmod.CANCEL</span><span class="s0">, </span><span class="s1">launchmod.CLICK_QUIT</span>
+
+
+<span class="s0">class </span><span class="s1">DropDownListLauncher(Clickable):</span>
+
+    <span class="s1">@staticmethod</span>
+    <span class="s0">def </span><span class="s1">make(const_text=</span><span class="s2">&quot;&quot;</span><span class="s0">,</span>
+             <span class="s1">var_text=</span><span class="s2">&quot;&quot;</span><span class="s0">,</span>
+             <span class="s1">titles=</span><span class="s0">None,</span>
+             <span class="s1">ddlf_size=</span><span class="s2">&quot;auto&quot;</span><span class="s0">,</span>
+             <span class="s1">show_select=</span><span class="s0">True,</span>
+             <span class="s1">click_cancel=</span><span class="s0">True,</span>
+             <span class="s1">size=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s0">if </span><span class="s1">size </span><span class="s0">is None</span><span class="s1">: size=style.MAKE_SIZE</span>
+        <span class="s1">ddll = DropDownListLauncher(const_text</span><span class="s0">, </span><span class="s1">var_text</span><span class="s0">, </span><span class="s1">titles</span><span class="s0">, </span><span class="s1">ddlf_size</span><span class="s0">,</span>
+                                    <span class="s1">show_select</span><span class="s0">, </span><span class="s1">click_cancel</span><span class="s0">,</span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">ddll.finish()</span>
+        <span class="s1">ddll._make_size(size)</span>
+        <span class="s0">return </span><span class="s1">ddll</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">const_text=</span><span class="s2">&quot;&quot;</span><span class="s0">,</span>
+                 <span class="s1">var_text=</span><span class="s2">&quot;&quot;</span><span class="s0">,</span>
+                 <span class="s1">titles=</span><span class="s0">None,</span>
+                 <span class="s1">ddlf_size=</span><span class="s2">&quot;auto&quot;</span><span class="s0">,</span>
+                 <span class="s1">show_select=</span><span class="s0">True,</span>
+                 <span class="s1">click_cancel=</span><span class="s0">True,</span>
+                 <span class="s1">finish=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s1">self.recenter = </span><span class="s0">True</span>
+        <span class="s1">self.const_text = const_text</span>
+        <span class="s1">self.var_text = var_text</span>
+        <span class="s1">self.click_cancel = click_cancel</span>
+<span class="s3">##        self.max_chars = float(&quot;inf&quot;)</span>
+        <span class="s1">self.max_chars = </span><span class="s4">30</span>
+        <span class="s1">self.cut_text = </span><span class="s2">&quot;..&quot;</span>
+        <span class="s1">self.unlaunch_func = </span><span class="s0">None</span>
+        <span class="s1">ddlf_size = style.DDL_SIZE </span><span class="s0">if </span><span class="s1">ddlf_size </span><span class="s0">is None else </span><span class="s1">ddlf_size</span>
+        <span class="s0">if not </span><span class="s1">isinstance(titles</span><span class="s0">, </span><span class="s1">DropDownListFast):</span>
+            <span class="s1">titles = [] </span><span class="s0">if </span><span class="s1">titles </span><span class="s0">is None else </span><span class="s1">titles</span>
+            <span class="s1">self.launched = DropDownListFast(size=ddlf_size</span><span class="s0">, </span><span class="s1">titles=titles</span><span class="s0">, </span><span class="s1">x=</span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.launched = titles</span>
+        <span class="s1">self.show_select = show_select</span>
+        <span class="s1">self.launcher = </span><span class="s0">None</span>
+        <span class="s1">Clickable.__init__(self</span><span class="s0">, </span><span class="s1">self.const_text+self.var_text</span><span class="s0">,</span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">finish:</span>
+            <span class="s1">self.finish()</span>
+
+    <span class="s0">def </span><span class="s1">finish(self):</span>
+        <span class="s1">Clickable.finish(self)</span>
+        <span class="s1">self._set_launcher()</span>
+
+    <span class="s0">def </span><span class="s1">get_value(self):</span>
+        <span class="s0">return </span><span class="s1">self.var_text</span>
+
+    <span class="s0">def </span><span class="s1">set_value(self</span><span class="s0">, </span><span class="s1">text):</span>
+        <span class="s1">old = self.var_text</span>
+        <span class="s0">if </span><span class="s1">isinstance(text</span><span class="s0">, </span><span class="s1">list):</span>
+            <span class="s1">self.var_text = text[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.var_text = text</span>
+        <span class="s0">if </span><span class="s1">old != self.var_text:</span>
+            <span class="s1">self.refresh()</span>
+
+    <span class="s0">def </span><span class="s1">_set_launcher(self):</span>
+        <span class="s1">launcher = launchmod.Launcher(self.launched</span><span class="s0">, </span><span class="s1">launching=self)</span>
+        <span class="s1">reac_enter = ConstantReaction(constants.THORPY_EVENT</span><span class="s0">,</span>
+                             <span class="s1">launcher.launch</span><span class="s0">,</span>
+                             <span class="s1">{</span><span class="s2">&quot;id&quot;</span><span class="s1">: constants.EVENT_UNPRESS</span><span class="s0">, </span><span class="s2">&quot;el&quot;</span><span class="s1">:self})</span>
+<span class="s3">##                             reac_name=&quot;reac_launch&quot;)</span>
+        <span class="s1">reac_done = ConstantReaction(constants.THORPY_EVENT</span><span class="s0">,</span>
+                             <span class="s1">self.unlaunch</span><span class="s0">,</span>
+                             <span class="s1">{</span><span class="s2">&quot;id&quot;</span><span class="s1">: constants.EVENT_DDL</span><span class="s0">, </span><span class="s2">&quot;el&quot;</span><span class="s1">:self.launched})</span>
+<span class="s3">##                             reac_name=&quot;reac_done&quot;)</span>
+        <span class="s0">if </span><span class="s1">self.click_cancel:</span>
+            <span class="s1">reac_cancel = Reaction(parameters.MOUSEBUTTONUP</span><span class="s0">,</span>
+                                    <span class="s1">launchmod.func_click_quit</span><span class="s0">,</span>
+                                    <span class="s1">params={</span><span class="s2">&quot;launcher&quot;</span><span class="s1">:launcher</span><span class="s0">, </span><span class="s2">&quot;what&quot;</span><span class="s1">:CLICK_QUIT})</span>
+<span class="s3">##                                    reac_name=&quot;reac_cancel&quot;)</span>
+            <span class="s1">self.launched.add_reaction(reac_cancel)</span>
+        <span class="s1">self.add_reaction(reac_enter)</span>
+        <span class="s1">self.launched.add_reaction(reac_done)</span>
+        <span class="s0">def </span><span class="s1">func_before():</span>
+            <span class="s1">self.launched.stick_to(self</span><span class="s0">, </span><span class="s2">&quot;bottom&quot;</span><span class="s0">, </span><span class="s2">&quot;top&quot;</span><span class="s1">)</span>
+            <span class="s1">self.launched.blit()</span>
+            <span class="s1">self.launched.update()</span>
+        <span class="s1">launcher.func_before = func_before</span>
+        <span class="s1">self.launcher = launcher</span>
+
+    <span class="s0">def </span><span class="s1">refresh(self):</span>
+        <span class="s1">text = self.const_text+self.var_text</span>
+        <span class="s0">if </span><span class="s1">len(text) &gt; self.max_chars:</span>
+            <span class="s1">text = text[:self.max_chars-len(self.cut_text)] + self.cut_text</span>
+        <span class="s1">self.set_text(text)</span>
+        <span class="s1">self.scale_to_title()</span>
+        <span class="s0">if </span><span class="s1">self.recenter:</span>
+            <span class="s1">self.center(element=self.father</span><span class="s0">, </span><span class="s1">axis=(</span><span class="s0">True,False</span><span class="s1">))</span>
+
+
+    <span class="s0">def </span><span class="s1">default_unlaunch(self):</span>
+        <span class="s0">if </span><span class="s1">self.show_select </span><span class="s0">and </span><span class="s1">self.launched._clicked:</span>
+            <span class="s1">self.var_text = self.launched._clicked</span>
+            <span class="s1">self.refresh()</span>
+        <span class="s1">self.launcher.unlaunch(CANCEL)</span>
+        <span class="s3">##            self._file_element.set_text(text,</span>
+<span class="s3">##                          size=(self.file_width, self.get_fus_rect().h),</span>
+<span class="s3">##                          cut=True)</span>
+
+    <span class="s0">def </span><span class="s1">unlaunch(self):</span>
+        <span class="s1">ev = pygame.event.Event(constants.THORPY_EVENT</span><span class="s0">, </span><span class="s1">id=constants.EVENT_DDL</span><span class="s0">,</span>
+                                <span class="s1">el=self</span><span class="s0">, </span><span class="s1">value=self.launched._clicked)</span>
+        <span class="s1">pygame.event.post(ev)</span>
+        <span class="s0">if not </span><span class="s1">self.unlaunch_func:</span>
+            <span class="s1">self.default_unlaunch()</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.unlaunch_func()</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<html>
+<head>
+<title>rectscomputing.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+rectscomputing.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Old and not used&quot;&quot;&quot;</span>
+
+<span class="s2">from </span><span class="s1">pygame </span><span class="s2">import </span><span class="s1">Rect</span>
+
+
+<span class="s2">def </span><span class="s1">get_rel_pos_topleft(parent</span><span class="s2">, </span><span class="s1">child):</span>
+    <span class="s1">dx = child.x - parent.x</span>
+    <span class="s1">dy = child.y - parent.y</span>
+    <span class="s2">return </span><span class="s1">(dx</span><span class="s2">, </span><span class="s1">dy)</span>
+
+
+<span class="s2">def </span><span class="s1">getRectsSizes(rects):</span>
+    <span class="s1">r = list([])</span>
+    <span class="s2">for </span><span class="s1">rect </span><span class="s2">in </span><span class="s1">rects:</span>
+        <span class="s1">r.append(Rect((</span><span class="s3">0</span><span class="s2">,</span><span class="s3">0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">rect.size))</span>
+    <span class="s2">return </span><span class="s1">r</span>
+
+<span class="s2">def </span><span class="s1">getRectsSizes2(rects):</span>
+    <span class="s1">r = list([])</span>
+    <span class="s2">for </span><span class="s1">rect </span><span class="s2">in </span><span class="s1">rects:</span>
+        <span class="s1">r.append(Rect((</span><span class="s3">0</span><span class="s2">,</span><span class="s3">0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">rect.size))</span>
+    <span class="s2">return </span><span class="s1">r</span>
+
+<span class="s2">def </span><span class="s1">centerRect(fixed</span><span class="s2">, </span><span class="s1">toMove):</span>
+    <span class="s1">toMove.center = fixed.center</span>
+
+<span class="s2">def </span><span class="s1">add(r1</span><span class="s2">, </span><span class="s1">r2):</span>
+    <span class="s2">return </span><span class="s1">Rect(r1.x + r2.x</span><span class="s2">, </span><span class="s1">r1.y + r2.y)</span>
+
+<span class="s2">def </span><span class="s1">getCorners(r):</span>
+    <span class="s2">return </span><span class="s1">[r.topleft</span><span class="s2">, </span><span class="s1">r.topright</span><span class="s2">, </span><span class="s1">r.bottomleft</span><span class="s2">, </span><span class="s1">r.bottomright]</span>
+
+<span class="s2">def </span><span class="s1">cut_static(home</span><span class="s2">, </span><span class="s1">visitor):</span>
+    <span class="s2">if not </span><span class="s1">home.colliderect(visitor):</span>
+        <span class="s2">return </span><span class="s1">[]</span>
+    <span class="s4">#left</span>
+    <span class="s1">w = visitor.left - home.left</span>
+    <span class="s1">left = Rect(home.topleft</span><span class="s2">, </span><span class="s1">(w</span><span class="s2">,</span><span class="s1">home.h))</span>
+    <span class="s4">#right</span>
+    <span class="s1">w = home.right - visitor.right</span>
+    <span class="s1">x = visitor.right</span>
+    <span class="s1">right = Rect((x</span><span class="s2">,</span><span class="s1">home.top)</span><span class="s2">, </span><span class="s1">(w</span><span class="s2">,</span><span class="s1">home.h))</span>
+    <span class="s4">#top</span>
+    <span class="s1">h = visitor.top - home.top</span>
+    <span class="s1">x = visitor.left</span>
+    <span class="s1">top = Rect((x</span><span class="s2">,</span><span class="s1">home.top)</span><span class="s2">, </span><span class="s1">(visitor.w</span><span class="s2">, </span><span class="s1">h))</span>
+    <span class="s4">#bottom</span>
+    <span class="s1">h = home.bottom - visitor.bottom</span>
+    <span class="s1">bottom = Rect(visitor.bottomleft</span><span class="s2">, </span><span class="s1">(visitor.w</span><span class="s2">, </span><span class="s1">h))</span>
+
+    <span class="s1">parts = [left</span><span class="s2">, </span><span class="s1">right</span><span class="s2">, </span><span class="s1">top</span><span class="s2">, </span><span class="s1">bottom]</span>
+    <span class="s1">toReturn = []</span>
+    <span class="s2">for </span><span class="s1">part </span><span class="s2">in </span><span class="s1">parts:</span>
+        <span class="s2">if </span><span class="s1">part.w &gt; </span><span class="s3">0 </span><span class="s2">and </span><span class="s1">part.h &gt; </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">toReturn.append(part)</span>
+    <span class="s2">return </span><span class="s1">toReturn</span>
+
+<span class="s2">def </span><span class="s1">rectSet(rectList):</span>
+    <span class="s0">&quot;&quot;&quot;Returns a list of rect without doublons&quot;&quot;&quot;</span>
+    <span class="s1">toReturn = []</span>
+    <span class="s2">for </span><span class="s1">rect </span><span class="s2">in </span><span class="s1">rectList:</span>
+        <span class="s2">if </span><span class="s1">rect </span><span class="s2">not in </span><span class="s1">toReturn:</span>
+            <span class="s1">toReturn.append(rect)</span>
+    <span class="s2">return </span><span class="s1">toReturn</span>
+
+<span class="s2">def </span><span class="s1">sameCorners(r1</span><span class="s2">, </span><span class="s1">r2):</span>
+    <span class="s0">&quot;&quot;&quot;Returns number of corners shared&quot;&quot;&quot;</span>
+    <span class="s1">counter = </span><span class="s3">0</span>
+    <span class="s2">for </span><span class="s1">corner1 </span><span class="s2">in </span><span class="s1">getCorners(r1):</span>
+        <span class="s2">for </span><span class="s1">corner2 </span><span class="s2">in </span><span class="s1">getCorners(r2):</span>
+            <span class="s2">if </span><span class="s1">corner1 == corner2:</span>
+                <span class="s1">counter += </span><span class="s3">1</span>
+    <span class="s2">return </span><span class="s1">counter</span>
+
+<span class="s2">def </span><span class="s1">sameDimensions(r1</span><span class="s2">, </span><span class="s1">r2):</span>
+    <span class="s2">return </span><span class="s1">(r1.w == r2.w) + (r1.h == r2.h)</span>
+
+<span class="s2">def </span><span class="s1">get_top_coords(rect):</span>
+    <span class="s1">bottomleft = (rect.left</span><span class="s2">, </span><span class="s1">rect.bottom-</span><span class="s3">2</span><span class="s1">)</span>
+    <span class="s1">topleft = (rect.left</span><span class="s2">, </span><span class="s1">rect.top)</span>
+    <span class="s1">topright = (rect.right-</span><span class="s3">1</span><span class="s2">, </span><span class="s1">rect.top)</span>
+    <span class="s2">return </span><span class="s1">(bottomleft</span><span class="s2">,</span><span class="s1">topleft</span><span class="s2">, </span><span class="s1">topright)</span>
+
+<span class="s2">def </span><span class="s1">get_bottom_coords(rect):</span>
+    <span class="s1">bottomleft = (rect.left</span><span class="s2">, </span><span class="s1">rect.bottom-</span><span class="s3">1</span><span class="s1">)</span>
+    <span class="s1">bottomright = (rect.right-</span><span class="s3">1</span><span class="s2">, </span><span class="s1">rect.bottom-</span><span class="s3">1</span><span class="s1">)</span>
+    <span class="s1">topright = (rect.right-</span><span class="s3">1</span><span class="s2">, </span><span class="s1">rect.top)</span>
+    <span class="s2">return </span><span class="s1">(bottomleft</span><span class="s2">, </span><span class="s1">bottomright</span><span class="s2">, </span><span class="s1">topright)</span>
+
+<span class="s4">##ALIGNEMENTS##</span>
+
+<span class="s2">def </span><span class="s1">alignV(elements</span><span class="s2">, </span><span class="s1">value):</span>
+    <span class="s2">for </span><span class="s1">elt </span><span class="s2">in </span><span class="s1">elements:</span>
+        <span class="s1">elt.center = (value</span><span class="s2">, </span><span class="s1">elt.centery)</span>
+
+<span class="s2">def </span><span class="s1">alignLeft(elements</span><span class="s2">, </span><span class="s1">value):</span>
+    <span class="s2">for </span><span class="s1">elt </span><span class="s2">in </span><span class="s1">elements:</span>
+        <span class="s1">elt.topleft = (value</span><span class="s2">, </span><span class="s1">elt.top)</span>
+
+<span class="s2">def </span><span class="s1">alignRight(elements</span><span class="s2">, </span><span class="s1">value):</span>
+    <span class="s2">for </span><span class="s1">elt </span><span class="s2">in </span><span class="s1">elements._elements:</span>
+        <span class="s1">elt.topright = (value</span><span class="s2">, </span><span class="s1">elt.top)</span>
+
+<span class="s2">def </span><span class="s1">alignH(elements</span><span class="s2">, </span><span class="s1">value):</span>
+    <span class="s2">for </span><span class="s1">elt </span><span class="s2">in </span><span class="s1">elements:</span>
+        <span class="s1">elt.center = (elt.centerx</span><span class="s2">, </span><span class="s1">value)</span>
+
+<span class="s2">def </span><span class="s1">alignTop(elements</span><span class="s2">, </span><span class="s1">value):</span>
+    <span class="s2">for </span><span class="s1">elt </span><span class="s2">in </span><span class="s1">elements:</span>
+        <span class="s1">elt.topleft = (elt.left</span><span class="s2">, </span><span class="s1">value)</span>
+
+<span class="s2">def </span><span class="s1">alignBottom(elements</span><span class="s2">, </span><span class="s1">value):</span>
+    <span class="s2">for </span><span class="s1">elt </span><span class="s2">in </span><span class="s1">elements:</span>
+        <span class="s1">elt.bottomleft = (elt.left</span><span class="s2">, </span><span class="s1">value)</span>
+
+<span class="s2">def </span><span class="s1">spaceX(elements</span><span class="s2">, </span><span class="s1">x0=-</span><span class="s3">5</span><span class="s2">, </span><span class="s1">gap=</span><span class="s3">5</span><span class="s1">):</span>
+    <span class="s0">&quot;&quot;&quot;Changes the horizontal coordinates of all &lt;elements&gt; to make them 
+    spaced of &lt;gap&gt; each other, beginning at &lt;x0&gt; coordinate&quot;&quot;&quot;</span>
+    <span class="s1">previousX = x0</span>
+    <span class="s2">for </span><span class="s1">elt </span><span class="s2">in </span><span class="s1">elements:</span>
+        <span class="s1">elt.left = previousX + gap</span>
+        <span class="s1">previousX = elt.right</span>
+
+<span class="s2">def </span><span class="s1">spaceY(elements</span><span class="s2">, </span><span class="s1">y0=-</span><span class="s3">5</span><span class="s2">, </span><span class="s1">gap=</span><span class="s3">5</span><span class="s1">):</span>
+    <span class="s0">&quot;&quot;&quot;Changes the vertical coordinates of all &lt;elements&gt; to make them 
+    spaced of &lt;gap&gt; each other, beginning at &lt;y0&gt; coordinate&quot;&quot;&quot;</span>
+    <span class="s1">previousY = y0</span>
+    <span class="s2">for </span><span class="s1">elt </span><span class="s2">in </span><span class="s1">elements:</span>
+        <span class="s1">elt.top = previousY + gap</span>
+        <span class="s1">previousY = elt.bottom</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,403 @@
+<html>
+<head>
+<title>ssl_.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6897bb;}
+.s4 { color: #629755; font-style: italic;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+ssl_.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span>
+<span class="s0">import </span><span class="s1">errno</span>
+<span class="s0">import </span><span class="s1">warnings</span>
+<span class="s0">import </span><span class="s1">hmac</span>
+<span class="s0">import </span><span class="s1">socket</span>
+
+<span class="s0">from </span><span class="s1">binascii </span><span class="s0">import </span><span class="s1">hexlify</span><span class="s0">, </span><span class="s1">unhexlify</span>
+<span class="s0">from </span><span class="s1">hashlib </span><span class="s0">import </span><span class="s1">md5</span><span class="s0">, </span><span class="s1">sha1</span><span class="s0">, </span><span class="s1">sha256</span>
+
+<span class="s0">from </span><span class="s1">..exceptions </span><span class="s0">import </span><span class="s1">SSLError</span><span class="s0">, </span><span class="s1">InsecurePlatformWarning</span><span class="s0">, </span><span class="s1">SNIMissingWarning</span>
+<span class="s0">from </span><span class="s1">..packages </span><span class="s0">import </span><span class="s1">six</span>
+
+
+<span class="s1">SSLContext = </span><span class="s0">None</span>
+<span class="s1">HAS_SNI = </span><span class="s0">False</span>
+<span class="s1">IS_PYOPENSSL = </span><span class="s0">False</span>
+<span class="s1">IS_SECURETRANSPORT = </span><span class="s0">False</span>
+
+<span class="s2"># Maps the length of a digest to a possible hash function producing this digest</span>
+<span class="s1">HASHFUNC_MAP = {</span>
+    <span class="s3">32</span><span class="s1">: md5</span><span class="s0">,</span>
+    <span class="s3">40</span><span class="s1">: sha1</span><span class="s0">,</span>
+    <span class="s3">64</span><span class="s1">: sha256</span><span class="s0">,</span>
+<span class="s1">}</span>
+
+
+<span class="s0">def </span><span class="s1">_const_compare_digest_backport(a</span><span class="s0">, </span><span class="s1">b):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Compare two digests of equal length in constant time. 
+ 
+    The digests must be of type str/bytes. 
+    Returns True if the digests match, and False otherwise. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">result = abs(len(a) - len(b))</span>
+    <span class="s0">for </span><span class="s1">l</span><span class="s0">, </span><span class="s1">r </span><span class="s0">in </span><span class="s1">zip(bytearray(a)</span><span class="s0">, </span><span class="s1">bytearray(b)):</span>
+        <span class="s1">result |= l ^ r</span>
+    <span class="s0">return </span><span class="s1">result == </span><span class="s3">0</span>
+
+
+<span class="s1">_const_compare_digest = getattr(hmac</span><span class="s0">, </span><span class="s5">'compare_digest'</span><span class="s0">,</span>
+                                <span class="s1">_const_compare_digest_backport)</span>
+
+
+<span class="s0">try</span><span class="s1">:  </span><span class="s2"># Test for SSL features</span>
+    <span class="s0">import </span><span class="s1">ssl</span>
+    <span class="s0">from </span><span class="s1">ssl </span><span class="s0">import </span><span class="s1">wrap_socket</span><span class="s0">, </span><span class="s1">CERT_NONE</span><span class="s0">, </span><span class="s1">PROTOCOL_SSLv23</span>
+    <span class="s0">from </span><span class="s1">ssl </span><span class="s0">import </span><span class="s1">HAS_SNI  </span><span class="s2"># Has SNI?</span>
+<span class="s0">except </span><span class="s1">ImportError:</span>
+    <span class="s0">pass</span>
+
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s0">from </span><span class="s1">ssl </span><span class="s0">import </span><span class="s1">OP_NO_SSLv2</span><span class="s0">, </span><span class="s1">OP_NO_SSLv3</span><span class="s0">, </span><span class="s1">OP_NO_COMPRESSION</span>
+<span class="s0">except </span><span class="s1">ImportError:</span>
+    <span class="s1">OP_NO_SSLv2</span><span class="s0">, </span><span class="s1">OP_NO_SSLv3 = </span><span class="s3">0x1000000</span><span class="s0">, </span><span class="s3">0x2000000</span>
+    <span class="s1">OP_NO_COMPRESSION = </span><span class="s3">0x20000</span>
+
+
+<span class="s2"># Python 2.7 doesn't have inet_pton on non-Linux so we fallback on inet_aton in</span>
+<span class="s2"># those cases. This means that we can only detect IPv4 addresses in this case.</span>
+<span class="s0">if </span><span class="s1">hasattr(socket</span><span class="s0">, </span><span class="s5">'inet_pton'</span><span class="s1">):</span>
+    <span class="s1">inet_pton = socket.inet_pton</span>
+<span class="s0">else</span><span class="s1">:</span>
+    <span class="s2"># Maybe we can use ipaddress if the user has urllib3[secure]?</span>
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s0">from </span><span class="s1">pip._vendor </span><span class="s0">import </span><span class="s1">ipaddress</span>
+
+        <span class="s0">def </span><span class="s1">inet_pton(_</span><span class="s0">, </span><span class="s1">host):</span>
+            <span class="s0">if </span><span class="s1">isinstance(host</span><span class="s0">, </span><span class="s1">bytes):</span>
+                <span class="s1">host = host.decode(</span><span class="s5">'ascii'</span><span class="s1">)</span>
+            <span class="s0">return </span><span class="s1">ipaddress.ip_address(host)</span>
+
+    <span class="s0">except </span><span class="s1">ImportError:  </span><span class="s2"># Platform-specific: Non-Linux</span>
+        <span class="s0">def </span><span class="s1">inet_pton(_</span><span class="s0">, </span><span class="s1">host):</span>
+            <span class="s0">return </span><span class="s1">socket.inet_aton(host)</span>
+
+
+<span class="s2"># A secure default.</span>
+<span class="s2"># Sources for more information on TLS ciphers:</span>
+<span class="s2">#</span>
+<span class="s2"># - https://wiki.mozilla.org/Security/Server_Side_TLS</span>
+<span class="s2"># - https://www.ssllabs.com/projects/best-practices/index.html</span>
+<span class="s2"># - https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/</span>
+<span class="s2">#</span>
+<span class="s2"># The general intent is:</span>
+<span class="s2"># - Prefer TLS 1.3 cipher suites</span>
+<span class="s2"># - prefer cipher suites that offer perfect forward secrecy (DHE/ECDHE),</span>
+<span class="s2"># - prefer ECDHE over DHE for better performance,</span>
+<span class="s2"># - prefer any AES-GCM and ChaCha20 over any AES-CBC for better performance and</span>
+<span class="s2">#   security,</span>
+<span class="s2"># - prefer AES-GCM over ChaCha20 because hardware-accelerated AES is common,</span>
+<span class="s2"># - disable NULL authentication, MD5 MACs and DSS for security reasons.</span>
+<span class="s1">DEFAULT_CIPHERS = </span><span class="s5">':'</span><span class="s1">.join([</span>
+    <span class="s5">'TLS13-AES-256-GCM-SHA384'</span><span class="s0">,</span>
+    <span class="s5">'TLS13-CHACHA20-POLY1305-SHA256'</span><span class="s0">,</span>
+    <span class="s5">'TLS13-AES-128-GCM-SHA256'</span><span class="s0">,</span>
+    <span class="s5">'ECDH+AESGCM'</span><span class="s0">,</span>
+    <span class="s5">'ECDH+CHACHA20'</span><span class="s0">,</span>
+    <span class="s5">'DH+AESGCM'</span><span class="s0">,</span>
+    <span class="s5">'DH+CHACHA20'</span><span class="s0">,</span>
+    <span class="s5">'ECDH+AES256'</span><span class="s0">,</span>
+    <span class="s5">'DH+AES256'</span><span class="s0">,</span>
+    <span class="s5">'ECDH+AES128'</span><span class="s0">,</span>
+    <span class="s5">'DH+AES'</span><span class="s0">,</span>
+    <span class="s5">'RSA+AESGCM'</span><span class="s0">,</span>
+    <span class="s5">'RSA+AES'</span><span class="s0">,</span>
+    <span class="s5">'!aNULL'</span><span class="s0">,</span>
+    <span class="s5">'!eNULL'</span><span class="s0">,</span>
+    <span class="s5">'!MD5'</span><span class="s0">,</span>
+<span class="s1">])</span>
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s0">from </span><span class="s1">ssl </span><span class="s0">import </span><span class="s1">SSLContext  </span><span class="s2"># Modern SSL?</span>
+<span class="s0">except </span><span class="s1">ImportError:</span>
+    <span class="s0">import </span><span class="s1">sys</span>
+
+    <span class="s0">class </span><span class="s1">SSLContext(object):  </span><span class="s2"># Platform-specific: Python 2</span>
+        <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">protocol_version):</span>
+            <span class="s1">self.protocol = protocol_version</span>
+            <span class="s2"># Use default values from a real SSLContext</span>
+            <span class="s1">self.check_hostname = </span><span class="s0">False</span>
+            <span class="s1">self.verify_mode = ssl.CERT_NONE</span>
+            <span class="s1">self.ca_certs = </span><span class="s0">None</span>
+            <span class="s1">self.options = </span><span class="s3">0</span>
+            <span class="s1">self.certfile = </span><span class="s0">None</span>
+            <span class="s1">self.keyfile = </span><span class="s0">None</span>
+            <span class="s1">self.ciphers = </span><span class="s0">None</span>
+
+        <span class="s0">def </span><span class="s1">load_cert_chain(self</span><span class="s0">, </span><span class="s1">certfile</span><span class="s0">, </span><span class="s1">keyfile):</span>
+            <span class="s1">self.certfile = certfile</span>
+            <span class="s1">self.keyfile = keyfile</span>
+
+        <span class="s0">def </span><span class="s1">load_verify_locations(self</span><span class="s0">, </span><span class="s1">cafile=</span><span class="s0">None, </span><span class="s1">capath=</span><span class="s0">None</span><span class="s1">):</span>
+            <span class="s1">self.ca_certs = cafile</span>
+
+            <span class="s0">if </span><span class="s1">capath </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s0">raise </span><span class="s1">SSLError(</span><span class="s5">&quot;CA directories not supported in older Pythons&quot;</span><span class="s1">)</span>
+
+        <span class="s0">def </span><span class="s1">set_ciphers(self</span><span class="s0">, </span><span class="s1">cipher_suite):</span>
+            <span class="s1">self.ciphers = cipher_suite</span>
+
+        <span class="s0">def </span><span class="s1">wrap_socket(self</span><span class="s0">, </span><span class="s1">socket</span><span class="s0">, </span><span class="s1">server_hostname=</span><span class="s0">None, </span><span class="s1">server_side=</span><span class="s0">False</span><span class="s1">):</span>
+            <span class="s1">warnings.warn(</span>
+                <span class="s5">'A true SSLContext object is not available. This prevents '</span>
+                <span class="s5">'urllib3 from configuring SSL appropriately and may cause '</span>
+                <span class="s5">'certain SSL connections to fail. You can upgrade to a newer '</span>
+                <span class="s5">'version of Python to solve this. For more information, see '</span>
+                <span class="s5">'https://urllib3.readthedocs.io/en/latest/advanced-usage.html'</span>
+                <span class="s5">'#ssl-warnings'</span><span class="s0">,</span>
+                <span class="s1">InsecurePlatformWarning</span>
+            <span class="s1">)</span>
+            <span class="s1">kwargs = {</span>
+                <span class="s5">'keyfile'</span><span class="s1">: self.keyfile</span><span class="s0">,</span>
+                <span class="s5">'certfile'</span><span class="s1">: self.certfile</span><span class="s0">,</span>
+                <span class="s5">'ca_certs'</span><span class="s1">: self.ca_certs</span><span class="s0">,</span>
+                <span class="s5">'cert_reqs'</span><span class="s1">: self.verify_mode</span><span class="s0">,</span>
+                <span class="s5">'ssl_version'</span><span class="s1">: self.protocol</span><span class="s0">,</span>
+                <span class="s5">'server_side'</span><span class="s1">: server_side</span><span class="s0">,</span>
+            <span class="s1">}</span>
+            <span class="s0">return </span><span class="s1">wrap_socket(socket</span><span class="s0">, </span><span class="s1">ciphers=self.ciphers</span><span class="s0">, </span><span class="s1">**kwargs)</span>
+
+
+<span class="s0">def </span><span class="s1">assert_fingerprint(cert</span><span class="s0">, </span><span class="s1">fingerprint):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Checks if given fingerprint matches the supplied certificate. 
+ 
+    :param cert: 
+        Certificate as bytes object. 
+    :param fingerprint: 
+        Fingerprint as string of hexdigits, can be interspersed by colons. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">fingerprint = fingerprint.replace(</span><span class="s5">':'</span><span class="s0">, </span><span class="s5">''</span><span class="s1">).lower()</span>
+    <span class="s1">digest_length = len(fingerprint)</span>
+    <span class="s1">hashfunc = HASHFUNC_MAP.get(digest_length)</span>
+    <span class="s0">if not </span><span class="s1">hashfunc:</span>
+        <span class="s0">raise </span><span class="s1">SSLError(</span>
+            <span class="s5">'Fingerprint of invalid length: {0}'</span><span class="s1">.format(fingerprint))</span>
+
+    <span class="s2"># We need encode() here for py32; works on py2 and p33.</span>
+    <span class="s1">fingerprint_bytes = unhexlify(fingerprint.encode())</span>
+
+    <span class="s1">cert_digest = hashfunc(cert).digest()</span>
+
+    <span class="s0">if not </span><span class="s1">_const_compare_digest(cert_digest</span><span class="s0">, </span><span class="s1">fingerprint_bytes):</span>
+        <span class="s0">raise </span><span class="s1">SSLError(</span><span class="s5">'Fingerprints did not match. Expected &quot;{0}&quot;, got &quot;{1}&quot;.'</span>
+                       <span class="s1">.format(fingerprint</span><span class="s0">, </span><span class="s1">hexlify(cert_digest)))</span>
+
+
+<span class="s0">def </span><span class="s1">resolve_cert_reqs(candidate):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Resolves the argument to a numeric constant, which can be passed to 
+    the wrap_socket function/method from the ssl module. 
+    Defaults to :data:`ssl.CERT_NONE`. 
+    If given a string it is assumed to be the name of the constant in the 
+    :mod:`ssl` module or its abbreviation. 
+    (So you can specify `REQUIRED` instead of `CERT_REQUIRED`. 
+    If it's neither `None` nor a string we assume it is already the numeric 
+    constant which can directly be passed to wrap_socket. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">if </span><span class="s1">candidate </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s1">CERT_NONE</span>
+
+    <span class="s0">if </span><span class="s1">isinstance(candidate</span><span class="s0">, </span><span class="s1">str):</span>
+        <span class="s1">res = getattr(ssl</span><span class="s0">, </span><span class="s1">candidate</span><span class="s0">, None</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">res </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">res = getattr(ssl</span><span class="s0">, </span><span class="s5">'CERT_' </span><span class="s1">+ candidate)</span>
+        <span class="s0">return </span><span class="s1">res</span>
+
+    <span class="s0">return </span><span class="s1">candidate</span>
+
+
+<span class="s0">def </span><span class="s1">resolve_ssl_version(candidate):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    like resolve_cert_reqs 
+    &quot;&quot;&quot;</span>
+    <span class="s0">if </span><span class="s1">candidate </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s1">PROTOCOL_SSLv23</span>
+
+    <span class="s0">if </span><span class="s1">isinstance(candidate</span><span class="s0">, </span><span class="s1">str):</span>
+        <span class="s1">res = getattr(ssl</span><span class="s0">, </span><span class="s1">candidate</span><span class="s0">, None</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">res </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">res = getattr(ssl</span><span class="s0">, </span><span class="s5">'PROTOCOL_' </span><span class="s1">+ candidate)</span>
+        <span class="s0">return </span><span class="s1">res</span>
+
+    <span class="s0">return </span><span class="s1">candidate</span>
+
+
+<span class="s0">def </span><span class="s1">create_urllib3_context(ssl_version=</span><span class="s0">None, </span><span class="s1">cert_reqs=</span><span class="s0">None,</span>
+                           <span class="s1">options=</span><span class="s0">None, </span><span class="s1">ciphers=</span><span class="s0">None</span><span class="s1">):</span>
+    <span class="s4">&quot;&quot;&quot;All arguments have the same meaning as ``ssl_wrap_socket``. 
+ 
+    By default, this function does a lot of the same work that 
+    ``ssl.create_default_context`` does on Python 3.4+. It: 
+ 
+    - Disables SSLv2, SSLv3, and compression 
+    - Sets a restricted set of server ciphers 
+ 
+    If you wish to enable SSLv3, you can do:: 
+ 
+        from pip._vendor.urllib3.util import ssl_ 
+        context = ssl_.create_urllib3_context() 
+        context.options &amp;= ~ssl_.OP_NO_SSLv3 
+ 
+    You can do the same to enable compression (substituting ``COMPRESSION`` 
+    for ``SSLv3`` in the last line above). 
+ 
+    :param ssl_version: 
+        The desired protocol version to use. This will default to 
+        PROTOCOL_SSLv23 which will negotiate the highest protocol that both 
+        the server and your installation of OpenSSL support. 
+    :param cert_reqs: 
+        Whether to require the certificate verification. This defaults to 
+        ``ssl.CERT_REQUIRED``. 
+    :param options: 
+        Specific OpenSSL options. These default to ``ssl.OP_NO_SSLv2``, 
+        ``ssl.OP_NO_SSLv3``, ``ssl.OP_NO_COMPRESSION``. 
+    :param ciphers: 
+        Which cipher suites to allow the server to select. 
+    :returns: 
+        Constructed SSLContext object with specified options 
+    :rtype: SSLContext 
+    &quot;&quot;&quot;</span>
+    <span class="s1">context = SSLContext(ssl_version </span><span class="s0">or </span><span class="s1">ssl.PROTOCOL_SSLv23)</span>
+
+    <span class="s1">context.set_ciphers(ciphers </span><span class="s0">or </span><span class="s1">DEFAULT_CIPHERS)</span>
+
+    <span class="s2"># Setting the default here, as we may have no ssl module on import</span>
+    <span class="s1">cert_reqs = ssl.CERT_REQUIRED </span><span class="s0">if </span><span class="s1">cert_reqs </span><span class="s0">is None else </span><span class="s1">cert_reqs</span>
+
+    <span class="s0">if </span><span class="s1">options </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s1">options = </span><span class="s3">0</span>
+        <span class="s2"># SSLv2 is easily broken and is considered harmful and dangerous</span>
+        <span class="s1">options |= OP_NO_SSLv2</span>
+        <span class="s2"># SSLv3 has several problems and is now dangerous</span>
+        <span class="s1">options |= OP_NO_SSLv3</span>
+        <span class="s2"># Disable compression to prevent CRIME attacks for OpenSSL 1.0+</span>
+        <span class="s2"># (issue #309)</span>
+        <span class="s1">options |= OP_NO_COMPRESSION</span>
+
+    <span class="s1">context.options |= options</span>
+
+    <span class="s1">context.verify_mode = cert_reqs</span>
+    <span class="s0">if </span><span class="s1">getattr(context</span><span class="s0">, </span><span class="s5">'check_hostname'</span><span class="s0">, None</span><span class="s1">) </span><span class="s0">is not None</span><span class="s1">:  </span><span class="s2"># Platform-specific: Python 3.2</span>
+        <span class="s2"># We do our own verification, including fingerprints and alternative</span>
+        <span class="s2"># hostnames. So disable it here</span>
+        <span class="s1">context.check_hostname = </span><span class="s0">False</span>
+    <span class="s0">return </span><span class="s1">context</span>
+
+
+<span class="s0">def </span><span class="s1">ssl_wrap_socket(sock</span><span class="s0">, </span><span class="s1">keyfile=</span><span class="s0">None, </span><span class="s1">certfile=</span><span class="s0">None, </span><span class="s1">cert_reqs=</span><span class="s0">None,</span>
+                    <span class="s1">ca_certs=</span><span class="s0">None, </span><span class="s1">server_hostname=</span><span class="s0">None,</span>
+                    <span class="s1">ssl_version=</span><span class="s0">None, </span><span class="s1">ciphers=</span><span class="s0">None, </span><span class="s1">ssl_context=</span><span class="s0">None,</span>
+                    <span class="s1">ca_cert_dir=</span><span class="s0">None</span><span class="s1">):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    All arguments except for server_hostname, ssl_context, and ca_cert_dir have 
+    the same meaning as they do when using :func:`ssl.wrap_socket`. 
+ 
+    :param server_hostname: 
+        When SNI is supported, the expected hostname of the certificate 
+    :param ssl_context: 
+        A pre-made :class:`SSLContext` object. If none is provided, one will 
+        be created using :func:`create_urllib3_context`. 
+    :param ciphers: 
+        A string of ciphers we wish the client to support. 
+    :param ca_cert_dir: 
+        A directory containing CA certificates in multiple separate files, as 
+        supported by OpenSSL's -CApath flag or the capath argument to 
+        SSLContext.load_verify_locations(). 
+    &quot;&quot;&quot;</span>
+    <span class="s1">context = ssl_context</span>
+    <span class="s0">if </span><span class="s1">context </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s2"># Note: This branch of code and all the variables in it are no longer</span>
+        <span class="s2"># used by urllib3 itself. We should consider deprecating and removing</span>
+        <span class="s2"># this code.</span>
+        <span class="s1">context = create_urllib3_context(ssl_version</span><span class="s0">, </span><span class="s1">cert_reqs</span><span class="s0">,</span>
+                                         <span class="s1">ciphers=ciphers)</span>
+
+    <span class="s0">if </span><span class="s1">ca_certs </span><span class="s0">or </span><span class="s1">ca_cert_dir:</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">context.load_verify_locations(ca_certs</span><span class="s0">, </span><span class="s1">ca_cert_dir)</span>
+        <span class="s0">except </span><span class="s1">IOError </span><span class="s0">as </span><span class="s1">e:  </span><span class="s2"># Platform-specific: Python 2.7</span>
+            <span class="s0">raise </span><span class="s1">SSLError(e)</span>
+        <span class="s2"># Py33 raises FileNotFoundError which subclasses OSError</span>
+        <span class="s2"># These are not equivalent unless we check the errno attribute</span>
+        <span class="s0">except </span><span class="s1">OSError </span><span class="s0">as </span><span class="s1">e:  </span><span class="s2"># Platform-specific: Python 3.3 and beyond</span>
+            <span class="s0">if </span><span class="s1">e.errno == errno.ENOENT:</span>
+                <span class="s0">raise </span><span class="s1">SSLError(e)</span>
+            <span class="s0">raise</span>
+    <span class="s0">elif </span><span class="s1">getattr(context</span><span class="s0">, </span><span class="s5">'load_default_certs'</span><span class="s0">, None</span><span class="s1">) </span><span class="s0">is not None</span><span class="s1">:</span>
+        <span class="s2"># try to load OS default certs; works well on Windows (require Python3.4+)</span>
+        <span class="s1">context.load_default_certs()</span>
+
+    <span class="s0">if </span><span class="s1">certfile:</span>
+        <span class="s1">context.load_cert_chain(certfile</span><span class="s0">, </span><span class="s1">keyfile)</span>
+
+    <span class="s2"># If we detect server_hostname is an IP address then the SNI</span>
+    <span class="s2"># extension should not be used according to RFC3546 Section 3.1</span>
+    <span class="s2"># We shouldn't warn the user if SNI isn't available but we would</span>
+    <span class="s2"># not be using SNI anyways due to IP address for server_hostname.</span>
+    <span class="s0">if </span><span class="s1">((server_hostname </span><span class="s0">is not None and not </span><span class="s1">is_ipaddress(server_hostname))</span>
+            <span class="s0">or </span><span class="s1">IS_SECURETRANSPORT):</span>
+        <span class="s0">if </span><span class="s1">HAS_SNI </span><span class="s0">and </span><span class="s1">server_hostname </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">context.wrap_socket(sock</span><span class="s0">, </span><span class="s1">server_hostname=server_hostname)</span>
+
+        <span class="s1">warnings.warn(</span>
+            <span class="s5">'An HTTPS request has been made, but the SNI (Server Name '</span>
+            <span class="s5">'Indication) extension to TLS is not available on this platform. '</span>
+            <span class="s5">'This may cause the server to present an incorrect TLS '</span>
+            <span class="s5">'certificate, which can cause validation failures. You can upgrade to '</span>
+            <span class="s5">'a newer version of Python to solve this. For more information, see '</span>
+            <span class="s5">'https://urllib3.readthedocs.io/en/latest/advanced-usage.html'</span>
+            <span class="s5">'#ssl-warnings'</span><span class="s0">,</span>
+            <span class="s1">SNIMissingWarning</span>
+        <span class="s1">)</span>
+
+    <span class="s0">return </span><span class="s1">context.wrap_socket(sock)</span>
+
+
+<span class="s0">def </span><span class="s1">is_ipaddress(hostname):</span>
+    <span class="s4">&quot;&quot;&quot;Detects whether the hostname given is an IP address. 
+ 
+    :param str hostname: Hostname to examine. 
+    :return: True if the hostname is an IP address, False otherwise. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">if </span><span class="s1">six.PY3 </span><span class="s0">and </span><span class="s1">isinstance(hostname</span><span class="s0">, </span><span class="s1">bytes):</span>
+        <span class="s2"># IDN A-label bytes are ASCII compatible.</span>
+        <span class="s1">hostname = hostname.decode(</span><span class="s5">'ascii'</span><span class="s1">)</span>
+
+    <span class="s1">families = [socket.AF_INET]</span>
+    <span class="s0">if </span><span class="s1">hasattr(socket</span><span class="s0">, </span><span class="s5">'AF_INET6'</span><span class="s1">):</span>
+        <span class="s1">families.append(socket.AF_INET6)</span>
+
+    <span class="s0">for </span><span class="s1">af </span><span class="s0">in </span><span class="s1">families:</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">inet_pton(af</span><span class="s0">, </span><span class="s1">hostname)</span>
+        <span class="s0">except </span><span class="s1">(socket.error</span><span class="s0">, </span><span class="s1">ValueError</span><span class="s0">, </span><span class="s1">OSError):</span>
+            <span class="s0">pass</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return True</span>
+    <span class="s0">return False</span>
+</pre>
+</body>
+</html>

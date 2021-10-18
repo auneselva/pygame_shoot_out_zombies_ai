@@ -1,0 +1,918 @@
+<html>
+<head>
+<title>sanitizer.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #808080;}
+.s4 { color: #629755; font-style: italic;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+sanitizer.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span><span class="s0">, </span><span class="s1">division</span><span class="s0">, </span><span class="s1">unicode_literals</span>
+
+<span class="s0">import </span><span class="s1">re</span>
+<span class="s0">from </span><span class="s1">xml.sax.saxutils </span><span class="s0">import </span><span class="s1">escape</span><span class="s0">, </span><span class="s1">unescape</span>
+
+<span class="s0">from </span><span class="s1">pip._vendor.six.moves </span><span class="s0">import </span><span class="s1">urllib_parse </span><span class="s0">as </span><span class="s1">urlparse</span>
+
+<span class="s0">from </span><span class="s1">. </span><span class="s0">import </span><span class="s1">base</span>
+<span class="s0">from </span><span class="s1">..constants </span><span class="s0">import </span><span class="s1">namespaces</span><span class="s0">, </span><span class="s1">prefixes</span>
+
+<span class="s1">__all__ = [</span><span class="s2">&quot;Filter&quot;</span><span class="s1">]</span>
+
+
+<span class="s1">allowed_elements = frozenset((</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'a'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'abbr'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'acronym'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'address'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'area'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'article'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'aside'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'audio'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'b'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'big'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'blockquote'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'br'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'button'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'canvas'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'caption'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'center'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'cite'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'code'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'col'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'colgroup'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'command'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'datagrid'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'datalist'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'dd'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'del'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'details'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'dfn'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'dialog'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'dir'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'div'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'dl'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'dt'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'em'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'event-source'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'fieldset'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'figcaption'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'figure'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'footer'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'font'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'form'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'header'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'h1'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'h2'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'h3'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'h4'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'h5'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'h6'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'hr'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'i'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'img'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'input'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'ins'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'keygen'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'kbd'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'label'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'legend'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'li'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'m'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'map'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'menu'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'meter'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'multicol'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'nav'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'nextid'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'ol'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'output'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'optgroup'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'option'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'p'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'pre'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'progress'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'q'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'s'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'samp'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'section'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'select'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'small'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'sound'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'source'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'spacer'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'span'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'strike'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'strong'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'sub'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'sup'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'table'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'tbody'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'td'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'textarea'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'time'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'tfoot'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'th'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'thead'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'tr'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'tt'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'u'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'ul'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'var'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'html'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'video'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'maction'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'math'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'merror'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mfrac'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mi'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mmultiscripts'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mn'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mo'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mover'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mpadded'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mphantom'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mprescripts'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mroot'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mrow'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mspace'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'msqrt'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mstyle'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'msub'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'msubsup'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'msup'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mtable'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mtd'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mtext'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mtr'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'munder'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'munderover'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'mathml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'none'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'a'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'animate'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'animateColor'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'animateMotion'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'animateTransform'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'clipPath'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'circle'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'defs'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'desc'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'ellipse'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'font-face'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'font-face-name'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'font-face-src'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'g'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'glyph'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'hkern'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'linearGradient'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'line'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'marker'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'metadata'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'missing-glyph'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'mpath'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'path'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'polygon'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'polyline'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'radialGradient'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'rect'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'set'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'stop'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'svg'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'switch'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'text'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'title'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'tspan'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'svg'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'use'</span><span class="s1">)</span><span class="s0">,</span>
+<span class="s1">))</span>
+
+<span class="s1">allowed_attributes = frozenset((</span>
+    <span class="s3"># HTML attributes</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'abbr'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'accept'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'accept-charset'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'accesskey'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'action'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'align'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'alt'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'autocomplete'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'autofocus'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'axis'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'background'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'balance'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'bgcolor'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'bgproperties'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'border'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'bordercolor'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'bordercolordark'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'bordercolorlight'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'bottompadding'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'cellpadding'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'cellspacing'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'ch'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'challenge'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'char'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'charoff'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'choff'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'charset'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'checked'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'cite'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'class'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'clear'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'color'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'cols'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'colspan'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'compact'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'contenteditable'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'controls'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'coords'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'data'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'datafld'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'datapagesize'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'datasrc'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'datetime'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'default'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'delay'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'dir'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'disabled'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'draggable'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'dynsrc'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'enctype'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'end'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'face'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'for'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'form'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'frame'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'galleryimg'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'gutter'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'headers'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'height'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'hidefocus'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'hidden'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'high'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'href'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'hreflang'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'hspace'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'icon'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'id'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'inputmode'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'ismap'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'keytype'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'label'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'leftspacing'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'lang'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'list'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'longdesc'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'loop'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'loopcount'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'loopend'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'loopstart'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'low'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'lowsrc'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'max'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'maxlength'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'media'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'method'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'min'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'multiple'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'name'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'nohref'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'noshade'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'nowrap'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'open'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'optimum'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'pattern'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'ping'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'point-size'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'poster'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'pqg'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'preload'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'prompt'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'radiogroup'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'readonly'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rel'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'repeat-max'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'repeat-min'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'replace'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'required'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rev'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rightspacing'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rows'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rowspan'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rules'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'scope'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'selected'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'shape'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'size'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'span'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'src'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'start'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'step'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'style'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'summary'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'suppress'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'tabindex'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'target'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'template'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'title'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'toppadding'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'type'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'unselectable'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'usemap'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'urn'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'valign'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'value'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'variable'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'volume'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'vspace'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'vrml'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'width'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'wrap'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'lang'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s3"># MathML attributes</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'actiontype'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'align'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'columnalign'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'columnalign'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'columnalign'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'columnlines'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'columnspacing'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'columnspan'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'depth'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'display'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'displaystyle'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'equalcolumns'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'equalrows'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'fence'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'fontstyle'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'fontweight'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'frame'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'height'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'linethickness'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'lspace'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'mathbackground'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'mathcolor'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'mathvariant'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'mathvariant'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'maxsize'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'minsize'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'other'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rowalign'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rowalign'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rowalign'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rowlines'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rowspacing'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rowspan'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rspace'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'scriptlevel'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'selection'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'separator'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stretchy'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'width'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'width'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'href'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'show'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'type'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s3"># SVG attributes</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'accent-height'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'accumulate'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'additive'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'alphabetic'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'arabic-form'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'ascent'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'attributeName'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'attributeType'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'baseProfile'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'bbox'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'begin'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'by'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'calcMode'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'cap-height'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'class'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'clip-path'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'color'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'color-rendering'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'content'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'cx'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'cy'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'d'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'dx'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'dy'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'descent'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'display'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'dur'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'end'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'fill'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'fill-opacity'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'fill-rule'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'font-family'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'font-size'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'font-stretch'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'font-style'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'font-variant'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'font-weight'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'from'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'fx'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'fy'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'g1'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'g2'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'glyph-name'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'gradientUnits'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'hanging'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'height'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'horiz-adv-x'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'horiz-origin-x'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'id'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'ideographic'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'k'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'keyPoints'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'keySplines'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'keyTimes'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'lang'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'marker-end'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'marker-mid'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'marker-start'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'markerHeight'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'markerUnits'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'markerWidth'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'mathematical'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'max'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'min'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'name'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'offset'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'opacity'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'orient'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'origin'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'overline-position'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'overline-thickness'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'panose-1'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'path'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'pathLength'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'points'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'preserveAspectRatio'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'r'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'refX'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'refY'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'repeatCount'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'repeatDur'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'requiredExtensions'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'requiredFeatures'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'restart'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rotate'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'rx'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'ry'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'slope'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stemh'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stemv'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stop-color'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stop-opacity'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'strikethrough-position'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'strikethrough-thickness'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stroke'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stroke-dasharray'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stroke-dashoffset'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stroke-linecap'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stroke-linejoin'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stroke-miterlimit'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stroke-opacity'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stroke-width'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'systemLanguage'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'target'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'text-anchor'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'to'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'transform'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'type'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'u1'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'u2'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'underline-position'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'underline-thickness'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'unicode'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'unicode-range'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'units-per-em'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'values'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'version'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'viewBox'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'visibility'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'width'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'widths'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'x'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'x-height'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'x1'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'x2'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'actuate'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'arcrole'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'href'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'role'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'show'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'title'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'type'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'base'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'lang'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'space'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'y'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'y1'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'y2'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'zoomAndPan'</span><span class="s1">)</span><span class="s0">,</span>
+<span class="s1">))</span>
+
+<span class="s1">attr_val_is_uri = frozenset((</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'href'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'src'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'cite'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'action'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'longdesc'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'poster'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'background'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'datasrc'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'dynsrc'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'lowsrc'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'ping'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'href'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(namespaces[</span><span class="s2">'xml'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'base'</span><span class="s1">)</span><span class="s0">,</span>
+<span class="s1">))</span>
+
+<span class="s1">svg_attr_val_allows_ref = frozenset((</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'clip-path'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'color-profile'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'cursor'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'fill'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'filter'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'marker'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'marker-start'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'marker-mid'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'marker-end'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'mask'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'stroke'</span><span class="s1">)</span><span class="s0">,</span>
+<span class="s1">))</span>
+
+<span class="s1">svg_allow_local_href = frozenset((</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'altGlyph'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'animate'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'animateColor'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'animateMotion'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'animateTransform'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'cursor'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'feImage'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'filter'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'linearGradient'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'pattern'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'radialGradient'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'textpath'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'tref'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'set'</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s0">None, </span><span class="s2">'use'</span><span class="s1">)</span>
+<span class="s1">))</span>
+
+<span class="s1">allowed_css_properties = frozenset((</span>
+    <span class="s2">'azimuth'</span><span class="s0">,</span>
+    <span class="s2">'background-color'</span><span class="s0">,</span>
+    <span class="s2">'border-bottom-color'</span><span class="s0">,</span>
+    <span class="s2">'border-collapse'</span><span class="s0">,</span>
+    <span class="s2">'border-color'</span><span class="s0">,</span>
+    <span class="s2">'border-left-color'</span><span class="s0">,</span>
+    <span class="s2">'border-right-color'</span><span class="s0">,</span>
+    <span class="s2">'border-top-color'</span><span class="s0">,</span>
+    <span class="s2">'clear'</span><span class="s0">,</span>
+    <span class="s2">'color'</span><span class="s0">,</span>
+    <span class="s2">'cursor'</span><span class="s0">,</span>
+    <span class="s2">'direction'</span><span class="s0">,</span>
+    <span class="s2">'display'</span><span class="s0">,</span>
+    <span class="s2">'elevation'</span><span class="s0">,</span>
+    <span class="s2">'float'</span><span class="s0">,</span>
+    <span class="s2">'font'</span><span class="s0">,</span>
+    <span class="s2">'font-family'</span><span class="s0">,</span>
+    <span class="s2">'font-size'</span><span class="s0">,</span>
+    <span class="s2">'font-style'</span><span class="s0">,</span>
+    <span class="s2">'font-variant'</span><span class="s0">,</span>
+    <span class="s2">'font-weight'</span><span class="s0">,</span>
+    <span class="s2">'height'</span><span class="s0">,</span>
+    <span class="s2">'letter-spacing'</span><span class="s0">,</span>
+    <span class="s2">'line-height'</span><span class="s0">,</span>
+    <span class="s2">'overflow'</span><span class="s0">,</span>
+    <span class="s2">'pause'</span><span class="s0">,</span>
+    <span class="s2">'pause-after'</span><span class="s0">,</span>
+    <span class="s2">'pause-before'</span><span class="s0">,</span>
+    <span class="s2">'pitch'</span><span class="s0">,</span>
+    <span class="s2">'pitch-range'</span><span class="s0">,</span>
+    <span class="s2">'richness'</span><span class="s0">,</span>
+    <span class="s2">'speak'</span><span class="s0">,</span>
+    <span class="s2">'speak-header'</span><span class="s0">,</span>
+    <span class="s2">'speak-numeral'</span><span class="s0">,</span>
+    <span class="s2">'speak-punctuation'</span><span class="s0">,</span>
+    <span class="s2">'speech-rate'</span><span class="s0">,</span>
+    <span class="s2">'stress'</span><span class="s0">,</span>
+    <span class="s2">'text-align'</span><span class="s0">,</span>
+    <span class="s2">'text-decoration'</span><span class="s0">,</span>
+    <span class="s2">'text-indent'</span><span class="s0">,</span>
+    <span class="s2">'unicode-bidi'</span><span class="s0">,</span>
+    <span class="s2">'vertical-align'</span><span class="s0">,</span>
+    <span class="s2">'voice-family'</span><span class="s0">,</span>
+    <span class="s2">'volume'</span><span class="s0">,</span>
+    <span class="s2">'white-space'</span><span class="s0">,</span>
+    <span class="s2">'width'</span><span class="s0">,</span>
+<span class="s1">))</span>
+
+<span class="s1">allowed_css_keywords = frozenset((</span>
+    <span class="s2">'auto'</span><span class="s0">,</span>
+    <span class="s2">'aqua'</span><span class="s0">,</span>
+    <span class="s2">'black'</span><span class="s0">,</span>
+    <span class="s2">'block'</span><span class="s0">,</span>
+    <span class="s2">'blue'</span><span class="s0">,</span>
+    <span class="s2">'bold'</span><span class="s0">,</span>
+    <span class="s2">'both'</span><span class="s0">,</span>
+    <span class="s2">'bottom'</span><span class="s0">,</span>
+    <span class="s2">'brown'</span><span class="s0">,</span>
+    <span class="s2">'center'</span><span class="s0">,</span>
+    <span class="s2">'collapse'</span><span class="s0">,</span>
+    <span class="s2">'dashed'</span><span class="s0">,</span>
+    <span class="s2">'dotted'</span><span class="s0">,</span>
+    <span class="s2">'fuchsia'</span><span class="s0">,</span>
+    <span class="s2">'gray'</span><span class="s0">,</span>
+    <span class="s2">'green'</span><span class="s0">,</span>
+    <span class="s2">'!important'</span><span class="s0">,</span>
+    <span class="s2">'italic'</span><span class="s0">,</span>
+    <span class="s2">'left'</span><span class="s0">,</span>
+    <span class="s2">'lime'</span><span class="s0">,</span>
+    <span class="s2">'maroon'</span><span class="s0">,</span>
+    <span class="s2">'medium'</span><span class="s0">,</span>
+    <span class="s2">'none'</span><span class="s0">,</span>
+    <span class="s2">'navy'</span><span class="s0">,</span>
+    <span class="s2">'normal'</span><span class="s0">,</span>
+    <span class="s2">'nowrap'</span><span class="s0">,</span>
+    <span class="s2">'olive'</span><span class="s0">,</span>
+    <span class="s2">'pointer'</span><span class="s0">,</span>
+    <span class="s2">'purple'</span><span class="s0">,</span>
+    <span class="s2">'red'</span><span class="s0">,</span>
+    <span class="s2">'right'</span><span class="s0">,</span>
+    <span class="s2">'solid'</span><span class="s0">,</span>
+    <span class="s2">'silver'</span><span class="s0">,</span>
+    <span class="s2">'teal'</span><span class="s0">,</span>
+    <span class="s2">'top'</span><span class="s0">,</span>
+    <span class="s2">'transparent'</span><span class="s0">,</span>
+    <span class="s2">'underline'</span><span class="s0">,</span>
+    <span class="s2">'white'</span><span class="s0">,</span>
+    <span class="s2">'yellow'</span><span class="s0">,</span>
+<span class="s1">))</span>
+
+<span class="s1">allowed_svg_properties = frozenset((</span>
+    <span class="s2">'fill'</span><span class="s0">,</span>
+    <span class="s2">'fill-opacity'</span><span class="s0">,</span>
+    <span class="s2">'fill-rule'</span><span class="s0">,</span>
+    <span class="s2">'stroke'</span><span class="s0">,</span>
+    <span class="s2">'stroke-width'</span><span class="s0">,</span>
+    <span class="s2">'stroke-linecap'</span><span class="s0">,</span>
+    <span class="s2">'stroke-linejoin'</span><span class="s0">,</span>
+    <span class="s2">'stroke-opacity'</span><span class="s0">,</span>
+<span class="s1">))</span>
+
+<span class="s1">allowed_protocols = frozenset((</span>
+    <span class="s2">'ed2k'</span><span class="s0">,</span>
+    <span class="s2">'ftp'</span><span class="s0">,</span>
+    <span class="s2">'http'</span><span class="s0">,</span>
+    <span class="s2">'https'</span><span class="s0">,</span>
+    <span class="s2">'irc'</span><span class="s0">,</span>
+    <span class="s2">'mailto'</span><span class="s0">,</span>
+    <span class="s2">'news'</span><span class="s0">,</span>
+    <span class="s2">'gopher'</span><span class="s0">,</span>
+    <span class="s2">'nntp'</span><span class="s0">,</span>
+    <span class="s2">'telnet'</span><span class="s0">,</span>
+    <span class="s2">'webcal'</span><span class="s0">,</span>
+    <span class="s2">'xmpp'</span><span class="s0">,</span>
+    <span class="s2">'callto'</span><span class="s0">,</span>
+    <span class="s2">'feed'</span><span class="s0">,</span>
+    <span class="s2">'urn'</span><span class="s0">,</span>
+    <span class="s2">'aim'</span><span class="s0">,</span>
+    <span class="s2">'rsync'</span><span class="s0">,</span>
+    <span class="s2">'tag'</span><span class="s0">,</span>
+    <span class="s2">'ssh'</span><span class="s0">,</span>
+    <span class="s2">'sftp'</span><span class="s0">,</span>
+    <span class="s2">'rtsp'</span><span class="s0">,</span>
+    <span class="s2">'afs'</span><span class="s0">,</span>
+    <span class="s2">'data'</span><span class="s0">,</span>
+<span class="s1">))</span>
+
+<span class="s1">allowed_content_types = frozenset((</span>
+    <span class="s2">'image/png'</span><span class="s0">,</span>
+    <span class="s2">'image/jpeg'</span><span class="s0">,</span>
+    <span class="s2">'image/gif'</span><span class="s0">,</span>
+    <span class="s2">'image/webp'</span><span class="s0">,</span>
+    <span class="s2">'image/bmp'</span><span class="s0">,</span>
+    <span class="s2">'text/plain'</span><span class="s0">,</span>
+<span class="s1">))</span>
+
+
+<span class="s1">data_content_type = re.compile(</span><span class="s2">r''' 
+                                ^ 
+                                # Match a content type &lt;application&gt;/&lt;type&gt; 
+                                (?P&lt;content_type&gt;[-a-zA-Z0-9.]+/[-a-zA-Z0-9.]+) 
+                                # Match any character set and encoding 
+                                (?:(?:;charset=(?:[-a-zA-Z0-9]+)(?:;(?:base64))?) 
+                                  |(?:;(?:base64))?(?:;charset=(?:[-a-zA-Z0-9]+))?) 
+                                # Assume the rest is data 
+                                ,.* 
+                                $ 
+                                '''</span><span class="s0">,</span>
+                               <span class="s1">re.VERBOSE)</span>
+
+
+<span class="s0">class </span><span class="s1">Filter(base.Filter):</span>
+    <span class="s4">&quot;&quot;&quot;Sanitizes token stream of XHTML+MathML+SVG and of inline style attributes&quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">source</span><span class="s0">,</span>
+                 <span class="s1">allowed_elements=allowed_elements</span><span class="s0">,</span>
+                 <span class="s1">allowed_attributes=allowed_attributes</span><span class="s0">,</span>
+                 <span class="s1">allowed_css_properties=allowed_css_properties</span><span class="s0">,</span>
+                 <span class="s1">allowed_css_keywords=allowed_css_keywords</span><span class="s0">,</span>
+                 <span class="s1">allowed_svg_properties=allowed_svg_properties</span><span class="s0">,</span>
+                 <span class="s1">allowed_protocols=allowed_protocols</span><span class="s0">,</span>
+                 <span class="s1">allowed_content_types=allowed_content_types</span><span class="s0">,</span>
+                 <span class="s1">attr_val_is_uri=attr_val_is_uri</span><span class="s0">,</span>
+                 <span class="s1">svg_attr_val_allows_ref=svg_attr_val_allows_ref</span><span class="s0">,</span>
+                 <span class="s1">svg_allow_local_href=svg_allow_local_href):</span>
+        <span class="s4">&quot;&quot;&quot;Creates a Filter 
+ 
+        :arg allowed_elements: set of elements to allow--everything else will 
+            be escaped 
+ 
+        :arg allowed_attributes: set of attributes to allow in 
+            elements--everything else will be stripped 
+ 
+        :arg allowed_css_properties: set of CSS properties to allow--everything 
+            else will be stripped 
+ 
+        :arg allowed_css_keywords: set of CSS keywords to allow--everything 
+            else will be stripped 
+ 
+        :arg allowed_svg_properties: set of SVG properties to allow--everything 
+            else will be removed 
+ 
+        :arg allowed_protocols: set of allowed protocols for URIs 
+ 
+        :arg allowed_content_types: set of allowed content types for ``data`` URIs. 
+ 
+        :arg attr_val_is_uri: set of attributes that have URI values--values 
+            that have a scheme not listed in ``allowed_protocols`` are removed 
+ 
+        :arg svg_attr_val_allows_ref: set of SVG attributes that can have 
+            references 
+ 
+        :arg svg_allow_local_href: set of SVG elements that can have local 
+            hrefs--these are removed 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super(Filter</span><span class="s0">, </span><span class="s1">self).__init__(source)</span>
+        <span class="s1">self.allowed_elements = allowed_elements</span>
+        <span class="s1">self.allowed_attributes = allowed_attributes</span>
+        <span class="s1">self.allowed_css_properties = allowed_css_properties</span>
+        <span class="s1">self.allowed_css_keywords = allowed_css_keywords</span>
+        <span class="s1">self.allowed_svg_properties = allowed_svg_properties</span>
+        <span class="s1">self.allowed_protocols = allowed_protocols</span>
+        <span class="s1">self.allowed_content_types = allowed_content_types</span>
+        <span class="s1">self.attr_val_is_uri = attr_val_is_uri</span>
+        <span class="s1">self.svg_attr_val_allows_ref = svg_attr_val_allows_ref</span>
+        <span class="s1">self.svg_allow_local_href = svg_allow_local_href</span>
+
+    <span class="s0">def </span><span class="s1">__iter__(self):</span>
+        <span class="s0">for </span><span class="s1">token </span><span class="s0">in </span><span class="s1">base.Filter.__iter__(self):</span>
+            <span class="s1">token = self.sanitize_token(token)</span>
+            <span class="s0">if </span><span class="s1">token:</span>
+                <span class="s0">yield </span><span class="s1">token</span>
+
+    <span class="s3"># Sanitize the +html+, escaping all elements not in ALLOWED_ELEMENTS, and</span>
+    <span class="s3"># stripping out all attributes not in ALLOWED_ATTRIBUTES. Style attributes</span>
+    <span class="s3"># are parsed, and a restricted set, specified by ALLOWED_CSS_PROPERTIES and</span>
+    <span class="s3"># ALLOWED_CSS_KEYWORDS, are allowed through. attributes in ATTR_VAL_IS_URI</span>
+    <span class="s3"># are scanned, and only URI schemes specified in ALLOWED_PROTOCOLS are</span>
+    <span class="s3"># allowed.</span>
+    <span class="s3">#</span>
+    <span class="s3">#   sanitize_html('&lt;script&gt; do_nasty_stuff() &lt;/script&gt;')</span>
+    <span class="s3">#    =&gt; &amp;lt;script&gt; do_nasty_stuff() &amp;lt;/script&gt;</span>
+    <span class="s3">#   sanitize_html('&lt;a href=&quot;javascript: sucker();&quot;&gt;Click here for $100&lt;/a&gt;')</span>
+    <span class="s3">#    =&gt; &lt;a&gt;Click here for $100&lt;/a&gt;</span>
+    <span class="s0">def </span><span class="s1">sanitize_token(self</span><span class="s0">, </span><span class="s1">token):</span>
+
+        <span class="s3"># accommodate filters which use token_type differently</span>
+        <span class="s1">token_type = token[</span><span class="s2">&quot;type&quot;</span><span class="s1">]</span>
+        <span class="s0">if </span><span class="s1">token_type </span><span class="s0">in </span><span class="s1">(</span><span class="s2">&quot;StartTag&quot;</span><span class="s0">, </span><span class="s2">&quot;EndTag&quot;</span><span class="s0">, </span><span class="s2">&quot;EmptyTag&quot;</span><span class="s1">):</span>
+            <span class="s1">name = token[</span><span class="s2">&quot;name&quot;</span><span class="s1">]</span>
+            <span class="s1">namespace = token[</span><span class="s2">&quot;namespace&quot;</span><span class="s1">]</span>
+            <span class="s0">if </span><span class="s1">((namespace</span><span class="s0">, </span><span class="s1">name) </span><span class="s0">in </span><span class="s1">self.allowed_elements </span><span class="s0">or</span>
+                <span class="s1">(namespace </span><span class="s0">is None and</span>
+                 <span class="s1">(namespaces[</span><span class="s2">&quot;html&quot;</span><span class="s1">]</span><span class="s0">, </span><span class="s1">name) </span><span class="s0">in </span><span class="s1">self.allowed_elements)):</span>
+                <span class="s0">return </span><span class="s1">self.allowed_token(token)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s0">return </span><span class="s1">self.disallowed_token(token)</span>
+        <span class="s0">elif </span><span class="s1">token_type == </span><span class="s2">&quot;Comment&quot;</span><span class="s1">:</span>
+            <span class="s0">pass</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">token</span>
+
+    <span class="s0">def </span><span class="s1">allowed_token(self</span><span class="s0">, </span><span class="s1">token):</span>
+        <span class="s0">if </span><span class="s2">&quot;data&quot; </span><span class="s0">in </span><span class="s1">token:</span>
+            <span class="s1">attrs = token[</span><span class="s2">&quot;data&quot;</span><span class="s1">]</span>
+            <span class="s1">attr_names = set(attrs.keys())</span>
+
+            <span class="s3"># Remove forbidden attributes</span>
+            <span class="s0">for </span><span class="s1">to_remove </span><span class="s0">in </span><span class="s1">(attr_names - self.allowed_attributes):</span>
+                <span class="s0">del </span><span class="s1">token[</span><span class="s2">&quot;data&quot;</span><span class="s1">][to_remove]</span>
+                <span class="s1">attr_names.remove(to_remove)</span>
+
+            <span class="s3"># Remove attributes with disallowed URL values</span>
+            <span class="s0">for </span><span class="s1">attr </span><span class="s0">in </span><span class="s1">(attr_names &amp; self.attr_val_is_uri):</span>
+                <span class="s0">assert </span><span class="s1">attr </span><span class="s0">in </span><span class="s1">attrs</span>
+                <span class="s3"># I don't have a clue where this regexp comes from or why it matches those</span>
+                <span class="s3"># characters, nor why we call unescape. I just know it's always been here.</span>
+                <span class="s3"># Should you be worried by this comment in a sanitizer? Yes. On the other hand, all</span>
+                <span class="s3"># this will do is remove *more* than it otherwise would.</span>
+                <span class="s1">val_unescaped = re.sub(</span><span class="s2">&quot;[`</span><span class="s0">\x00</span><span class="s2">-</span><span class="s0">\x20\x7f</span><span class="s2">-</span><span class="s0">\xa0\\</span><span class="s2">s]+&quot;</span><span class="s0">, </span><span class="s2">''</span><span class="s0">,</span>
+                                       <span class="s1">unescape(attrs[attr])).lower()</span>
+                <span class="s3"># remove replacement characters from unescaped characters</span>
+                <span class="s1">val_unescaped = val_unescaped.replace(</span><span class="s2">&quot;</span><span class="s0">\ufffd</span><span class="s2">&quot;</span><span class="s0">, </span><span class="s2">&quot;&quot;</span><span class="s1">)</span>
+                <span class="s0">try</span><span class="s1">:</span>
+                    <span class="s1">uri = urlparse.urlparse(val_unescaped)</span>
+                <span class="s0">except </span><span class="s1">ValueError:</span>
+                    <span class="s1">uri = </span><span class="s0">None</span>
+                    <span class="s0">del </span><span class="s1">attrs[attr]</span>
+                <span class="s0">if </span><span class="s1">uri </span><span class="s0">and </span><span class="s1">uri.scheme:</span>
+                    <span class="s0">if </span><span class="s1">uri.scheme </span><span class="s0">not in </span><span class="s1">self.allowed_protocols:</span>
+                        <span class="s0">del </span><span class="s1">attrs[attr]</span>
+                    <span class="s0">if </span><span class="s1">uri.scheme == </span><span class="s2">'data'</span><span class="s1">:</span>
+                        <span class="s1">m = data_content_type.match(uri.path)</span>
+                        <span class="s0">if not </span><span class="s1">m:</span>
+                            <span class="s0">del </span><span class="s1">attrs[attr]</span>
+                        <span class="s0">elif </span><span class="s1">m.group(</span><span class="s2">'content_type'</span><span class="s1">) </span><span class="s0">not in </span><span class="s1">self.allowed_content_types:</span>
+                            <span class="s0">del </span><span class="s1">attrs[attr]</span>
+
+            <span class="s0">for </span><span class="s1">attr </span><span class="s0">in </span><span class="s1">self.svg_attr_val_allows_ref:</span>
+                <span class="s0">if </span><span class="s1">attr </span><span class="s0">in </span><span class="s1">attrs:</span>
+                    <span class="s1">attrs[attr] = re.sub(</span><span class="s2">r'url\s*\(\s*[^#\s][^)]+?\)'</span><span class="s0">,</span>
+                                         <span class="s2">' '</span><span class="s0">,</span>
+                                         <span class="s1">unescape(attrs[attr]))</span>
+            <span class="s0">if </span><span class="s1">(token[</span><span class="s2">&quot;name&quot;</span><span class="s1">] </span><span class="s0">in </span><span class="s1">self.svg_allow_local_href </span><span class="s0">and</span>
+                <span class="s1">(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'href'</span><span class="s1">) </span><span class="s0">in </span><span class="s1">attrs </span><span class="s0">and </span><span class="s1">re.search(</span><span class="s2">r'^\s*[^#\s].*'</span><span class="s0">,</span>
+                                                                     <span class="s1">attrs[(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'href'</span><span class="s1">)])):</span>
+                <span class="s0">del </span><span class="s1">attrs[(namespaces[</span><span class="s2">'xlink'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'href'</span><span class="s1">)]</span>
+            <span class="s0">if </span><span class="s1">(</span><span class="s0">None, </span><span class="s2">'style'</span><span class="s1">) </span><span class="s0">in </span><span class="s1">attrs:</span>
+                <span class="s1">attrs[(</span><span class="s0">None, </span><span class="s2">'style'</span><span class="s1">)] = self.sanitize_css(attrs[(</span><span class="s0">None, </span><span class="s2">'style'</span><span class="s1">)])</span>
+            <span class="s1">token[</span><span class="s2">&quot;data&quot;</span><span class="s1">] = attrs</span>
+        <span class="s0">return </span><span class="s1">token</span>
+
+    <span class="s0">def </span><span class="s1">disallowed_token(self</span><span class="s0">, </span><span class="s1">token):</span>
+        <span class="s1">token_type = token[</span><span class="s2">&quot;type&quot;</span><span class="s1">]</span>
+        <span class="s0">if </span><span class="s1">token_type == </span><span class="s2">&quot;EndTag&quot;</span><span class="s1">:</span>
+            <span class="s1">token[</span><span class="s2">&quot;data&quot;</span><span class="s1">] = </span><span class="s2">&quot;&lt;/%s&gt;&quot; </span><span class="s1">% token[</span><span class="s2">&quot;name&quot;</span><span class="s1">]</span>
+        <span class="s0">elif </span><span class="s1">token[</span><span class="s2">&quot;data&quot;</span><span class="s1">]:</span>
+            <span class="s0">assert </span><span class="s1">token_type </span><span class="s0">in </span><span class="s1">(</span><span class="s2">&quot;StartTag&quot;</span><span class="s0">, </span><span class="s2">&quot;EmptyTag&quot;</span><span class="s1">)</span>
+            <span class="s1">attrs = []</span>
+            <span class="s0">for </span><span class="s1">(ns</span><span class="s0">, </span><span class="s1">name)</span><span class="s0">, </span><span class="s1">v </span><span class="s0">in </span><span class="s1">token[</span><span class="s2">&quot;data&quot;</span><span class="s1">].items():</span>
+                <span class="s1">attrs.append(</span><span class="s2">' %s=&quot;%s&quot;' </span><span class="s1">% (name </span><span class="s0">if </span><span class="s1">ns </span><span class="s0">is None else </span><span class="s2">&quot;%s:%s&quot; </span><span class="s1">% (prefixes[ns]</span><span class="s0">, </span><span class="s1">name)</span><span class="s0">, </span><span class="s1">escape(v)))</span>
+            <span class="s1">token[</span><span class="s2">&quot;data&quot;</span><span class="s1">] = </span><span class="s2">&quot;&lt;%s%s&gt;&quot; </span><span class="s1">% (token[</span><span class="s2">&quot;name&quot;</span><span class="s1">]</span><span class="s0">, </span><span class="s2">''</span><span class="s1">.join(attrs))</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">token[</span><span class="s2">&quot;data&quot;</span><span class="s1">] = </span><span class="s2">&quot;&lt;%s&gt;&quot; </span><span class="s1">% token[</span><span class="s2">&quot;name&quot;</span><span class="s1">]</span>
+        <span class="s0">if </span><span class="s1">token.get(</span><span class="s2">&quot;selfClosing&quot;</span><span class="s1">):</span>
+            <span class="s1">token[</span><span class="s2">&quot;data&quot;</span><span class="s1">] = token[</span><span class="s2">&quot;data&quot;</span><span class="s1">][:-</span><span class="s5">1</span><span class="s1">] + </span><span class="s2">&quot;/&gt;&quot;</span>
+
+        <span class="s1">token[</span><span class="s2">&quot;type&quot;</span><span class="s1">] = </span><span class="s2">&quot;Characters&quot;</span>
+
+        <span class="s0">del </span><span class="s1">token[</span><span class="s2">&quot;name&quot;</span><span class="s1">]</span>
+        <span class="s0">return </span><span class="s1">token</span>
+
+    <span class="s0">def </span><span class="s1">sanitize_css(self</span><span class="s0">, </span><span class="s1">style):</span>
+        <span class="s3"># disallow urls</span>
+        <span class="s1">style = re.compile(</span><span class="s2">r'url\s*\(\s*[^\s)]+?\s*\)\s*'</span><span class="s1">).sub(</span><span class="s2">' '</span><span class="s0">, </span><span class="s1">style)</span>
+
+        <span class="s3"># gauntlet</span>
+        <span class="s0">if not </span><span class="s1">re.match(</span><span class="s2">r&quot;&quot;&quot;^([:,;#%.\sa-zA-Z0-9!]|\w-\w|'[\s\w]+'|&quot;[\s\w]+&quot;|\([\d,\s]+\))*$&quot;&quot;&quot;</span><span class="s0">, </span><span class="s1">style):</span>
+            <span class="s0">return </span><span class="s2">''</span>
+        <span class="s0">if not </span><span class="s1">re.match(</span><span class="s2">r&quot;^\s*([-\w]+\s*:[^:;]*(;\s*|$))*$&quot;</span><span class="s0">, </span><span class="s1">style):</span>
+            <span class="s0">return </span><span class="s2">''</span>
+
+        <span class="s1">clean = []</span>
+        <span class="s0">for </span><span class="s1">prop</span><span class="s0">, </span><span class="s1">value </span><span class="s0">in </span><span class="s1">re.findall(</span><span class="s2">r&quot;([-\w]+)\s*:\s*([^:;]*)&quot;</span><span class="s0">, </span><span class="s1">style):</span>
+            <span class="s0">if not </span><span class="s1">value:</span>
+                <span class="s0">continue</span>
+            <span class="s0">if </span><span class="s1">prop.lower() </span><span class="s0">in </span><span class="s1">self.allowed_css_properties:</span>
+                <span class="s1">clean.append(prop + </span><span class="s2">': ' </span><span class="s1">+ value + </span><span class="s2">';'</span><span class="s1">)</span>
+            <span class="s0">elif </span><span class="s1">prop.split(</span><span class="s2">'-'</span><span class="s1">)[</span><span class="s5">0</span><span class="s1">].lower() </span><span class="s0">in </span><span class="s1">[</span><span class="s2">'background'</span><span class="s0">, </span><span class="s2">'border'</span><span class="s0">, </span><span class="s2">'margin'</span><span class="s0">,</span>
+                                                <span class="s2">'padding'</span><span class="s1">]:</span>
+                <span class="s0">for </span><span class="s1">keyword </span><span class="s0">in </span><span class="s1">value.split():</span>
+                    <span class="s0">if </span><span class="s1">keyword </span><span class="s0">not in </span><span class="s1">self.allowed_css_keywords </span><span class="s0">and </span><span class="s1">\</span>
+                            <span class="s0">not </span><span class="s1">re.match(</span><span class="s2">r&quot;^(#[0-9a-fA-F]+|rgb\(\d+%?,\d*%?,?\d*%?\)?|\d{0,2}\.?\d{0,2}(cm|em|ex|in|mm|pc|pt|px|%|,|\))?)$&quot;</span><span class="s0">, </span><span class="s1">keyword):  </span><span class="s3"># noqa</span>
+                        <span class="s0">break</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">clean.append(prop + </span><span class="s2">': ' </span><span class="s1">+ value + </span><span class="s2">';'</span><span class="s1">)</span>
+            <span class="s0">elif </span><span class="s1">prop.lower() </span><span class="s0">in </span><span class="s1">self.allowed_svg_properties:</span>
+                <span class="s1">clean.append(prop + </span><span class="s2">': ' </span><span class="s1">+ value + </span><span class="s2">';'</span><span class="s1">)</span>
+
+        <span class="s0">return </span><span class="s2">' '</span><span class="s1">.join(clean)</span>
+</pre>
+</body>
+</html>

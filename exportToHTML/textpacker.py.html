@@ -1,0 +1,51 @@
+<html>
+<head>
+<title>textpacker.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #629755; font-style: italic;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+textpacker.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">thorpy.miscgui.painterstyle </span><span class="s0">import </span><span class="s1">WRITER</span>
+
+<span class="s0">def </span><span class="s1">pack_text(width</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">element=</span><span class="s0">None, </span><span class="s1">sep=</span><span class="s2">&quot; &quot;</span><span class="s1">):</span>
+    <span class="s3">&quot;&quot;&quot;Returns a string with new lines inserted in order to fit the specified 
+    width. 
+    Specify element arg if you want to use element's writer to calculate text 
+    size.&quot;&quot;&quot;</span>
+    <span class="s0">if </span><span class="s1">element:</span>
+        <span class="s1">writer = element.get_title()._writer</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s1">writer = WRITER()</span>
+    <span class="s1">new_text = </span><span class="s2">&quot;&quot;</span>
+    <span class="s1">split_text = text.split(sep)</span>
+    <span class="s1">current_width = </span><span class="s4">0</span>
+    <span class="s0">for </span><span class="s1">word </span><span class="s0">in </span><span class="s1">split_text:</span>
+        <span class="s1">original_word = str(word)</span>
+        <span class="s1">newline = </span><span class="s0">False</span>
+        <span class="s0">while </span><span class="s2">&quot;</span><span class="s0">\n</span><span class="s2">&quot; </span><span class="s0">in </span><span class="s1">word:</span>
+            <span class="s1">newline = </span><span class="s0">True</span>
+            <span class="s1">word = word.replace(</span><span class="s2">&quot;</span><span class="s0">\n</span><span class="s2">&quot;</span><span class="s0">,</span><span class="s2">&quot;&quot;</span><span class="s1">)</span>
+        <span class="s1">word_width = writer.get_width(word)</span>
+        <span class="s1">current_width += word_width</span>
+        <span class="s0">if </span><span class="s1">current_width &gt; width:</span>
+            <span class="s1">new_text += </span><span class="s2">&quot;</span><span class="s0">\n</span><span class="s2">&quot;</span>
+            <span class="s1">current_width = word_width</span>
+        <span class="s1">final_word = original_word + sep</span>
+        <span class="s0">if </span><span class="s1">newline:</span>
+            <span class="s1">current_width = </span><span class="s4">0</span>
+        <span class="s1">new_text += final_word</span>
+    <span class="s0">return </span><span class="s1">new_text</span>
+</pre>
+</body>
+</html>

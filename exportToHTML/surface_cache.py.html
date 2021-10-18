@@ -1,0 +1,360 @@
+<html>
+<head>
+<title>surface_cache.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+surface_cache.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">warnings</span>
+
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">List</span><span class="s0">, </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Tuple</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">basic_blit</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.colour_gradient </span><span class="s0">import </span><span class="s1">ColourGradient</span>
+
+
+<span class="s0">class </span><span class="s1">SurfaceCache:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A cache for surfaces that we estimate the UI may want to reuse to save constantly remaking 
+    almost identical drawable shapes. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self):</span>
+        <span class="s1">self.cache_surface_size = (</span><span class="s3">1024</span><span class="s0">, </span><span class="s3">1024</span><span class="s1">)</span>
+        <span class="s1">self.cache_surfaces = []</span>
+        <span class="s1">starting_surface = pygame.surface.Surface(self.cache_surface_size</span><span class="s0">,</span>
+                                                  <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">starting_surface.fill(pygame.Color(</span><span class="s4">'#00000000'</span><span class="s1">))</span>
+        <span class="s1">self.cache_surfaces.append({</span><span class="s4">'surface'</span><span class="s1">: starting_surface</span><span class="s0">,</span>
+                                    <span class="s4">'free_space_rectangles'</span><span class="s1">:</span>
+                                        <span class="s1">[pygame.Rect((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">self.cache_surface_size)]})</span>
+
+        <span class="s1">self.cache_long_term_lookup = {}</span>
+        <span class="s1">self.cache_short_term_lookup = {}</span>
+
+        <span class="s1">self.consider_purging_list = []</span>
+
+        <span class="s1">self.low_on_space = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">add_surface_to_cache(self</span><span class="s0">, </span><span class="s1">surface: pygame.surface.Surface</span><span class="s0">, </span><span class="s1">string_id: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Adds a surface to the cache. There are two levels to the cache, the short term level 
+        just keeps hold of the surface until we have time to add it to the long term level. 
+ 
+        :param surface: The surface to add to the cache. 
+        :param string_id: An ID to store the surface under to make it easy to recall later. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.cache_short_term_lookup[string_id] = [surface.copy()</span><span class="s0">, </span><span class="s3">1</span><span class="s1">]</span>
+
+    <span class="s0">def </span><span class="s1">update(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Takes care of steadily moving surfaces from the short term cache into the long term. 
+        Long term caching takes a while so we limit it to adding one surface a frame. 
+ 
+        We also purge some lesser used surfaces from the long term cache when we run out of space. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">any(self.cache_short_term_lookup):</span>
+            <span class="s1">string_id</span><span class="s0">, </span><span class="s1">cached_item = self.cache_short_term_lookup.popitem()</span>
+            <span class="s1">self.add_surface_to_long_term_cache(cached_item</span><span class="s0">, </span><span class="s1">string_id)</span>
+
+        <span class="s0">if </span><span class="s1">self.low_on_space:</span>
+            <span class="s1">self.low_on_space = </span><span class="s0">False</span>
+            <span class="s0">for </span><span class="s1">cache_id </span><span class="s0">in </span><span class="s1">self.consider_purging_list:</span>
+                <span class="s1">cached_item = self.cache_long_term_lookup[cache_id]</span>
+                <span class="s0">if </span><span class="s1">cached_item[</span><span class="s4">'current_uses'</span><span class="s1">] == </span><span class="s3">0 </span><span class="s0">and </span><span class="s1">cached_item[</span><span class="s4">'total_uses'</span><span class="s1">] == </span><span class="s3">1</span><span class="s1">:</span>
+                    <span class="s1">self._free_cached_surface(cache_id)</span>
+
+            <span class="s1">self.consider_purging_list.clear()</span>
+
+    <span class="s0">def </span><span class="s1">add_surface_to_long_term_cache(self</span><span class="s0">,</span>
+                                       <span class="s1">cached_item: List[Union[pygame.surface.Surface</span><span class="s0">, </span><span class="s1">int]]</span><span class="s0">,</span>
+                                       <span class="s1">string_id: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Move a surface from the short term cache into the long term one. 
+ 
+        :param cached_item: The surface to move into the long term cache. 
+        :param string_id: The ID of the surface in the cache. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s0">if </span><span class="s1">cached_item[</span><span class="s3">0</span><span class="s1">].get_size() &gt; self.cache_surface_size:</span>
+            <span class="s1">warnings.warn(</span><span class="s4">'Unable to cache surfaces larger than ' </span><span class="s1">+ str(self.cache_surface_size))</span>
+            <span class="s0">return None</span>
+        <span class="s0">else</span><span class="s1">:</span>
+
+            <span class="s1">found_rectangle_cache = </span><span class="s0">None</span>
+
+            <span class="s0">while </span><span class="s1">found_rectangle_cache </span><span class="s0">is None and not </span><span class="s1">self.low_on_space:</span>
+                <span class="s0">for </span><span class="s1">cache_surface </span><span class="s0">in </span><span class="s1">self.cache_surfaces:</span>
+                    <span class="s0">if </span><span class="s1">found_rectangle_cache </span><span class="s0">is None</span><span class="s1">:</span>
+                        <span class="s1">result = self._find_spot_in_lt_cache(cache_surface</span><span class="s0">, </span><span class="s1">cached_item</span><span class="s0">, </span><span class="s1">string_id)</span>
+                        <span class="s1">found_rectangle_cache = result[</span><span class="s3">0</span><span class="s1">]</span>
+                        <span class="s1">found_rectangle_to_split = result[</span><span class="s3">1</span><span class="s1">]</span>
+                        <span class="s1">self._divide_lt_cache(cache_surface</span><span class="s0">, </span><span class="s1">found_rectangle_cache</span><span class="s0">,</span>
+                                              <span class="s1">found_rectangle_to_split)</span>
+
+                <span class="s0">if </span><span class="s1">found_rectangle_cache </span><span class="s0">is None</span><span class="s1">:</span>
+                    <span class="s1">self._expand_lt_cache()</span>
+
+            <span class="s0">return True</span>
+
+    <span class="s0">def </span><span class="s1">_divide_lt_cache(self</span><span class="s0">, </span><span class="s1">cache_surface</span><span class="s0">, </span><span class="s1">found_rectangle_cache</span><span class="s0">, </span><span class="s1">found_rectangle_to_split):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Having reserved a spot in one of our long term cache surfaces, divide up the rest of 
+        the cache surface to correctly ascertain the new set of free spaces. 
+ 
+        :param cache_surface: The long term cache surface we are dividing. 
+        :param found_rectangle_cache: The newly reserved space. 
+        :param found_rectangle_to_split: The old rectangle the newly reserved space is in. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">(found_rectangle_to_split </span><span class="s0">is not None and</span>
+                <span class="s1">found_rectangle_cache </span><span class="s0">is not None</span><span class="s1">):</span>
+            <span class="s1">free_space_rectangles = cache_surface[</span><span class="s4">'free_space_rectangles'</span><span class="s1">]</span>
+            <span class="s1">self.split_rect(found_rectangle_to_split</span><span class="s0">, </span><span class="s1">found_rectangle_cache</span><span class="s0">,</span>
+                            <span class="s1">cache_surface[</span><span class="s4">'free_space_rectangles'</span><span class="s1">])</span>
+            <span class="s1">rects_to_split = [rect </span><span class="s0">for </span><span class="s1">rect </span><span class="s0">in </span><span class="s1">free_space_rectangles</span>
+                              <span class="s0">if </span><span class="s1">rect.colliderect(found_rectangle_cache)]</span>
+            <span class="s0">for </span><span class="s1">split_rect </span><span class="s0">in </span><span class="s1">rects_to_split:</span>
+                <span class="s1">self.split_rect(split_rect</span><span class="s0">, </span><span class="s1">found_rectangle_cache</span><span class="s0">,</span>
+                                <span class="s1">cache_surface[</span><span class="s4">'free_space_rectangles'</span><span class="s1">])</span>
+
+            <span class="s1">self._clean_up_lt_cache(cache_surface</span><span class="s0">, </span><span class="s1">free_space_rectangles)</span>
+
+    <span class="s1">@staticmethod</span>
+    <span class="s0">def </span><span class="s1">_clean_up_lt_cache(cache_surface</span><span class="s0">, </span><span class="s1">free_space_rectangles):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Clean up rectangles entirely inside other rectangles. 
+ 
+        :param cache_surface: 
+        :param free_space_rectangles: 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">rects_to_remove = []</span>
+        <span class="s1">rectangles_to_check = free_space_rectangles[:]</span>
+        <span class="s0">for </span><span class="s1">free_rectangle </span><span class="s0">in </span><span class="s1">free_space_rectangles:</span>
+            <span class="s0">for </span><span class="s1">check_rect </span><span class="s0">in </span><span class="s1">rectangles_to_check:</span>
+                <span class="s0">if </span><span class="s1">(free_rectangle != check_rect </span><span class="s0">and</span>
+                        <span class="s1">check_rect.contains(free_rectangle)):</span>
+                    <span class="s1">rects_to_remove.append(free_rectangle)</span>
+        <span class="s1">cache_surface[</span><span class="s4">'free_space_rectangles'</span><span class="s1">] = [rect</span>
+                                                  <span class="s0">for </span><span class="s1">rect </span><span class="s0">in</span>
+                                                  <span class="s1">free_space_rectangles</span>
+                                                  <span class="s0">if </span><span class="s1">rect </span><span class="s0">not in</span>
+                                                  <span class="s1">rects_to_remove]</span>
+
+    <span class="s0">def </span><span class="s1">_find_spot_in_lt_cache(self</span><span class="s0">, </span><span class="s1">cache_surface</span><span class="s0">, </span><span class="s1">new_item</span><span class="s0">, </span><span class="s1">string_id):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Find a place in a long term cache surface for our new item from the short term cache. 
+ 
+        :param cache_surface: the surface to search. 
+        :param new_item: the item to cache. 
+        :param string_id: the look up id. 
+        :return: A tuple of the new rect we are reserving, and the rectangle it's inside of. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">found_rectangle_cache = </span><span class="s0">None</span>
+        <span class="s1">found_rectangle_to_split = </span><span class="s0">None</span>
+        <span class="s1">current_surface = cache_surface[</span><span class="s4">'surface'</span><span class="s1">]</span>
+        <span class="s1">surface_size = new_item[</span><span class="s3">0</span><span class="s1">].get_size()</span>
+        <span class="s0">for </span><span class="s1">free_rectangle </span><span class="s0">in </span><span class="s1">cache_surface[</span><span class="s4">'free_space_rectangles'</span><span class="s1">]:</span>
+            <span class="s0">if </span><span class="s1">(free_rectangle.width &gt;= surface_size[</span><span class="s3">0</span><span class="s1">] </span><span class="s0">and</span>
+                    <span class="s1">free_rectangle.height &gt;= surface_size[</span><span class="s3">1</span><span class="s1">]):</span>
+                <span class="s5"># we fits, so we sits</span>
+                <span class="s1">found_rectangle_to_split = free_rectangle</span>
+                <span class="s1">found_rectangle_cache = pygame.Rect(free_rectangle.topleft</span><span class="s0">,</span>
+                                                    <span class="s1">surface_size)</span>
+                <span class="s1">basic_blit(current_surface</span><span class="s0">, </span><span class="s1">new_item[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">free_rectangle.topleft)</span>
+                <span class="s1">self.cache_long_term_lookup[string_id] = {</span>
+                    <span class="s4">'surface'</span><span class="s1">: current_surface.subsurface(found_rectangle_cache)</span><span class="s0">,</span>
+                    <span class="s4">'current_uses'</span><span class="s1">: new_item[</span><span class="s3">1</span><span class="s1">]</span><span class="s0">,</span>
+                    <span class="s4">'total_uses'</span><span class="s1">: new_item[</span><span class="s3">1</span><span class="s1">]}</span>
+                <span class="s0">break</span>
+        <span class="s0">return </span><span class="s1">found_rectangle_cache</span><span class="s0">, </span><span class="s1">found_rectangle_to_split</span>
+
+    <span class="s0">def </span><span class="s1">_expand_lt_cache(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Try to expand the long term cache by adding more surfaces, until we hit the limit. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">len(self.cache_surfaces) &lt; </span><span class="s3">3</span><span class="s1">:</span>
+            <span class="s5"># create a new cache surface</span>
+            <span class="s1">new_surface = pygame.surface.Surface(self.cache_surface_size</span><span class="s0">,</span>
+                                                 <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                 <span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+            <span class="s1">new_surface.fill(pygame.Color(</span><span class="s4">'#00000000'</span><span class="s1">))</span>
+            <span class="s1">self.cache_surfaces.append({</span><span class="s4">'surface'</span><span class="s1">: new_surface</span><span class="s0">,</span>
+                                        <span class="s4">'free_space_rectangles'</span><span class="s1">:</span>
+                                            <span class="s1">[pygame.Rect((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                                                         <span class="s1">self.cache_surface_size)]})</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.low_on_space = </span><span class="s0">True</span>
+
+    <span class="s1">@staticmethod</span>
+    <span class="s0">def </span><span class="s1">split_rect(found_rectangle_to_split: pygame.Rect</span><span class="s0">,</span>
+                   <span class="s1">dividing_rect: pygame.Rect</span><span class="s0">,</span>
+                   <span class="s1">free_space_rectangles: List[pygame.Rect]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Takes an existing free space rectangle that we are placing a new surface inside of and 
+        then divides up the remaining space into new, smaller free space rectangles. 
+ 
+        :param found_rectangle_to_split: The rectangle we are spliting. 
+        :param dividing_rect: The rectangle dividing up the split rectangle. 
+        :param free_space_rectangles: A list of all free space rectangles for a particular surface. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">free_space_rectangles.remove(found_rectangle_to_split)</span>
+
+        <span class="s5"># create new rectangles</span>
+        <span class="s0">if </span><span class="s1">(found_rectangle_to_split.right - dividing_rect.right) &gt; </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">rect_1 = pygame.Rect(dividing_rect.right</span><span class="s0">,</span>
+                                 <span class="s1">found_rectangle_to_split.top</span><span class="s0">,</span>
+                                 <span class="s1">found_rectangle_to_split.right - dividing_rect.right</span><span class="s0">,</span>
+                                 <span class="s1">found_rectangle_to_split.height)</span>
+            <span class="s1">free_space_rectangles.append(rect_1)</span>
+        <span class="s0">if </span><span class="s1">(found_rectangle_to_split.bottom - dividing_rect.bottom) &gt; </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">rect_2 = pygame.Rect(found_rectangle_to_split.left</span><span class="s0">,</span>
+                                 <span class="s1">dividing_rect.bottom</span><span class="s0">,</span>
+                                 <span class="s1">found_rectangle_to_split.width</span><span class="s0">,</span>
+                                 <span class="s1">found_rectangle_to_split.bottom - dividing_rect.bottom)</span>
+            <span class="s1">free_space_rectangles.append(rect_2)</span>
+        <span class="s0">if </span><span class="s1">(dividing_rect.top - found_rectangle_to_split.top) &gt; </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">rect_3 = pygame.Rect(found_rectangle_to_split.left</span><span class="s0">,</span>
+                                 <span class="s1">found_rectangle_to_split.top</span><span class="s0">,</span>
+                                 <span class="s1">found_rectangle_to_split.width</span><span class="s0">,</span>
+                                 <span class="s1">dividing_rect.top - found_rectangle_to_split.top)</span>
+            <span class="s1">free_space_rectangles.append(rect_3)</span>
+        <span class="s0">if </span><span class="s1">(dividing_rect.left - found_rectangle_to_split.left) &gt; </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">rect_4 = pygame.Rect(found_rectangle_to_split.left</span><span class="s0">,</span>
+                                 <span class="s1">found_rectangle_to_split.top</span><span class="s0">,</span>
+                                 <span class="s1">dividing_rect.left - found_rectangle_to_split.left</span><span class="s0">,</span>
+                                 <span class="s1">found_rectangle_to_split.height)</span>
+            <span class="s1">free_space_rectangles.append(rect_4)</span>
+
+    <span class="s0">def </span><span class="s1">find_surface_in_cache(self</span><span class="s0">, </span><span class="s1">lookup_id: str) -&gt; Union[pygame.surface.Surface</span><span class="s0">, None</span><span class="s1">]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Looks for a surface in the cache by an ID and returns it if found. 
+ 
+        :param lookup_id: ID of the surface to look for in the cache. 
+ 
+        :return The found surface, or None. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s5"># check short term</span>
+        <span class="s0">if </span><span class="s1">lookup_id </span><span class="s0">in </span><span class="s1">self.cache_short_term_lookup:</span>
+            <span class="s1">cached_item = self.cache_short_term_lookup[lookup_id]</span>
+            <span class="s1">cached_item[</span><span class="s3">1</span><span class="s1">] += </span><span class="s3">1</span>
+            <span class="s0">return </span><span class="s1">cached_item[</span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s5"># check long term</span>
+        <span class="s0">if </span><span class="s1">lookup_id </span><span class="s0">in </span><span class="s1">self.cache_long_term_lookup:</span>
+            <span class="s1">self.cache_long_term_lookup[lookup_id][</span><span class="s4">'current_uses'</span><span class="s1">] += </span><span class="s3">1</span>
+            <span class="s1">self.cache_long_term_lookup[lookup_id][</span><span class="s4">'total_uses'</span><span class="s1">] += </span><span class="s3">1</span>
+            <span class="s0">return </span><span class="s1">self.cache_long_term_lookup[lookup_id][</span><span class="s4">'surface'</span><span class="s1">]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return None</span>
+
+    <span class="s0">def </span><span class="s1">remove_user_from_cache_item(self</span><span class="s0">, </span><span class="s1">string_id: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Deduct a 'user' from a particular cache surface. The number of users of a cache surface 
+        over the lifetime of a program would be a decent measure of how 'valuable' it is to 
+        keep a surface in the cache. 
+ 
+        :param string_id: The ID of the cached surface to deduct a user from. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">string_id </span><span class="s0">in </span><span class="s1">self.cache_long_term_lookup:</span>
+            <span class="s1">self.cache_long_term_lookup[string_id][</span><span class="s4">'current_uses'</span><span class="s1">] -= </span><span class="s3">1</span>
+
+            <span class="s0">if </span><span class="s1">(self.cache_long_term_lookup[string_id][</span><span class="s4">'current_uses'</span><span class="s1">] == </span><span class="s3">0 </span><span class="s0">and</span>
+                    <span class="s1">self.cache_long_term_lookup[string_id][</span><span class="s4">'total_uses'</span><span class="s1">] == </span><span class="s3">1</span><span class="s1">):</span>
+                <span class="s1">self.consider_purging_list.append(string_id)</span>
+
+    <span class="s0">def </span><span class="s1">remove_user_and_request_clean_up_of_cached_item(self</span><span class="s0">, </span><span class="s1">string_id: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        If we are certain that a cached surface won't be used again anytime soon we can request 
+        it is removed from the cache directly. 
+ 
+        :param string_id: the ID of the cached surface to remove from the cache. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.remove_user_from_cache_item(string_id)</span>
+        <span class="s1">self._free_cached_surface(string_id)</span>
+
+    <span class="s0">def </span><span class="s1">_free_cached_surface(self</span><span class="s0">, </span><span class="s1">string_id: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Directly remove an unused surface from the long term cache. 
+ 
+        :param string_id: the ID of the cached surface to remove from the cache. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">(string_id </span><span class="s0">not in </span><span class="s1">self.cache_long_term_lookup </span><span class="s0">or</span>
+                <span class="s1">self.cache_long_term_lookup[string_id][</span><span class="s4">'current_uses'</span><span class="s1">] != </span><span class="s3">0</span><span class="s1">):</span>
+            <span class="s0">return</span>
+        <span class="s5"># check item to be removed is unused</span>
+        <span class="s1">cache_to_clear = self.cache_long_term_lookup.pop(string_id)</span>
+        <span class="s1">cache_surface_to_clear = cache_to_clear[</span><span class="s4">'surface'</span><span class="s1">]</span>
+
+        <span class="s0">for </span><span class="s1">cache_surface </span><span class="s0">in </span><span class="s1">self.cache_surfaces:</span>
+            <span class="s0">if </span><span class="s1">cache_surface[</span><span class="s4">'surface'</span><span class="s1">] == cache_surface_to_clear.get_parent():</span>
+                <span class="s1">freed_space = pygame.Rect(cache_surface_to_clear.get_offset()</span><span class="s0">,</span>
+                                          <span class="s1">cache_surface_to_clear.get_size())</span>
+                <span class="s1">cache_surface[</span><span class="s4">'free_space_rectangles'</span><span class="s1">].append(freed_space)</span>
+                <span class="s0">break</span>
+
+        <span class="s0">if </span><span class="s1">string_id </span><span class="s0">in </span><span class="s1">self.consider_purging_list:</span>
+            <span class="s1">self.consider_purging_list.remove(string_id)</span>
+
+    <span class="s1">@staticmethod</span>
+    <span class="s0">def </span><span class="s1">build_cache_id(shape: str</span><span class="s0">,</span>
+                       <span class="s1">size: Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                       <span class="s1">shadow_width: int</span><span class="s0">,</span>
+                       <span class="s1">border_width: int</span><span class="s0">,</span>
+                       <span class="s1">border_colour: pygame.Color</span><span class="s0">,</span>
+                       <span class="s1">bg_colour: pygame.Color</span><span class="s0">,</span>
+                       <span class="s1">corner_radius: Union[int</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None</span><span class="s1">) -&gt; str:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Create an ID string for a surface based on it's dimensions and parameters. The idea is 
+        that any surface in the cache with the same values in this ID should be identical. 
+ 
+        :param shape: A string for the overall shape of the surface (rounded rectangle, 
+         rectangle, etc). 
+        :param size: The dimensions of the surface. 
+        :param shadow_width: The thickness of the shadow around the shape. 
+        :param border_width: The thickness of the border around the shape. 
+        :param border_colour: The colour of the border. 
+        :param bg_colour: The background, or main colour of the surface. 
+        :param corner_radius: Optional corner radius parameter, only used for rounded rectangles. 
+ 
+        :return: A assembled string ID from the provided data. 
+ 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">id_string = (shape + </span><span class="s4">'_' </span><span class="s1">+ str(size[</span><span class="s3">0</span><span class="s1">]) + </span><span class="s4">'_' </span><span class="s1">+ str(size[</span><span class="s3">1</span><span class="s1">]) + </span><span class="s4">'_' </span><span class="s1">+</span>
+                     <span class="s1">str(shadow_width) + </span><span class="s4">'_' </span><span class="s1">+ str(border_width))</span>
+
+        <span class="s0">if </span><span class="s1">corner_radius </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">id_string += </span><span class="s4">'_' </span><span class="s1">+ str(corner_radius)</span>
+
+        <span class="s0">if </span><span class="s1">isinstance(border_colour</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+            <span class="s1">id_string += </span><span class="s4">'_' </span><span class="s1">+ str(border_colour)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">id_string += (</span><span class="s4">'_' </span><span class="s1">+ str(border_colour.r) + </span><span class="s4">'_' </span><span class="s1">+ str(border_colour.g) +</span>
+                          <span class="s4">'_' </span><span class="s1">+ str(border_colour.b) + </span><span class="s4">'_' </span><span class="s1">+ str(border_colour.a))</span>
+
+        <span class="s0">if </span><span class="s1">isinstance(bg_colour</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+            <span class="s1">id_string += </span><span class="s4">'_' </span><span class="s1">+ str(bg_colour)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">id_string += (</span><span class="s4">'_' </span><span class="s1">+ str(bg_colour.r) + </span><span class="s4">'_' </span><span class="s1">+ str(bg_colour.g) +</span>
+                          <span class="s4">'_' </span><span class="s1">+ str(bg_colour.b) + </span><span class="s4">'_' </span><span class="s1">+ str(bg_colour.a))</span>
+
+        <span class="s0">return </span><span class="s1">id_string</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,219 @@
+<html>
+<head>
+<title>styled_chunk.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6a8759;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+styled_chunk.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Tuple</span><span class="s0">, </span><span class="s1">Union</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.colour_gradient </span><span class="s0">import </span><span class="s1">ColourGradient</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.ui_font_dictionary </span><span class="s0">import </span><span class="s1">UIFontDictionary</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">render_white_text_alpha_black_bg</span><span class="s0">, </span><span class="s1">apply_colour_to_surface</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.elements.text.html_parser </span><span class="s0">import </span><span class="s1">CharStyle</span>
+
+
+<span class="s0">class </span><span class="s1">StyledChunk:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Takes care of turning styling and some ordinary text into a rendered pygame Surface of the text 
+    in an appropriate style. 
+ 
+    :param font_size: The size of the font to use. 
+    :param font_name: The name of the font to use. 
+    :param chunk: The chunk of normal string text we are styling. 
+    :param style: The bold/italic/underline style of the text. 
+    :param colour: The colour or gradient of the text. 
+    :param bg_colour: The colour or gradient of the text background. 
+    :param is_link: True if the chunk is a link. 
+    :param link_href: The target of the link if it is one. 
+    :param link_style: The style for link text. 
+    :param position: Surface position of this chunk of text. 
+    :param font_dictionary: The UI's font dictionary where all loaded fonts are stored. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">font_size: int</span><span class="s0">,</span>
+                 <span class="s1">font_name: str</span><span class="s0">,</span>
+                 <span class="s1">chunk: str</span><span class="s0">,</span>
+                 <span class="s1">style: CharStyle</span><span class="s0">,</span>
+                 <span class="s1">colour: Union[pygame.Color</span><span class="s0">, </span><span class="s1">ColourGradient]</span><span class="s0">,</span>
+                 <span class="s1">bg_colour: Union[pygame.Color</span><span class="s0">, </span><span class="s1">ColourGradient]</span><span class="s0">,</span>
+                 <span class="s1">is_link: bool</span><span class="s0">,</span>
+                 <span class="s1">link_href: str</span><span class="s0">,</span>
+                 <span class="s1">link_style: CharStyle</span><span class="s0">,</span>
+                 <span class="s1">position: Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                 <span class="s1">font_dictionary: UIFontDictionary):</span>
+
+        <span class="s1">self.style = style</span>
+        <span class="s1">self.chunk = chunk</span>
+        <span class="s1">self.font_size = font_size</span>
+        <span class="s1">self.font_name = font_name</span>
+        <span class="s1">self.is_link = is_link</span>
+        <span class="s1">self.link_href = link_href</span>
+        <span class="s1">self.link_style = link_style</span>
+
+        <span class="s1">self.font = font_dictionary.find_font(font_size</span><span class="s0">, </span><span class="s1">font_name</span><span class="s0">,</span>
+                                              <span class="s1">self.style.bold</span><span class="s0">, </span><span class="s1">self.style.italic)</span>
+
+        <span class="s0">if </span><span class="s1">self.is_link:</span>
+            <span class="s1">self.normal_colour = self.link_style[</span><span class="s3">'link_text'</span><span class="s1">]</span>
+            <span class="s1">self.hover_colour = self.link_style[</span><span class="s3">'link_hover'</span><span class="s1">]</span>
+            <span class="s1">self.selected_colour = self.link_style[</span><span class="s3">'link_selected'</span><span class="s1">]</span>
+            <span class="s1">self.link_normal_underline = self.link_style[</span><span class="s3">'link_normal_underline'</span><span class="s1">]</span>
+            <span class="s1">self.link_hover_underline = self.link_style[</span><span class="s3">'link_hover_underline'</span><span class="s1">]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.normal_colour = colour</span>
+            <span class="s1">self.hover_colour = </span><span class="s0">None</span>
+            <span class="s1">self.selected_colour = </span><span class="s0">None</span>
+            <span class="s1">self.link_normal_underline = </span><span class="s0">False</span>
+            <span class="s1">self.link_hover_underline = </span><span class="s0">False</span>
+
+        <span class="s1">self.colour = self.normal_colour</span>
+        <span class="s1">self.bg_colour = bg_colour</span>
+        <span class="s1">self.position = position</span>
+
+        <span class="s1">self.is_hovered = </span><span class="s0">False</span>
+        <span class="s1">self.is_selected = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">self.style.underline </span><span class="s0">or </span><span class="s1">(self.is_hovered </span><span class="s0">and </span><span class="s1">self.link_hover_underline) </span><span class="s0">or </span><span class="s1">\</span>
+                <span class="s1">(self.link_normal_underline </span><span class="s0">and not </span><span class="s1">self.is_hovered):</span>
+            <span class="s1">self.font.set_underline(</span><span class="s0">True</span><span class="s1">)</span>
+
+        <span class="s0">if </span><span class="s1">len(self.chunk) &gt; </span><span class="s4">0</span><span class="s1">:</span>
+            <span class="s0">if not </span><span class="s1">isinstance(self.colour</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+                <span class="s0">if </span><span class="s1">isinstance(self.bg_colour</span><span class="s0">, </span><span class="s1">ColourGradient) </span><span class="s0">or </span><span class="s1">self.bg_colour.a != </span><span class="s4">255</span><span class="s1">:</span>
+                    <span class="s1">self.rendered_chunk = render_white_text_alpha_black_bg(self.font</span><span class="s0">, </span><span class="s1">self.chunk)</span>
+                    <span class="s1">apply_colour_to_surface(self.colour</span><span class="s0">, </span><span class="s1">self.rendered_chunk)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">self.rendered_chunk = self.font.render(self.chunk</span><span class="s0">,</span>
+                                                           <span class="s0">True,</span>
+                                                           <span class="s1">self.colour</span><span class="s0">,</span>
+                                                           <span class="s1">self.bg_colour).convert_alpha()</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.rendered_chunk = render_white_text_alpha_black_bg(self.font</span><span class="s0">, </span><span class="s1">self.chunk)</span>
+                <span class="s1">self.colour.apply_gradient_to_surface(self.rendered_chunk)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.rendered_chunk = pygame.surface.Surface((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">,</span>
+                                                         <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                         <span class="s1">depth=</span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">metrics = self.font.metrics(self.chunk)</span>
+        <span class="s1">self.ascent = self.font.get_ascent()</span>
+        <span class="s1">self.width = self.font.size(self.chunk)[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">self.height = self.font.size(self.chunk)[</span><span class="s4">1</span><span class="s1">]</span>
+        <span class="s1">self.advance = </span><span class="s4">0</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(len(self.chunk)):</span>
+            <span class="s0">if </span><span class="s1">len(metrics[i]) == </span><span class="s4">5</span><span class="s1">:</span>
+                <span class="s1">self.advance += metrics[i][</span><span class="s4">4</span><span class="s1">]</span>
+
+        <span class="s1">self.rect = pygame.Rect(self.position</span><span class="s0">, </span><span class="s1">(self.width</span><span class="s0">, </span><span class="s1">self.height))</span>
+        <span class="s1">self.metrics_changed_after_redraw = </span><span class="s0">False</span>
+
+        <span class="s1">self.unset_underline_style()</span>
+
+    <span class="s0">def </span><span class="s1">unset_underline_style(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Un-sets the underline style. This is a function we have to call on our loaded font before 
+        rendering. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.font.set_underline(</span><span class="s0">False</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">redraw(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Renders the 'chunk' text to the 'rendered_chunk' surface. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.style.underline </span><span class="s0">or </span><span class="s1">(self.is_hovered </span><span class="s0">and </span><span class="s1">self.link_hover_underline) </span><span class="s0">or </span><span class="s1">\</span>
+                <span class="s1">(self.link_normal_underline </span><span class="s0">and not </span><span class="s1">self.is_hovered):</span>
+            <span class="s1">self.font.set_underline(</span><span class="s0">True</span><span class="s1">)</span>
+
+        <span class="s0">if </span><span class="s1">len(self.chunk) &gt; </span><span class="s4">0</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">isinstance(self.colour</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+                <span class="s1">self.rendered_chunk = render_white_text_alpha_black_bg(self.font</span><span class="s0">, </span><span class="s1">self.chunk)</span>
+                <span class="s1">self.colour.apply_gradient_to_surface(self.rendered_chunk)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s0">if </span><span class="s1">isinstance(self.bg_colour</span><span class="s0">, </span><span class="s1">ColourGradient) </span><span class="s0">or </span><span class="s1">self.bg_colour.a != </span><span class="s4">255</span><span class="s1">:</span>
+                    <span class="s1">self.rendered_chunk = render_white_text_alpha_black_bg(self.font</span><span class="s0">, </span><span class="s1">self.chunk)</span>
+                    <span class="s1">apply_colour_to_surface(self.colour</span><span class="s0">, </span><span class="s1">self.rendered_chunk)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">self.rendered_chunk = self.font.render(self.chunk</span><span class="s0">,</span>
+                                                           <span class="s0">True,</span>
+                                                           <span class="s1">self.colour</span><span class="s0">,</span>
+                                                           <span class="s1">self.bg_colour).convert_alpha()</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.rendered_chunk = pygame.surface.Surface((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">,</span>
+                                                         <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                         <span class="s1">depth=</span><span class="s4">32</span><span class="s1">)</span>
+
+        <span class="s1">self.font.set_underline(</span><span class="s0">False</span><span class="s1">)</span>
+
+        <span class="s1">new_metrics = self.font.metrics(self.chunk)</span>
+        <span class="s1">new_ascent = self.font.get_ascent()</span>
+        <span class="s1">new_width = self.font.size(self.chunk)[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">new_height = self.font.size(self.chunk)[</span><span class="s4">1</span><span class="s1">]</span>
+        <span class="s1">new_advance = sum(new_metrics[i][</span><span class="s4">4</span><span class="s1">] </span><span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(len(self.chunk))</span>
+                          <span class="s0">if </span><span class="s1">len(new_metrics[i]) == </span><span class="s4">5</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">(new_ascent == self.ascent </span><span class="s0">and </span><span class="s1">new_width == self.width </span><span class="s0">and</span>
+                <span class="s1">new_height == self.height </span><span class="s0">and </span><span class="s1">new_advance == self.advance):</span>
+            <span class="s1">self.metrics_changed_after_redraw = </span><span class="s0">False</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.metrics_changed_after_redraw = </span><span class="s0">True</span>
+            <span class="s1">self.ascent = new_ascent</span>
+            <span class="s1">self.width = new_width</span>
+            <span class="s1">self.height = new_height</span>
+            <span class="s1">self.advance = new_advance</span>
+            <span class="s1">self.rect = pygame.Rect(self.position</span><span class="s0">, </span><span class="s1">(self.width</span><span class="s0">, </span><span class="s1">self.height))</span>
+
+    <span class="s0">def </span><span class="s1">on_hovered(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Handles hovering over this text chunk with the mouse. Used for links. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if not </span><span class="s1">self.is_selected:</span>
+            <span class="s1">self.colour = self.hover_colour</span>
+            <span class="s1">self.is_hovered = </span><span class="s0">True</span>
+            <span class="s1">self.redraw()</span>
+
+    <span class="s0">def </span><span class="s1">on_unhovered(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Handles hovering over this text chunk with the mouse. Used for links. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if not </span><span class="s1">self.is_selected:</span>
+            <span class="s1">self.colour = self.normal_colour</span>
+            <span class="s1">self.is_hovered = </span><span class="s0">False</span>
+            <span class="s1">self.redraw()</span>
+
+    <span class="s0">def </span><span class="s1">on_selected(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Handles clicking on this text chunk with the mouse. Used for links. 
+        TODO: Should this be set_active/set_inactive? To be internally consistent with buttons. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.colour = self.selected_colour</span>
+        <span class="s1">self.is_selected = </span><span class="s0">True</span>
+        <span class="s1">self.redraw()</span>
+
+    <span class="s0">def </span><span class="s1">on_unselected(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Handles clicking on this text chunk with the mouse. Used for links. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.colour = self.normal_colour</span>
+        <span class="s1">self.is_selected = </span><span class="s0">False</span>
+        <span class="s1">self.redraw()</span>
+</pre>
+</body>
+</html>

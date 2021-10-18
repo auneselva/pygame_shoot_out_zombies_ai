@@ -1,0 +1,179 @@
+<html>
+<head>
+<title>animatedgif.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6a8759;}
+.s4 { color: #629755; font-style: italic;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+animatedgif.py</font>
+</center></td></tr></table>
+<pre><span class="s0">#NB : the gif extractor was obtained from BigglesZX on https://gist.github.com/BigglesZX/4016539</span>
+<span class="s2">import </span><span class="s1">os</span>
+<span class="s2">try</span><span class="s1">:</span>
+    <span class="s2">from </span><span class="s1">PIL </span><span class="s2">import </span><span class="s1">Image</span>
+    <span class="s1">HAS_PIL = </span><span class="s2">True</span>
+<span class="s2">except </span><span class="s1">ImportError:</span>
+    <span class="s1">HAS_PIL = </span><span class="s2">False</span>
+
+<span class="s2">import </span><span class="s1">pygame</span>
+<span class="s2">from </span><span class="s1">thorpy.elements.image </span><span class="s2">import </span><span class="s1">Image </span><span class="s2">as </span><span class="s1">ThorpyImage</span>
+<span class="s2">from </span><span class="s1">thorpy.painting.pilgraphics </span><span class="s2">import </span><span class="s1">pil_img_to_pygame_surf</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui.reaction </span><span class="s2">import </span><span class="s1">ConstantReaction</span>
+<span class="s2">import </span><span class="s1">thorpy</span>
+
+<span class="s3">''' 
+I searched high and low for solutions to the &quot;extract animated GIF frames in Python&quot; 
+problem, and after much trial and error came up with the following solution based 
+on several partial examples around the web (mostly Stack Overflow). 
+There are two pitfalls that aren't often mentioned when dealing with animated GIFs - 
+firstly that some files feature per-frame local palettes while some have one global 
+palette for all frames, and secondly that some GIFs replace the entire image with 
+each new frame ('full' mode in the code below), and some only update a specific 
+region ('partial'). 
+This code deals with both those cases by examining the palette and redraw 
+instructions of each frame. In the latter case this requires a preliminary (usually 
+partial) iteration of the frames before processing, since the redraw mode needs to 
+be consistently applied across all frames. I found a couple of examples of 
+partial-mode GIFs containing the occasional full-frame redraw, which would result 
+in bad renders of those frames if the mode assessment was only done on a 
+single-frame basis. 
+Nov 2012 
+'''</span>
+
+
+<span class="s2">def </span><span class="s1">analyseImage(path):</span>
+    <span class="s4">''' 
+    Pre-process pass over the image to determine the mode (full or additive). 
+    Necessary as assessing single frames isn't reliable. Need to know the mode 
+    before processing all frames. 
+    '''</span>
+    <span class="s1">im = Image.open(path)</span>
+    <span class="s1">results = {</span>
+        <span class="s3">'size'</span><span class="s1">: im.size</span><span class="s2">,</span>
+        <span class="s3">'mode'</span><span class="s1">: </span><span class="s3">'full'</span><span class="s2">,</span>
+    <span class="s1">}</span>
+    <span class="s2">try</span><span class="s1">:</span>
+        <span class="s2">while True</span><span class="s1">:</span>
+            <span class="s2">if </span><span class="s1">im.tile:</span>
+                <span class="s1">tile = im.tile[</span><span class="s5">0</span><span class="s1">]</span>
+                <span class="s1">update_region = tile[</span><span class="s5">1</span><span class="s1">]</span>
+                <span class="s1">update_region_dimensions = update_region[</span><span class="s5">2</span><span class="s1">:]</span>
+                <span class="s2">if </span><span class="s1">update_region_dimensions != im.size:</span>
+                    <span class="s1">results[</span><span class="s3">'mode'</span><span class="s1">] = </span><span class="s3">'partial'</span>
+                    <span class="s2">break</span>
+            <span class="s1">im.seek(im.tell() + </span><span class="s5">1</span><span class="s1">)</span>
+    <span class="s2">except </span><span class="s1">EOFError:</span>
+        <span class="s2">pass</span>
+    <span class="s2">return </span><span class="s1">results</span>
+
+
+<span class="s2">def </span><span class="s1">processImage(path):</span>
+    <span class="s4">''' 
+    Iterate the GIF, extracting each frame. 
+    '''</span>
+    <span class="s2">if not </span><span class="s1">path.endswith(</span><span class="s3">&quot;.gif&quot;</span><span class="s1">) </span><span class="s2">or </span><span class="s1">path.endswith(</span><span class="s3">&quot;.GIF&quot;</span><span class="s1">):</span>
+        <span class="s2">return </span><span class="s1">[thorpy.load_image(path)]</span>
+    <span class="s1">mode = analyseImage(path)[</span><span class="s3">'mode'</span><span class="s1">]</span>
+    <span class="s1">im = Image.open(path)</span>
+    <span class="s1">i = </span><span class="s5">0</span>
+    <span class="s1">p = im.getpalette()</span>
+    <span class="s1">last_frame = im.convert(</span><span class="s3">'RGBA'</span><span class="s1">)</span>
+    <span class="s1">images = []</span>
+    <span class="s2">try</span><span class="s1">:</span>
+        <span class="s2">while True</span><span class="s1">:</span>
+<span class="s0">##            print(&quot;saving %s (%s) frame %d, %s %s&quot; % (path, mode, i, im.size, im.tile))</span>
+            <span class="s3">''' 
+            If the GIF uses local colour tables, each frame will have its own palette. 
+            If not, we need to apply the global palette to the new frame. 
+            '''</span>
+            <span class="s2">if not </span><span class="s1">im.getpalette():</span>
+
+                <span class="s1">im.putpalette(p)</span>
+            <span class="s1">new_frame = Image.new(</span><span class="s3">'RGBA'</span><span class="s2">, </span><span class="s1">im.size)</span>
+            <span class="s3">''' 
+            Is this file a &quot;partial&quot;-mode GIF where frames update a region of a different size to the entire image? 
+            If so, we need to construct the new frame by pasting it on top of the preceding frames. 
+            '''</span>
+            <span class="s2">if </span><span class="s1">mode == </span><span class="s3">'partial'</span><span class="s1">:</span>
+                <span class="s1">new_frame.paste(last_frame)</span>
+            <span class="s1">new_frame.paste(im</span><span class="s2">, </span><span class="s1">(</span><span class="s5">0</span><span class="s2">,</span><span class="s5">0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">im.convert(</span><span class="s3">'RGBA'</span><span class="s1">))</span>
+<span class="s0">##            new_frame.save('%s-%d.png' % (''.join(os.path.basename(path).split('.')[:-1]), i), 'PNG')</span>
+            <span class="s1">images.append(pil_img_to_pygame_surf(new_frame))</span>
+            <span class="s1">i += </span><span class="s5">1</span>
+            <span class="s1">last_frame = new_frame</span>
+            <span class="s1">im.seek(im.tell() + </span><span class="s5">1</span><span class="s1">)</span>
+    <span class="s2">except </span><span class="s1">EOFError:</span>
+        <span class="s2">pass</span>
+    <span class="s2">return </span><span class="s1">images</span>
+
+
+
+<span class="s2">class </span><span class="s1">AnimatedGif(ThorpyImage):</span>
+    <span class="s1">@staticmethod</span>
+    <span class="s2">def </span><span class="s1">make(path=</span><span class="s2">None, </span><span class="s1">colorkey=</span><span class="s2">None, </span><span class="s1">low=</span><span class="s5">2</span><span class="s2">, </span><span class="s1">nread=float(</span><span class="s3">&quot;inf&quot;</span><span class="s1">)):</span>
+        <span class="s4">&quot;&quot;&quot;Image element. 
+        &lt;path&gt;: the path to the image. 
+        &lt;color&gt;: if path is None, use this color instead of image. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">img = AnimatedGif(path</span><span class="s2">, </span><span class="s1">colorkey=colorkey</span><span class="s2">, </span><span class="s1">low=low</span><span class="s2">, </span><span class="s1">nread=nread</span><span class="s2">,</span>
+                            <span class="s1">finish=</span><span class="s2">False</span><span class="s1">)</span>
+        <span class="s1">img.finish()</span>
+        <span class="s2">return </span><span class="s1">img</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">path</span><span class="s2">, </span><span class="s1">elements=</span><span class="s2">None, </span><span class="s1">normal_params=</span><span class="s2">None, </span><span class="s1">colorkey=</span><span class="s2">None,</span>
+                 <span class="s1">start_frame=</span><span class="s5">0</span><span class="s2">, </span><span class="s1">low=</span><span class="s5">2</span><span class="s2">, </span><span class="s1">nread=float(</span><span class="s3">&quot;inf&quot;</span><span class="s1">)</span><span class="s2">,</span><span class="s1">finish=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s1">low = </span><span class="s5">1 </span><span class="s2">if </span><span class="s1">low &lt; </span><span class="s5">1 </span><span class="s2">else </span><span class="s1">low</span>
+        <span class="s2">if not </span><span class="s1">HAS_PIL:</span>
+            <span class="s1">print(</span><span class="s3">&quot;You need to have PIL installed in order to use animated gifs&quot;</span><span class="s1">)</span>
+        <span class="s1">ThorpyImage.__init__(self</span><span class="s2">, </span><span class="s1">path=path</span><span class="s2">, </span><span class="s1">elements=elements</span><span class="s2">,</span>
+                            <span class="s1">normal_params=normal_params</span><span class="s2">, </span><span class="s1">colorkey=colorkey</span><span class="s2">,</span>
+                            <span class="s1">finish=</span><span class="s2">False</span><span class="s1">)</span>
+        <span class="s1">self.colorkey = colorkey</span>
+        <span class="s2">if </span><span class="s1">isinstance(path</span><span class="s2">,</span><span class="s1">list):</span>
+            <span class="s1">self.frames = frames</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">self.frames = processImage(path)</span>
+        <span class="s1">self.current_frame = start_frame</span>
+        <span class="s1">self.low = low</span>
+        <span class="s1">self.nread = nread</span>
+        <span class="s1">self.i = </span><span class="s5">0</span>
+        <span class="s1">thorpy.add_time_reaction(self</span><span class="s2">, </span><span class="s1">self.next_frame)</span>
+        <span class="s2">for </span><span class="s1">img </span><span class="s2">in </span><span class="s1">self.frames:</span>
+            <span class="s1">img.set_colorkey(self.colorkey)</span>
+        <span class="s2">if </span><span class="s1">finish:</span>
+            <span class="s1">self.finish()</span>
+
+    <span class="s2">def </span><span class="s1">next_frame(self):</span>
+        <span class="s2">if </span><span class="s1">self.i%self.low == </span><span class="s5">0 </span><span class="s2">and </span><span class="s1">self.nread&gt;</span><span class="s5">0</span><span class="s1">:</span>
+            <span class="s1">self.current_frame += </span><span class="s5">1</span>
+            <span class="s2">if </span><span class="s1">self.current_frame == len(self.frames):</span>
+                <span class="s1">self.current_frame = </span><span class="s5">0</span>
+                <span class="s1">self.nread -= </span><span class="s5">1</span>
+            <span class="s1">self.set_image(self.frames[self.current_frame])</span>
+            <span class="s1">self.unblit_and_reblit()</span>
+        <span class="s2">if </span><span class="s1">self.nread &lt;= </span><span class="s5">0</span><span class="s1">:</span>
+            <span class="s1">self.set_visible(</span><span class="s2">False</span><span class="s1">)</span>
+        <span class="s1">self.i += </span><span class="s5">1</span>
+
+    <span class="s2">def </span><span class="s1">resize_frames(self</span><span class="s2">, </span><span class="s1">size):</span>
+        <span class="s1">self.set_size(size)</span>
+        <span class="s1">new_frames = []</span>
+        <span class="s2">for </span><span class="s1">img </span><span class="s2">in </span><span class="s1">self.frames:</span>
+            <span class="s1">newone = pygame.transform.smoothscale(img</span><span class="s2">, </span><span class="s1">size)</span>
+            <span class="s1">newone.set_colorkey(self.colorkey)</span>
+            <span class="s1">new_frames.append(newone)</span>
+        <span class="s1">self.frames = new_frames</span>
+
+</pre>
+</body>
+</html>

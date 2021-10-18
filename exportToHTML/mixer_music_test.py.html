@@ -1,0 +1,280 @@
+<html>
+<head>
+<title>mixer_music_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #629755; font-style: italic;}
+.s4 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+mixer_music_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0"># -*- coding: utf-8 -*-</span>
+
+<span class="s2">import </span><span class="s1">os</span>
+<span class="s2">import </span><span class="s1">sys</span>
+<span class="s2">import </span><span class="s1">unittest</span>
+
+<span class="s2">from </span><span class="s1">pygame.tests.test_utils </span><span class="s2">import </span><span class="s1">example_path</span>
+<span class="s2">import </span><span class="s1">pygame</span>
+<span class="s2">from </span><span class="s1">pygame.compat </span><span class="s2">import </span><span class="s1">as_unicode</span><span class="s2">, </span><span class="s1">unicode_</span><span class="s2">, </span><span class="s1">filesystem_encode</span>
+
+
+<span class="s2">class </span><span class="s1">MixerMusicModuleTest(unittest.TestCase):</span>
+    <span class="s1">@classmethod</span>
+    <span class="s2">def </span><span class="s1">setUpClass(cls):</span>
+        <span class="s0"># Initializing the mixer is slow, so minimize the times it is called.</span>
+        <span class="s1">pygame.mixer.init()</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s2">def </span><span class="s1">tearDownClass(cls):</span>
+        <span class="s1">pygame.mixer.quit()</span>
+
+    <span class="s2">def </span><span class="s1">setUp(cls):</span>
+        <span class="s0"># This makes sure the mixer is always initialized before each test (in</span>
+        <span class="s0"># case a test calls pygame.mixer.quit()).</span>
+        <span class="s2">if </span><span class="s1">pygame.mixer.get_init() </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">pygame.mixer.init()</span>
+
+    <span class="s2">def </span><span class="s1">test_load(self):</span>
+        <span class="s3">&quot;|tags:music|&quot;</span>
+        <span class="s0"># __doc__ (as of 2008-07-13) for pygame.mixer_music.load:</span>
+
+          <span class="s0"># pygame.mixer.music.load(filename): return None</span>
+          <span class="s0"># Load a music file for playback</span>
+
+        <span class="s1">data_fname = example_path(</span><span class="s4">'data'</span><span class="s1">)</span>
+        <span class="s1">formats = [</span><span class="s4">'mp3'</span><span class="s2">, </span><span class="s4">'ogg'</span><span class="s2">, </span><span class="s4">'wav'</span><span class="s1">]</span>
+
+        <span class="s2">for </span><span class="s1">f </span><span class="s2">in </span><span class="s1">formats:</span>
+            <span class="s1">path = os.path.join(data_fname</span><span class="s2">, </span><span class="s4">'house_lo.%s' </span><span class="s1">% f)</span>
+            <span class="s2">if </span><span class="s1">os.sep == </span><span class="s4">'</span><span class="s2">\\</span><span class="s4">'</span><span class="s1">:</span>
+                <span class="s1">path = path.replace(</span><span class="s4">'</span><span class="s2">\\</span><span class="s4">'</span><span class="s2">, </span><span class="s4">'</span><span class="s2">\\\\</span><span class="s4">'</span><span class="s1">)</span>
+            <span class="s1">umusfn = as_unicode(path)</span>
+            <span class="s1">bmusfn = filesystem_encode(umusfn)</span>
+
+            <span class="s1">pygame.mixer.music.load(umusfn)</span>
+            <span class="s1">pygame.mixer.music.load(bmusfn)</span>
+
+    <span class="s2">def </span><span class="s1">test_load_object(self):</span>
+        <span class="s3">&quot;&quot;&quot;test loading music from file-like objects.&quot;&quot;&quot;</span>
+        <span class="s1">formats = [</span><span class="s4">'ogg'</span><span class="s2">, </span><span class="s4">'wav'</span><span class="s1">]</span>
+        <span class="s1">data_fname = example_path(</span><span class="s4">'data'</span><span class="s1">)</span>
+        <span class="s2">for </span><span class="s1">f </span><span class="s2">in </span><span class="s1">formats:</span>
+            <span class="s1">path = os.path.join(data_fname</span><span class="s2">, </span><span class="s4">'house_lo.%s' </span><span class="s1">% f)</span>
+            <span class="s2">if </span><span class="s1">os.sep == </span><span class="s4">'</span><span class="s2">\\</span><span class="s4">'</span><span class="s1">:</span>
+                <span class="s1">path = path.replace(</span><span class="s4">'</span><span class="s2">\\</span><span class="s4">'</span><span class="s2">, </span><span class="s4">'</span><span class="s2">\\\\</span><span class="s4">'</span><span class="s1">)</span>
+            <span class="s1">bmusfn = filesystem_encode(path)</span>
+
+            <span class="s2">with </span><span class="s1">open(bmusfn</span><span class="s2">, </span><span class="s4">'rb'</span><span class="s1">) </span><span class="s2">as </span><span class="s1">musf:</span>
+                <span class="s1">pygame.mixer.music.load(musf)</span>
+
+    <span class="s2">def </span><span class="s1">test_load_unicode(self):</span>
+        <span class="s3">&quot;&quot;&quot;test non-ASCII unicode path&quot;&quot;&quot;</span>
+        <span class="s2">import </span><span class="s1">shutil</span>
+        <span class="s1">ep = unicode_(example_path(</span><span class="s4">'data'</span><span class="s1">))</span>
+        <span class="s1">temp_file = os.path.join(ep</span><span class="s2">, </span><span class="s4">u'你好.wav'</span><span class="s1">)</span>
+        <span class="s1">org_file = os.path.join(ep</span><span class="s2">, </span><span class="s4">u'house_lo.wav'</span><span class="s1">)</span>
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s2">with </span><span class="s1">open(temp_file</span><span class="s2">, </span><span class="s4">'w'</span><span class="s1">) </span><span class="s2">as </span><span class="s1">f:</span>
+                <span class="s2">pass</span>
+            <span class="s1">os.remove(temp_file)</span>
+        <span class="s2">except </span><span class="s1">IOError:</span>
+            <span class="s2">raise </span><span class="s1">unittest.SkipTest(</span><span class="s4">'the path cannot be opened'</span><span class="s1">)</span>
+        <span class="s1">shutil.copy(org_file</span><span class="s2">, </span><span class="s1">temp_file)</span>
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s1">pygame.mixer.music.load(temp_file)</span>
+            <span class="s1">pygame.mixer.music.load(org_file) </span><span class="s0"># unload</span>
+        <span class="s2">finally</span><span class="s1">:</span>
+            <span class="s1">os.remove(temp_file)</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_queue(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.queue:</span>
+
+          <span class="s0"># This will load a music file and queue it. A queued music file will</span>
+          <span class="s0"># begin as soon as the current music naturally ends. If the current</span>
+          <span class="s0"># music is ever stopped or changed, the queued song will be lost.</span>
+          <span class="s0">#</span>
+          <span class="s0"># The following example will play music by Bach six times, then play</span>
+          <span class="s0"># music by Mozart once:</span>
+          <span class="s0">#</span>
+          <span class="s0">#     pygame.mixer.music.load('bach.ogg')</span>
+          <span class="s0">#     pygame.mixer.music.play(5)        # Plays six times, not five!</span>
+          <span class="s0">#     pygame.mixer.music.queue('mozart.ogg')</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_stop(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.stop:</span>
+
+          <span class="s0"># Stops the music playback if it is currently playing.</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_rewind(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.rewind:</span>
+
+          <span class="s0"># Resets playback of the current music to the beginning.</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_get_pos(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.get_pos:</span>
+
+          <span class="s0"># This gets the number of milliseconds that the music has been playing</span>
+          <span class="s0"># for. The returned time only represents how long the music has been</span>
+          <span class="s0"># playing; it does not take into account any starting position</span>
+          <span class="s0"># offsets.</span>
+          <span class="s0">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_fadeout(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.fadeout:</span>
+
+          <span class="s0"># This will stop the music playback after it has been faded out over</span>
+          <span class="s0"># the specified time (measured in milliseconds).</span>
+          <span class="s0">#</span>
+          <span class="s0"># Note, that this function blocks until the music has faded out.</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_play(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.play:</span>
+
+          <span class="s0"># This will play the loaded music stream. If the music is already</span>
+          <span class="s0"># playing it will be restarted.</span>
+          <span class="s0">#</span>
+          <span class="s0"># The loops argument controls the number of repeats a music will play.</span>
+          <span class="s0"># play(5) will cause the music to played once, then repeated five</span>
+          <span class="s0"># times, for a total of six. If the loops is -1 then the music will</span>
+          <span class="s0"># repeat indefinitely.</span>
+          <span class="s0">#</span>
+          <span class="s0"># The starting position argument controls where in the music the song</span>
+          <span class="s0"># starts playing. The starting position is dependent on the format of</span>
+          <span class="s0"># music playing. MP3 and OGG use the position as time (in seconds).</span>
+          <span class="s0"># MOD music it is the pattern order number. Passing a startpos will</span>
+          <span class="s0"># raise a NotImplementedError if it cannot set the start position</span>
+          <span class="s0">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_load(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.load:</span>
+
+          <span class="s0"># This will load a music file and prepare it for playback. If a music</span>
+          <span class="s0"># stream is already playing it will be stopped. This does not start</span>
+          <span class="s0"># the music playing.</span>
+          <span class="s0">#</span>
+          <span class="s0"># Music can only be loaded from filenames, not python file objects</span>
+          <span class="s0"># like the other pygame loading functions.</span>
+          <span class="s0">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_get_volume(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.get_volume:</span>
+
+          <span class="s0"># Returns the current volume for the mixer. The value will be between</span>
+          <span class="s0"># 0.0 and 1.0.</span>
+          <span class="s0">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_set_endevent(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.set_endevent:</span>
+
+          <span class="s0"># This causes Pygame to signal (by means of the event queue) when the</span>
+          <span class="s0"># music is done playing. The argument determines the type of event</span>
+          <span class="s0"># that will be queued.</span>
+          <span class="s0">#</span>
+          <span class="s0"># The event will be queued every time the music finishes, not just the</span>
+          <span class="s0"># first time. To stop the event from being queued, call this method</span>
+          <span class="s0"># with no argument.</span>
+          <span class="s0">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_pause(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.pause:</span>
+
+          <span class="s0"># Temporarily stop playback of the music stream. It can be resumed</span>
+          <span class="s0"># with the pygame.mixer.music.unpause() function.</span>
+          <span class="s0">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_get_busy(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.get_busy:</span>
+
+          <span class="s0"># Returns True when the music stream is actively playing. When the</span>
+          <span class="s0"># music is idle this returns False.</span>
+          <span class="s0">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_get_endevent(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.get_endevent:</span>
+
+          <span class="s0"># Returns the event type to be sent every time the music finishes</span>
+          <span class="s0"># playback. If there is no endevent the function returns</span>
+          <span class="s0"># pygame.NOEVENT.</span>
+          <span class="s0">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_unpause(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.unpause:</span>
+
+          <span class="s0"># This will resume the playback of a music stream after it has been paused.</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_set_volume(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.mixer_music.set_volume:</span>
+
+          <span class="s0"># Set the volume of the music playback. The value argument is between</span>
+          <span class="s0"># 0.0 and 1.0. When new music is loaded the volume is reset.</span>
+          <span class="s0">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_set_pos(self):</span>
+
+        <span class="s0"># __doc__ (as of 2010-24-05) for pygame.mixer_music.set_pos:</span>
+
+          <span class="s0">#This sets the position in the music file where playback will start. The</span>
+          <span class="s0"># meaning of &quot;pos&quot;, a float (or a number that can be converted to a float),</span>
+          <span class="s0"># depends on the music format. Newer versions of SDL_mixer have better</span>
+          <span class="s0"># positioning support than earlier. An SDLError is raised if a particular</span>
+          <span class="s0"># format does not support positioning.</span>
+          <span class="s0">#</span>
+
+        <span class="s1">self.fail()</span>
+
+<span class="s2">if </span><span class="s1">__name__ == </span><span class="s4">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

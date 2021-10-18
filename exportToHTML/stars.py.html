@@ -1,0 +1,117 @@
+<html>
+<head>
+<title>stars.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #cc7832;}
+.s4 { color: #6897bb;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+stars.py</font>
+</center></td></tr></table>
+<pre><span class="s0">#!/usr/bin/env python</span>
+
+<span class="s2">&quot;&quot;&quot;A simple starfield example. Note you can move the 'center' of 
+the starfield by leftclicking in the window. This example show 
+the basics of creating a window, simple pixel plotting, and input 
+event management&quot;&quot;&quot;</span>
+
+
+<span class="s3">import </span><span class="s1">random</span><span class="s3">, </span><span class="s1">math</span><span class="s3">, </span><span class="s1">pygame</span>
+<span class="s3">from </span><span class="s1">pygame.locals </span><span class="s3">import </span><span class="s1">*</span>
+
+<span class="s0">#constants</span>
+<span class="s1">WINSIZE = [</span><span class="s4">640</span><span class="s3">, </span><span class="s4">480</span><span class="s1">]</span>
+<span class="s1">WINCENTER = [</span><span class="s4">320</span><span class="s3">, </span><span class="s4">240</span><span class="s1">]</span>
+<span class="s1">NUMSTARS = </span><span class="s4">150</span>
+
+
+<span class="s3">def </span><span class="s1">init_star():</span>
+    <span class="s2">&quot;creates new star values&quot;</span>
+    <span class="s1">dir = random.randrange(</span><span class="s4">100000</span><span class="s1">)</span>
+    <span class="s1">velmult = random.random()*</span><span class="s4">.6</span><span class="s1">+</span><span class="s4">.4</span>
+    <span class="s1">vel = [math.sin(dir) * velmult</span><span class="s3">, </span><span class="s1">math.cos(dir) * velmult]</span>
+    <span class="s3">return </span><span class="s1">vel</span><span class="s3">, </span><span class="s1">WINCENTER[:]</span>
+
+
+<span class="s3">def </span><span class="s1">initialize_stars():</span>
+    <span class="s2">&quot;creates a new starfield&quot;</span>
+    <span class="s1">stars = []</span>
+    <span class="s3">for </span><span class="s1">x </span><span class="s3">in </span><span class="s1">range(NUMSTARS):</span>
+        <span class="s1">star = init_star()</span>
+        <span class="s1">vel</span><span class="s3">, </span><span class="s1">pos = star</span>
+        <span class="s1">steps = random.randint(</span><span class="s4">0</span><span class="s3">, </span><span class="s1">WINCENTER[</span><span class="s4">0</span><span class="s1">])</span>
+        <span class="s1">pos[</span><span class="s4">0</span><span class="s1">] = pos[</span><span class="s4">0</span><span class="s1">] + (vel[</span><span class="s4">0</span><span class="s1">] * steps)</span>
+        <span class="s1">pos[</span><span class="s4">1</span><span class="s1">] = pos[</span><span class="s4">1</span><span class="s1">] + (vel[</span><span class="s4">1</span><span class="s1">] * steps)</span>
+        <span class="s1">vel[</span><span class="s4">0</span><span class="s1">] = vel[</span><span class="s4">0</span><span class="s1">] * (steps * </span><span class="s4">.09</span><span class="s1">)</span>
+        <span class="s1">vel[</span><span class="s4">1</span><span class="s1">] = vel[</span><span class="s4">1</span><span class="s1">] * (steps * </span><span class="s4">.09</span><span class="s1">)</span>
+        <span class="s1">stars.append(star)</span>
+    <span class="s1">move_stars(stars)</span>
+    <span class="s3">return </span><span class="s1">stars</span>
+  
+
+<span class="s3">def </span><span class="s1">draw_stars(surface</span><span class="s3">, </span><span class="s1">stars</span><span class="s3">, </span><span class="s1">color):</span>
+    <span class="s2">&quot;used to draw (and clear) the stars&quot;</span>
+    <span class="s3">for </span><span class="s1">vel</span><span class="s3">, </span><span class="s1">pos </span><span class="s3">in </span><span class="s1">stars:</span>
+        <span class="s1">pos = (int(pos[</span><span class="s4">0</span><span class="s1">])</span><span class="s3">, </span><span class="s1">int(pos[</span><span class="s4">1</span><span class="s1">]))</span>
+        <span class="s1">surface.set_at(pos</span><span class="s3">, </span><span class="s1">color)</span>
+
+
+<span class="s3">def </span><span class="s1">move_stars(stars):</span>
+    <span class="s2">&quot;animate the star values&quot;</span>
+    <span class="s3">for </span><span class="s1">vel</span><span class="s3">, </span><span class="s1">pos </span><span class="s3">in </span><span class="s1">stars:</span>
+        <span class="s1">pos[</span><span class="s4">0</span><span class="s1">] = pos[</span><span class="s4">0</span><span class="s1">] + vel[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">pos[</span><span class="s4">1</span><span class="s1">] = pos[</span><span class="s4">1</span><span class="s1">] + vel[</span><span class="s4">1</span><span class="s1">]</span>
+        <span class="s3">if not </span><span class="s4">0 </span><span class="s1">&lt;= pos[</span><span class="s4">0</span><span class="s1">] &lt;= WINSIZE[</span><span class="s4">0</span><span class="s1">] </span><span class="s3">or not </span><span class="s4">0 </span><span class="s1">&lt;= pos[</span><span class="s4">1</span><span class="s1">] &lt;= WINSIZE[</span><span class="s4">1</span><span class="s1">]:</span>
+            <span class="s1">vel[:]</span><span class="s3">, </span><span class="s1">pos[:] = init_star()</span>
+        <span class="s3">else</span><span class="s1">:</span>
+            <span class="s1">vel[</span><span class="s4">0</span><span class="s1">] = vel[</span><span class="s4">0</span><span class="s1">] * </span><span class="s4">1.05</span>
+            <span class="s1">vel[</span><span class="s4">1</span><span class="s1">] = vel[</span><span class="s4">1</span><span class="s1">] * </span><span class="s4">1.05</span>
+  
+
+<span class="s3">def </span><span class="s1">main():</span>
+    <span class="s2">&quot;This is the starfield code&quot;</span>
+    <span class="s0">#create our starfield</span>
+    <span class="s1">random.seed()</span>
+    <span class="s1">stars = initialize_stars()</span>
+    <span class="s1">clock = pygame.time.Clock()</span>
+    <span class="s0">#initialize and prepare screen</span>
+    <span class="s1">pygame.init()</span>
+    <span class="s1">screen = pygame.display.set_mode(WINSIZE)</span>
+    <span class="s1">pygame.display.set_caption(</span><span class="s5">'pygame Stars Example'</span><span class="s1">)</span>
+    <span class="s1">white = </span><span class="s4">255</span><span class="s3">, </span><span class="s4">240</span><span class="s3">, </span><span class="s4">200</span>
+    <span class="s1">black = </span><span class="s4">20</span><span class="s3">, </span><span class="s4">20</span><span class="s3">, </span><span class="s4">40</span>
+    <span class="s1">screen.fill(black)</span>
+
+    <span class="s0">#main game loop</span>
+    <span class="s1">done = </span><span class="s4">0</span>
+    <span class="s3">while not </span><span class="s1">done:</span>
+        <span class="s1">draw_stars(screen</span><span class="s3">, </span><span class="s1">stars</span><span class="s3">, </span><span class="s1">black)</span>
+        <span class="s1">move_stars(stars)</span>
+        <span class="s1">draw_stars(screen</span><span class="s3">, </span><span class="s1">stars</span><span class="s3">, </span><span class="s1">white)</span>
+        <span class="s1">pygame.display.update()</span>
+        <span class="s3">for </span><span class="s1">e </span><span class="s3">in </span><span class="s1">pygame.event.get():</span>
+            <span class="s3">if </span><span class="s1">e.type == QUIT </span><span class="s3">or </span><span class="s1">(e.type == KEYUP </span><span class="s3">and </span><span class="s1">e.key == K_ESCAPE):</span>
+                <span class="s1">done = </span><span class="s4">1</span>
+                <span class="s3">break</span>
+            <span class="s3">elif </span><span class="s1">e.type == MOUSEBUTTONDOWN </span><span class="s3">and </span><span class="s1">e.button == </span><span class="s4">1</span><span class="s1">:</span>
+                <span class="s1">WINCENTER[:] = list(e.pos)</span>
+        <span class="s1">clock.tick(</span><span class="s4">50</span><span class="s1">)</span>
+
+
+<span class="s0"># if python says run, then we should run</span>
+<span class="s3">if </span><span class="s1">__name__ == </span><span class="s5">'__main__'</span><span class="s1">:</span>
+    <span class="s1">main()</span>
+
+
+</pre>
+</body>
+</html>

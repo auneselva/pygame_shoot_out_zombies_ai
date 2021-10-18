@@ -1,0 +1,35 @@
+<html>
+<head>
+<title>surfarray_tags.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #a9b7c6;}
+.s1 { color: #6a8759;}
+.s2 { color: #cc7832;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+surfarray_tags.py</font>
+</center></td></tr></table>
+<pre><span class="s0">__tags__ = [</span><span class="s1">'array'</span><span class="s0">]</span>
+
+<span class="s0">exclude = </span><span class="s2">False</span>
+
+<span class="s2">try</span><span class="s0">:</span>
+    <span class="s2">import </span><span class="s0">numpy</span>
+<span class="s2">except </span><span class="s0">ImportError:</span>
+    <span class="s0">exclude = </span><span class="s2">True</span>
+<span class="s2">else</span><span class="s0">:</span>
+    <span class="s2">try</span><span class="s0">:</span>
+        <span class="s2">import </span><span class="s0">pygame.pixelcopy</span>
+    <span class="s2">except </span><span class="s0">ImportError:</span>
+        <span class="s0">exclude = </span><span class="s2">True</span>
+
+<span class="s2">if </span><span class="s0">exclude:</span>
+    <span class="s0">__tags__.extend((</span><span class="s1">'ignore'</span><span class="s2">, </span><span class="s1">'subprocess_ignore'</span><span class="s0">))</span>
+</pre>
+</body>
+</html>

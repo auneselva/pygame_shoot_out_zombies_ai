@@ -1,0 +1,757 @@
+<html>
+<head>
+<title>ui_window.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6897bb;}
+.s4 { color: #629755; font-style: italic;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+ui_window.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Tuple</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui._constants </span><span class="s0">import </span><span class="s1">UI_WINDOW_CLOSE</span><span class="s0">, </span><span class="s1">UI_WINDOW_MOVED_TO_FRONT</span><span class="s0">, </span><span class="s1">UI_BUTTON_PRESSED</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core </span><span class="s0">import </span><span class="s1">ObjectID</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IContainerLikeInterface</span><span class="s0">, </span><span class="s1">IUIContainerInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IWindowInterface</span><span class="s0">, </span><span class="s1">IUIManagerInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core </span><span class="s0">import </span><span class="s1">UIElement</span><span class="s0">, </span><span class="s1">UIContainer</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.drawable_shapes </span><span class="s0">import </span><span class="s1">RectDrawableShape</span><span class="s0">, </span><span class="s1">RoundedRectangleShape</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.elements.ui_button </span><span class="s0">import </span><span class="s1">UIButton</span>
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s2"># mouse button constants not defined in pygame 1.9.3</span>
+    <span class="s0">assert </span><span class="s1">pygame.BUTTON_LEFT == </span><span class="s3">1</span>
+    <span class="s0">assert </span><span class="s1">pygame.BUTTON_MIDDLE == </span><span class="s3">2</span>
+    <span class="s0">assert </span><span class="s1">pygame.BUTTON_RIGHT == </span><span class="s3">3</span>
+<span class="s0">except </span><span class="s1">(AttributeError</span><span class="s0">, </span><span class="s1">AssertionError):</span>
+    <span class="s1">pygame.BUTTON_LEFT = </span><span class="s3">1</span>
+    <span class="s1">pygame.BUTTON_MIDDLE = </span><span class="s3">2</span>
+    <span class="s1">pygame.BUTTON_RIGHT = </span><span class="s3">3</span>
+
+
+<span class="s0">class </span><span class="s1">UIWindow(UIElement</span><span class="s0">, </span><span class="s1">IContainerLikeInterface</span><span class="s0">, </span><span class="s1">IWindowInterface):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    A base class for window GUI elements, any windows should inherit from this class. 
+ 
+    :param rect: A rectangle, representing size and position of the window (including title bar, 
+                 shadow and borders). 
+    :param manager: The UIManager that manages this UIWindow. 
+    :param window_display_title: A string that will appear in the windows title bar if it has one. 
+    :param element_id: An element ID for this window, if one is not supplied it defaults to 
+                       'window'. 
+    :param object_id: An optional object ID for this window, useful for distinguishing different 
+                      windows. 
+    :param resizable: Whether this window is resizable or not, defaults to False. 
+    :param visible: Whether the element is visible by default. Warning - container visibility may 
+                    override this. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">rect: pygame.Rect</span><span class="s0">,</span>
+                 <span class="s1">manager: IUIManagerInterface</span><span class="s0">,</span>
+                 <span class="s1">window_display_title: str = </span><span class="s5">&quot;&quot;</span><span class="s0">,</span>
+                 <span class="s1">element_id: Union[str</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">object_id: Union[ObjectID</span><span class="s0">, </span><span class="s1">str</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">resizable: bool = </span><span class="s0">False,</span>
+                 <span class="s1">visible: int = </span><span class="s3">1</span><span class="s1">):</span>
+
+        <span class="s1">self.window_display_title = window_display_title</span>
+        <span class="s1">self._window_root_container = </span><span class="s0">None  </span><span class="s2"># type: Union[UIContainer, None]</span>
+        <span class="s1">self.resizable = resizable</span>
+        <span class="s1">self.minimum_dimensions = (</span><span class="s3">100</span><span class="s0">, </span><span class="s3">100</span><span class="s1">)</span>
+        <span class="s1">self.edge_hovering = [</span><span class="s0">False, False, False, False</span><span class="s1">]</span>
+
+        <span class="s1">super().__init__(rect</span><span class="s0">, </span><span class="s1">manager</span><span class="s0">, </span><span class="s1">container=</span><span class="s0">None,</span>
+                         <span class="s1">starting_height=</span><span class="s3">1</span><span class="s0">,</span>
+                         <span class="s1">layer_thickness=</span><span class="s3">1</span><span class="s0">,</span>
+                         <span class="s1">visible=visible)</span>
+
+        <span class="s0">if </span><span class="s1">element_id </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">element_id = </span><span class="s5">'window'</span>
+
+        <span class="s1">self._create_valid_ids(container=</span><span class="s0">None,</span>
+                               <span class="s1">parent_element=</span><span class="s0">None,</span>
+                               <span class="s1">object_id=object_id</span><span class="s0">,</span>
+                               <span class="s1">element_id=element_id)</span>
+
+        <span class="s1">self.set_image(self.ui_manager.get_universal_empty_surface())</span>
+        <span class="s1">self.bring_to_front_on_focused = </span><span class="s0">True</span>
+
+        <span class="s1">self.is_blocking = </span><span class="s0">False  </span><span class="s2"># blocks all clicking events from interacting beyond this window</span>
+
+        <span class="s1">self.resizing_mode_active = </span><span class="s0">False</span>
+        <span class="s1">self.start_resize_point = (</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.start_resize_rect = </span><span class="s0">None  </span><span class="s2"># type: Union[pygame.Rect, None]</span>
+
+        <span class="s1">self.grabbed_window = </span><span class="s0">False</span>
+        <span class="s1">self.starting_grab_difference = (</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+
+        <span class="s1">self.background_colour = </span><span class="s0">None</span>
+        <span class="s1">self.border_colour = </span><span class="s0">None</span>
+        <span class="s1">self.shape = </span><span class="s5">'rectangle'</span>
+        <span class="s1">self.enable_title_bar = </span><span class="s0">True</span>
+        <span class="s1">self.enable_close_button = </span><span class="s0">True</span>
+        <span class="s1">self.title_bar_height = </span><span class="s3">28</span>
+        <span class="s1">self.title_bar_close_button_width = self.title_bar_height</span>
+
+        <span class="s2"># UI elements</span>
+        <span class="s1">self.window_element_container = </span><span class="s0">None  </span><span class="s2"># type: Union[UIContainer, None]</span>
+        <span class="s1">self.title_bar = </span><span class="s0">None  </span><span class="s2"># type: Union[UIButton, None]</span>
+        <span class="s1">self.close_window_button = </span><span class="s0">None  </span><span class="s2"># type: Union[UIButton, None]</span>
+
+        <span class="s1">self.rebuild_from_changed_theme_data()</span>
+
+        <span class="s1">self.window_stack = self.ui_manager.get_window_stack()</span>
+        <span class="s1">self.window_stack.add_new_window(self)</span>
+
+    <span class="s0">def </span><span class="s1">set_blocking(self</span><span class="s0">, </span><span class="s1">state: bool):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Sets whether this window being open should block clicks to the rest of the UI or not. 
+        Defaults to False. 
+ 
+        :param state: True if this window should block mouse clicks. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.is_blocking = state</span>
+
+    <span class="s0">def </span><span class="s1">set_minimum_dimensions(self</span><span class="s0">, </span><span class="s1">dimensions: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                                       <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                                       <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        If this window is resizable, then the dimensions we set here will be the minimum that 
+        users can change the window to. They are also used as the minimum size when 
+        'set_dimensions' is called. 
+ 
+        :param dimensions: The new minimum dimension for the window. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.minimum_dimensions = (min(self.ui_container.rect.width</span><span class="s0">, </span><span class="s1">int(dimensions[</span><span class="s3">0</span><span class="s1">]))</span><span class="s0">,</span>
+                                   <span class="s1">min(self.ui_container.rect.height</span><span class="s0">, </span><span class="s1">int(dimensions[</span><span class="s3">1</span><span class="s1">])))</span>
+
+        <span class="s0">if </span><span class="s1">((self.rect.width &lt; self.minimum_dimensions[</span><span class="s3">0</span><span class="s1">]) </span><span class="s0">or</span>
+                <span class="s1">(self.rect.height &lt; self.minimum_dimensions[</span><span class="s3">1</span><span class="s1">])):</span>
+            <span class="s1">new_width = max(self.minimum_dimensions[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.rect.width)</span>
+            <span class="s1">new_height = max(self.minimum_dimensions[</span><span class="s3">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.rect.height)</span>
+            <span class="s1">self.set_dimensions((new_width</span><span class="s0">, </span><span class="s1">new_height))</span>
+
+    <span class="s0">def </span><span class="s1">set_dimensions(self</span><span class="s0">, </span><span class="s1">dimensions: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Set the size of this window and then re-sizes and shifts the contents of the windows 
+        container to fit the new size. 
+ 
+        :param dimensions: The new dimensions to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s2"># clamp to minimum dimensions and container size</span>
+        <span class="s1">dimensions = (min(self.ui_container.rect.width</span><span class="s0">,</span>
+                          <span class="s1">max(self.minimum_dimensions[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s1">int(dimensions[</span><span class="s3">0</span><span class="s1">])))</span><span class="s0">,</span>
+                      <span class="s1">min(self.ui_container.rect.height</span><span class="s0">,</span>
+                          <span class="s1">max(self.minimum_dimensions[</span><span class="s3">1</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s1">int(dimensions[</span><span class="s3">1</span><span class="s1">]))))</span>
+
+        <span class="s2"># Don't use a basic gate on this set dimensions method because the container may be a</span>
+        <span class="s2"># different size to the window</span>
+        <span class="s1">super().set_dimensions(dimensions)</span>
+
+        <span class="s0">if </span><span class="s1">self._window_root_container </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">new_container_dimensions = (self.relative_rect.width - (</span><span class="s3">2 </span><span class="s1">* self.shadow_width)</span><span class="s0">,</span>
+                                        <span class="s1">self.relative_rect.height - (</span><span class="s3">2 </span><span class="s1">* self.shadow_width))</span>
+            <span class="s0">if </span><span class="s1">new_container_dimensions != self._window_root_container.relative_rect.size:</span>
+                <span class="s1">self._window_root_container.set_dimensions(new_container_dimensions)</span>
+                <span class="s1">container_pos = (self.relative_rect.x + self.shadow_width</span><span class="s0">,</span>
+                                 <span class="s1">self.relative_rect.y + self.shadow_width)</span>
+                <span class="s1">self._window_root_container.set_relative_position(container_pos)</span>
+
+    <span class="s0">def </span><span class="s1">set_relative_position(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                                    <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                                    <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Method to directly set the relative rect position of an element. 
+ 
+        :param position: The new position to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().set_relative_position(position)</span>
+
+        <span class="s0">if </span><span class="s1">self._window_root_container </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">container_pos = (self.relative_rect.x + self.shadow_width</span><span class="s0">,</span>
+                             <span class="s1">self.relative_rect.y + self.shadow_width)</span>
+            <span class="s1">self._window_root_container.set_relative_position(container_pos)</span>
+
+    <span class="s0">def </span><span class="s1">set_position(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                           <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                           <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Method to directly set the absolute screen rect position of an element. 
+ 
+        :param position: The new position to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().set_position(position)</span>
+
+        <span class="s0">if </span><span class="s1">self._window_root_container </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">container_pos = (self.relative_rect.x + self.shadow_width</span><span class="s0">,</span>
+                             <span class="s1">self.relative_rect.y + self.shadow_width)</span>
+            <span class="s1">self._window_root_container.set_relative_position(container_pos)</span>
+
+    <span class="s0">def </span><span class="s1">process_event(self</span><span class="s0">, </span><span class="s1">event: pygame.event.Event) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Handles resizing &amp; closing windows. Gives UI Windows access to pygame events. Derived 
+        windows should super() call this class if they implement their own process_event method. 
+ 
+        :param event: The event to process. 
+ 
+        :return bool: Return True if this element should consume this event and not pass it to the 
+                      rest of the UI. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">consumed_event = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">self.is_blocking </span><span class="s0">and </span><span class="s1">event.type == pygame.MOUSEBUTTONDOWN:</span>
+            <span class="s1">consumed_event = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">(self </span><span class="s0">is not None and</span>
+                <span class="s1">event.type == pygame.MOUSEBUTTONDOWN </span><span class="s0">and</span>
+                <span class="s1">event.button </span><span class="s0">in </span><span class="s1">[pygame.BUTTON_LEFT</span><span class="s0">,</span>
+                                 <span class="s1">pygame.BUTTON_MIDDLE</span><span class="s0">,</span>
+                                 <span class="s1">pygame.BUTTON_RIGHT]):</span>
+            <span class="s1">scaled_mouse_pos = self.ui_manager.calculate_scaled_mouse_position(event.pos)</span>
+
+            <span class="s1">edge_hovered = (self.edge_hovering[</span><span class="s3">0</span><span class="s1">] </span><span class="s0">or </span><span class="s1">self.edge_hovering[</span><span class="s3">1</span><span class="s1">] </span><span class="s0">or</span>
+                            <span class="s1">self.edge_hovering[</span><span class="s3">2</span><span class="s1">] </span><span class="s0">or </span><span class="s1">self.edge_hovering[</span><span class="s3">3</span><span class="s1">])</span>
+            <span class="s0">if </span><span class="s1">(self.is_enabled </span><span class="s0">and</span>
+                    <span class="s1">event.button == pygame.BUTTON_LEFT </span><span class="s0">and</span>
+                    <span class="s1">edge_hovered):</span>
+                <span class="s1">self.resizing_mode_active = </span><span class="s0">True</span>
+                <span class="s1">self.start_resize_point = scaled_mouse_pos</span>
+                <span class="s1">self.start_resize_rect = self.rect.copy()</span>
+                <span class="s1">consumed_event = </span><span class="s0">True</span>
+            <span class="s0">elif </span><span class="s1">self.hover_point(scaled_mouse_pos[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">scaled_mouse_pos[</span><span class="s3">1</span><span class="s1">]):</span>
+                <span class="s1">consumed_event = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">(self </span><span class="s0">is not None and </span><span class="s1">event.type == pygame.MOUSEBUTTONUP </span><span class="s0">and</span>
+                <span class="s1">event.button == pygame.BUTTON_LEFT </span><span class="s0">and </span><span class="s1">self.resizing_mode_active):</span>
+            <span class="s1">self.resizing_mode_active = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">(event.type == pygame.USEREVENT </span><span class="s0">and </span><span class="s1">event.user_type == UI_BUTTON_PRESSED</span>
+                <span class="s0">and </span><span class="s1">event.ui_element == self.close_window_button):</span>
+            <span class="s1">self.kill()</span>
+
+        <span class="s0">return </span><span class="s1">consumed_event</span>
+
+    <span class="s0">def </span><span class="s1">check_clicked_inside_or_blocking(self</span><span class="s0">, </span><span class="s1">event: pygame.event.Event) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        A quick event check outside of the normal event processing so that this window is brought 
+        to the front of the window stack if we click on any of the elements contained within it. 
+ 
+        :param event: The event to check. 
+ 
+        :return: returns True if the event represents a click inside this window or the window 
+                 is blocking. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">consumed_event = </span><span class="s0">False</span>
+        <span class="s0">if </span><span class="s1">self.is_blocking </span><span class="s0">and </span><span class="s1">event.type == pygame.MOUSEBUTTONDOWN:</span>
+            <span class="s1">consumed_event = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">event.type == pygame.MOUSEBUTTONDOWN </span><span class="s0">and </span><span class="s1">event.button == </span><span class="s3">1</span><span class="s1">:</span>
+            <span class="s1">scaled_mouse_pos = self.ui_manager.calculate_scaled_mouse_position(event.pos)</span>
+            <span class="s0">if </span><span class="s1">self.hover_point(scaled_mouse_pos[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">,</span>
+                                <span class="s1">scaled_mouse_pos[</span><span class="s3">1</span><span class="s1">]) </span><span class="s0">or </span><span class="s1">(self.edge_hovering[</span><span class="s3">0</span><span class="s1">] </span><span class="s0">or</span>
+                                                         <span class="s1">self.edge_hovering[</span><span class="s3">1</span><span class="s1">] </span><span class="s0">or</span>
+                                                         <span class="s1">self.edge_hovering[</span><span class="s3">2</span><span class="s1">] </span><span class="s0">or</span>
+                                                         <span class="s1">self.edge_hovering[</span><span class="s3">3</span><span class="s1">]):</span>
+                <span class="s0">if </span><span class="s1">self.is_enabled </span><span class="s0">and </span><span class="s1">self.bring_to_front_on_focused:</span>
+                    <span class="s1">self.window_stack.move_window_to_front(self)</span>
+                <span class="s1">consumed_event = </span><span class="s0">True</span>
+
+        <span class="s0">return </span><span class="s1">consumed_event</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        A method called every update cycle of our application. Designed to be overridden by 
+        derived classes but also has a little functionality to make sure the window's layer 
+        'thickness' is accurate and to handle window resizing. 
+ 
+        :param time_delta: time passed in seconds between one call to this method and the next. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().update(time_delta)</span>
+
+        <span class="s2"># This is needed to keep the window in sync with the container after adding elements to it</span>
+        <span class="s0">if </span><span class="s1">self._window_root_container.layer_thickness != self.layer_thickness:</span>
+            <span class="s1">self.layer_thickness = self._window_root_container.layer_thickness</span>
+        <span class="s0">if </span><span class="s1">self.title_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.title_bar.held:</span>
+                <span class="s1">mouse_x</span><span class="s0">, </span><span class="s1">mouse_y = self.ui_manager.get_mouse_position()</span>
+                <span class="s0">if not </span><span class="s1">self.grabbed_window:</span>
+                    <span class="s1">self.window_stack.move_window_to_front(self)</span>
+                    <span class="s1">self.grabbed_window = </span><span class="s0">True</span>
+                    <span class="s1">self.starting_grab_difference = (mouse_x - self.rect.x</span><span class="s0">,</span>
+                                                     <span class="s1">mouse_y - self.rect.y)</span>
+
+                <span class="s1">current_grab_difference = (mouse_x - self.rect.x</span><span class="s0">,</span>
+                                           <span class="s1">mouse_y - self.rect.y)</span>
+
+                <span class="s1">adjustment_required = (current_grab_difference[</span><span class="s3">0</span><span class="s1">] -</span>
+                                       <span class="s1">self.starting_grab_difference[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">,</span>
+                                       <span class="s1">current_grab_difference[</span><span class="s3">1</span><span class="s1">] -</span>
+                                       <span class="s1">self.starting_grab_difference[</span><span class="s3">1</span><span class="s1">])</span>
+
+                <span class="s1">self.set_relative_position((self.relative_rect.x + adjustment_required[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">,</span>
+                                            <span class="s1">self.relative_rect.y + adjustment_required[</span><span class="s3">1</span><span class="s1">]))</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.grabbed_window = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">self.resizing_mode_active:</span>
+            <span class="s1">self._update_drag_resizing()</span>
+
+    <span class="s0">def </span><span class="s1">_update_drag_resizing(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Re-sizes a window that is being dragged around its the edges by the mouse. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">x_pos = self.rect.left</span>
+        <span class="s1">y_pos = self.rect.top</span>
+        <span class="s1">x_dimension = self.rect.width</span>
+        <span class="s1">y_dimension = self.rect.height</span>
+        <span class="s1">mouse_x</span><span class="s0">, </span><span class="s1">mouse_y = self.ui_manager.get_mouse_position()</span>
+        <span class="s1">x_diff = mouse_x - self.start_resize_point[</span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s1">y_diff = mouse_y - self.start_resize_point[</span><span class="s3">1</span><span class="s1">]</span>
+        <span class="s0">if </span><span class="s1">y_dimension &gt;= self.minimum_dimensions[</span><span class="s3">1</span><span class="s1">]:</span>
+            <span class="s1">y_pos = self.start_resize_rect.y</span>
+            <span class="s1">y_dimension = self.start_resize_rect.height</span>
+            <span class="s0">if </span><span class="s1">self.edge_hovering[</span><span class="s3">1</span><span class="s1">]:</span>
+                <span class="s1">y_dimension = self.start_resize_rect.height - y_diff</span>
+                <span class="s1">y_pos = self.start_resize_rect.y + y_diff</span>
+            <span class="s0">elif </span><span class="s1">self.edge_hovering[</span><span class="s3">3</span><span class="s1">]:</span>
+                <span class="s1">y_dimension = self.start_resize_rect.height + y_diff</span>
+
+            <span class="s0">if </span><span class="s1">y_dimension &lt; self.minimum_dimensions[</span><span class="s3">1</span><span class="s1">]:</span>
+                <span class="s0">if </span><span class="s1">y_diff &gt; </span><span class="s3">0</span><span class="s1">:</span>
+                    <span class="s1">y_pos = self.rect.bottom - self.minimum_dimensions[</span><span class="s3">1</span><span class="s1">]</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">y_pos = self.rect.top</span>
+        <span class="s0">if </span><span class="s1">x_dimension &gt;= self.minimum_dimensions[</span><span class="s3">0</span><span class="s1">]:</span>
+            <span class="s1">x_pos = self.start_resize_rect.x</span>
+            <span class="s1">x_dimension = self.start_resize_rect.width</span>
+            <span class="s0">if </span><span class="s1">self.edge_hovering[</span><span class="s3">0</span><span class="s1">]:</span>
+                <span class="s1">x_dimension = self.start_resize_rect.width - x_diff</span>
+                <span class="s1">x_pos = self.start_resize_rect.x + x_diff</span>
+            <span class="s0">elif </span><span class="s1">self.edge_hovering[</span><span class="s3">2</span><span class="s1">]:</span>
+                <span class="s1">x_dimension = self.start_resize_rect.width + x_diff</span>
+
+            <span class="s0">if </span><span class="s1">x_dimension &lt; self.minimum_dimensions[</span><span class="s3">0</span><span class="s1">]:</span>
+                <span class="s0">if </span><span class="s1">x_diff &gt; </span><span class="s3">0</span><span class="s1">:</span>
+                    <span class="s1">x_pos = self.rect.right - self.minimum_dimensions[</span><span class="s3">0</span><span class="s1">]</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">x_pos = self.rect.left</span>
+        <span class="s1">x_dimension = max(self.minimum_dimensions[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">,</span>
+                          <span class="s1">min(self.ui_container.rect.width</span><span class="s0">, </span><span class="s1">x_dimension))</span>
+        <span class="s1">y_dimension = max(self.minimum_dimensions[</span><span class="s3">1</span><span class="s1">]</span><span class="s0">,</span>
+                          <span class="s1">min(self.ui_container.rect.height</span><span class="s0">, </span><span class="s1">y_dimension))</span>
+        <span class="s1">self.set_position((x_pos</span><span class="s0">, </span><span class="s1">y_pos))</span>
+        <span class="s1">self.set_dimensions((x_dimension</span><span class="s0">, </span><span class="s1">y_dimension))</span>
+
+    <span class="s0">def </span><span class="s1">get_container(self) -&gt; IUIContainerInterface:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Returns the container that should contain all the UI elements in this window. 
+ 
+        :return UIContainer: The window's container. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.window_element_container</span>
+
+    <span class="s0">def </span><span class="s1">can_hover(self) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Called to test if this window can be hovered. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return not </span><span class="s1">(self.resizing_mode_active </span><span class="s0">or </span><span class="s1">(self.title_bar </span><span class="s0">is not None and</span>
+                                                  <span class="s1">self.title_bar.held))</span>
+
+    <span class="s2"># noinspection PyUnusedLocal</span>
+    <span class="s0">def </span><span class="s1">check_hover(self</span><span class="s0">, </span><span class="s1">time_delta: float</span><span class="s0">, </span><span class="s1">hovered_higher_element: bool) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        For the window the only hovering we care about is the edges if this is a resizable window. 
+ 
+        :param time_delta: time passed in seconds between one call to this method and the next. 
+        :param hovered_higher_element: Have we already hovered an element/window above this one. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">hovered = </span><span class="s0">False</span>
+        <span class="s0">if not </span><span class="s1">self.resizing_mode_active:</span>
+            <span class="s1">self.edge_hovering = [</span><span class="s0">False, False, False, False</span><span class="s1">]</span>
+        <span class="s0">if </span><span class="s1">self.alive() </span><span class="s0">and </span><span class="s1">self.can_hover() </span><span class="s0">and not </span><span class="s1">hovered_higher_element </span><span class="s0">and </span><span class="s1">self.resizable:</span>
+            <span class="s1">mouse_x</span><span class="s0">, </span><span class="s1">mouse_y = self.ui_manager.get_mouse_position()</span>
+
+            <span class="s2"># Build a temporary rect just a little bit larger than our container rect.</span>
+            <span class="s1">resize_rect = pygame.Rect(self._window_root_container.rect.left - </span><span class="s3">4</span><span class="s0">,</span>
+                                      <span class="s1">self._window_root_container.rect.top - </span><span class="s3">4</span><span class="s0">,</span>
+                                      <span class="s1">self._window_root_container.rect.width + </span><span class="s3">8</span><span class="s0">,</span>
+                                      <span class="s1">self._window_root_container.rect.height + </span><span class="s3">8</span><span class="s1">)</span>
+            <span class="s0">if </span><span class="s1">resize_rect.collidepoint(mouse_x</span><span class="s0">, </span><span class="s1">mouse_y):</span>
+                <span class="s0">if </span><span class="s1">resize_rect.right &gt; mouse_x &gt; resize_rect.right - </span><span class="s3">6</span><span class="s1">:</span>
+                    <span class="s1">self.edge_hovering[</span><span class="s3">2</span><span class="s1">] = </span><span class="s0">True</span>
+                    <span class="s1">hovered = </span><span class="s0">True</span>
+
+                <span class="s0">if </span><span class="s1">resize_rect.left + </span><span class="s3">6 </span><span class="s1">&gt; mouse_x &gt; resize_rect.left:</span>
+                    <span class="s1">self.edge_hovering[</span><span class="s3">0</span><span class="s1">] = </span><span class="s0">True</span>
+                    <span class="s1">hovered = </span><span class="s0">True</span>
+
+                <span class="s0">if </span><span class="s1">resize_rect.bottom &gt; mouse_y &gt; resize_rect.bottom - </span><span class="s3">6</span><span class="s1">:</span>
+                    <span class="s1">self.edge_hovering[</span><span class="s3">3</span><span class="s1">] = </span><span class="s0">True</span>
+                    <span class="s1">hovered = </span><span class="s0">True</span>
+
+                <span class="s0">if </span><span class="s1">resize_rect.top + </span><span class="s3">6 </span><span class="s1">&gt; mouse_y &gt; resize_rect.top:</span>
+                    <span class="s1">self.edge_hovering[</span><span class="s3">1</span><span class="s1">] = </span><span class="s0">True</span>
+                    <span class="s1">hovered = </span><span class="s0">True</span>
+        <span class="s0">elif </span><span class="s1">self.resizing_mode_active:</span>
+            <span class="s1">hovered = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self.is_blocking:</span>
+            <span class="s1">hovered = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">hovered:</span>
+            <span class="s1">hovered_higher_element = </span><span class="s0">True</span>
+            <span class="s1">self.hovered = </span><span class="s0">True</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.hovered = </span><span class="s0">False</span>
+
+        <span class="s0">return </span><span class="s1">hovered_higher_element</span>
+
+    <span class="s0">def </span><span class="s1">get_top_layer(self) -&gt; int:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Returns the 'highest' layer used by this window so that we can correctly place other 
+        windows on top of it. 
+ 
+        :return: The top layer for this window as a number (greater numbers are higher layers). 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self._layer + self.layer_thickness</span>
+
+    <span class="s0">def </span><span class="s1">change_layer(self</span><span class="s0">, </span><span class="s1">new_layer: int):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Move this window, and it's contents, to a new layer in the UI. 
+ 
+        :param new_layer: The layer to move to. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">new_layer != self._layer:</span>
+            <span class="s1">super().change_layer(new_layer)</span>
+            <span class="s0">if </span><span class="s1">self._window_root_container </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">self._window_root_container.change_layer(new_layer)</span>
+
+                <span class="s0">if </span><span class="s1">self._window_root_container.layer_thickness != self.layer_thickness:</span>
+                    <span class="s1">self.layer_thickness = self._window_root_container.layer_thickness</span>
+
+    <span class="s0">def </span><span class="s1">kill(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Overrides the basic kill() method of a pygame sprite so that we also kill all the UI 
+        elements in this window, and remove if from the window stack. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">window_close_event = pygame.event.Event(pygame.USEREVENT</span><span class="s0">,</span>
+                                                <span class="s1">{</span><span class="s5">'user_type'</span><span class="s1">: UI_WINDOW_CLOSE</span><span class="s0">,</span>
+                                                 <span class="s5">'ui_element'</span><span class="s1">: self</span><span class="s0">,</span>
+                                                 <span class="s5">'ui_object_id'</span><span class="s1">: self.most_specific_combined_id})</span>
+        <span class="s1">pygame.event.post(window_close_event)</span>
+
+        <span class="s1">self.window_stack.remove_window(self)</span>
+        <span class="s1">self._window_root_container.kill()</span>
+        <span class="s1">super().kill()</span>
+
+    <span class="s0">def </span><span class="s1">rebuild(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Rebuilds the window when the theme has changed. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self._window_root_container </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">self._window_root_container = UIContainer(pygame.Rect(self.relative_rect.x +</span>
+                                                                  <span class="s1">self.shadow_width</span><span class="s0">,</span>
+                                                                  <span class="s1">self.relative_rect.y +</span>
+                                                                  <span class="s1">self.shadow_width</span><span class="s0">,</span>
+                                                                  <span class="s1">self.relative_rect.width -</span>
+                                                                  <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.shadow_width)</span><span class="s0">,</span>
+                                                                  <span class="s1">self.relative_rect.height -</span>
+                                                                  <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.shadow_width))</span><span class="s0">,</span>
+                                                      <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                                      <span class="s1">starting_height=</span><span class="s3">1</span><span class="s0">,</span>
+                                                      <span class="s1">is_window_root_container=</span><span class="s0">True,</span>
+                                                      <span class="s1">container=</span><span class="s0">None,</span>
+                                                      <span class="s1">parent_element=self</span><span class="s0">,</span>
+                                                      <span class="s1">object_id=</span><span class="s5">&quot;#window_root_container&quot;</span><span class="s0">,</span>
+                                                      <span class="s1">visible=self.visible)</span>
+        <span class="s0">if </span><span class="s1">self.window_element_container </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">window_container_rect = pygame.Rect(self.border_width</span><span class="s0">,</span>
+                                                <span class="s1">self.title_bar_height</span><span class="s0">,</span>
+                                                <span class="s1">(self._window_root_container.relative_rect.width -</span>
+                                                 <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.border_width))</span><span class="s0">,</span>
+                                                <span class="s1">(self._window_root_container.relative_rect.height -</span>
+                                                 <span class="s1">(self.title_bar_height + self.border_width)))</span>
+            <span class="s1">self.window_element_container = UIContainer(window_container_rect</span><span class="s0">,</span>
+                                                        <span class="s1">self.ui_manager</span><span class="s0">,</span>
+                                                        <span class="s1">starting_height=</span><span class="s3">0</span><span class="s0">,</span>
+                                                        <span class="s1">container=self._window_root_container</span><span class="s0">,</span>
+                                                        <span class="s1">parent_element=self</span><span class="s0">,</span>
+                                                        <span class="s1">object_id=</span><span class="s5">&quot;#window_element_container&quot;</span><span class="s0">,</span>
+                                                        <span class="s1">anchors={</span><span class="s5">'top'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">, </span><span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'bottom'</span><span class="s0">,</span>
+                                                                 <span class="s5">'left'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">, </span><span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s1">})</span>
+
+        <span class="s1">theming_parameters = {</span><span class="s5">'normal_bg'</span><span class="s1">: self.background_colour</span><span class="s0">,</span>
+                              <span class="s5">'normal_border'</span><span class="s1">: self.border_colour</span><span class="s0">,</span>
+                              <span class="s5">'border_width'</span><span class="s1">: self.border_width</span><span class="s0">,</span>
+                              <span class="s5">'shadow_width'</span><span class="s1">: self.shadow_width</span><span class="s0">,</span>
+                              <span class="s5">'shape_corner_radius'</span><span class="s1">: self.shape_corner_radius}</span>
+
+        <span class="s0">if </span><span class="s1">self.shape == </span><span class="s5">'rectangle'</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape = RectDrawableShape(self.rect</span><span class="s0">, </span><span class="s1">theming_parameters</span><span class="s0">,</span>
+                                                    <span class="s1">[</span><span class="s5">'normal'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.ui_manager)</span>
+        <span class="s0">elif </span><span class="s1">self.shape == </span><span class="s5">'rounded_rectangle'</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape = RoundedRectangleShape(self.rect</span><span class="s0">, </span><span class="s1">theming_parameters</span><span class="s0">,</span>
+                                                        <span class="s1">[</span><span class="s5">'normal'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.ui_manager)</span>
+
+        <span class="s1">self.set_image(self.drawable_shape.get_fresh_surface())</span>
+
+        <span class="s1">self.set_dimensions(self.relative_rect.size)</span>
+
+        <span class="s0">if </span><span class="s1">self.window_element_container </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">element_container_width = (self._window_root_container.relative_rect.width -</span>
+                                       <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.border_width))</span>
+            <span class="s1">element_container_height = (self._window_root_container.relative_rect.height -</span>
+                                        <span class="s1">(self.title_bar_height + self.border_width))</span>
+            <span class="s1">self.window_element_container.set_dimensions((element_container_width</span><span class="s0">,</span>
+                                                          <span class="s1">element_container_height))</span>
+            <span class="s1">self.window_element_container.set_relative_position((self.border_width</span><span class="s0">,</span>
+                                                                 <span class="s1">self.title_bar_height))</span>
+
+            <span class="s0">if </span><span class="s1">self.enable_title_bar:</span>
+                <span class="s0">if </span><span class="s1">self.title_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+                    <span class="s1">self.title_bar.set_dimensions((self._window_root_container.relative_rect.width -</span>
+                                                   <span class="s1">self.title_bar_close_button_width</span><span class="s0">,</span>
+                                                   <span class="s1">self.title_bar_height))</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">title_bar_width = (self._window_root_container.relative_rect.width -</span>
+                                       <span class="s1">self.title_bar_close_button_width)</span>
+                    <span class="s1">self.title_bar = UIButton(relative_rect=pygame.Rect(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">,</span>
+                                                                        <span class="s1">title_bar_width</span><span class="s0">,</span>
+                                                                        <span class="s1">self.title_bar_height)</span><span class="s0">,</span>
+                                              <span class="s1">text=self.window_display_title</span><span class="s0">,</span>
+                                              <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                              <span class="s1">container=self._window_root_container</span><span class="s0">,</span>
+                                              <span class="s1">parent_element=self</span><span class="s0">,</span>
+                                              <span class="s1">object_id=</span><span class="s5">'#title_bar'</span><span class="s0">,</span>
+                                              <span class="s1">anchors={</span><span class="s5">'top'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">, </span><span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">,</span>
+                                                       <span class="s5">'left'</span><span class="s1">: </span><span class="s5">'left'</span><span class="s0">, </span><span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s1">}</span>
+                                              <span class="s1">)</span>
+                    <span class="s1">self.title_bar.set_hold_range((</span><span class="s3">100</span><span class="s0">, </span><span class="s3">100</span><span class="s1">))</span>
+
+                <span class="s0">if </span><span class="s1">self.enable_close_button:</span>
+                    <span class="s0">if </span><span class="s1">self.close_window_button </span><span class="s0">is not None</span><span class="s1">:</span>
+                        <span class="s1">close_button_pos = (-self.title_bar_close_button_width</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+                        <span class="s1">self.close_window_button.set_dimensions((self.title_bar_close_button_width</span><span class="s0">,</span>
+                                                                 <span class="s1">self.title_bar_height))</span>
+                        <span class="s1">self.close_window_button.set_relative_position(close_button_pos)</span>
+                    <span class="s0">else</span><span class="s1">:</span>
+                        <span class="s1">close_rect = pygame.Rect((-self.title_bar_close_button_width</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                                                 <span class="s1">(self.title_bar_close_button_width</span><span class="s0">,</span>
+                                                  <span class="s1">self.title_bar_height))</span>
+                        <span class="s1">self.close_window_button = UIButton(relative_rect=close_rect</span><span class="s0">,</span>
+                                                            <span class="s1">text=</span><span class="s5">'╳'</span><span class="s0">,</span>
+                                                            <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                                            <span class="s1">container=self._window_root_container</span><span class="s0">,</span>
+                                                            <span class="s1">parent_element=self</span><span class="s0">,</span>
+                                                            <span class="s1">object_id=</span><span class="s5">'#close_button'</span><span class="s0">,</span>
+                                                            <span class="s1">anchors={</span><span class="s5">'top'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">,</span>
+                                                                     <span class="s5">'bottom'</span><span class="s1">: </span><span class="s5">'top'</span><span class="s0">,</span>
+                                                                     <span class="s5">'left'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s0">,</span>
+                                                                     <span class="s5">'right'</span><span class="s1">: </span><span class="s5">'right'</span><span class="s1">}</span>
+                                                            <span class="s1">)</span>
+
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s0">if </span><span class="s1">self.close_window_button </span><span class="s0">is not None</span><span class="s1">:</span>
+                        <span class="s1">self.close_window_button.kill()</span>
+                        <span class="s1">self.close_window_button = </span><span class="s0">None</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s0">if </span><span class="s1">self.title_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+                    <span class="s1">self.title_bar.kill()</span>
+                    <span class="s1">self.title_bar = </span><span class="s0">None</span>
+                <span class="s0">if </span><span class="s1">self.close_window_button </span><span class="s0">is not None</span><span class="s1">:</span>
+                    <span class="s1">self.close_window_button.kill()</span>
+                    <span class="s1">self.close_window_button = </span><span class="s0">None</span>
+
+    <span class="s0">def </span><span class="s1">rebuild_from_changed_theme_data(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Called by the UIManager to check the theming data and rebuild whatever needs rebuilding 
+        for this element when the theme data has changed. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().rebuild_from_changed_theme_data()</span>
+        <span class="s1">has_any_changed = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s5">'shape'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s5">'rectangle'</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=str</span><span class="s0">,</span>
+                                               <span class="s1">allowed_values=[</span><span class="s5">'rectangle'</span><span class="s0">,</span>
+                                                               <span class="s5">'rounded_rectangle'</span><span class="s1">]):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_shape_theming_changed(defaults={</span><span class="s5">'border_width'</span><span class="s1">: </span><span class="s3">1</span><span class="s0">,</span>
+                                                       <span class="s5">'shadow_width'</span><span class="s1">: </span><span class="s3">15</span><span class="s0">,</span>
+                                                       <span class="s5">'shape_corner_radius'</span><span class="s1">: </span><span class="s3">2</span><span class="s1">}):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">background_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s5">'dark_bg'</span><span class="s0">,</span>
+                                                                 <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">background_colour != self.background_colour:</span>
+            <span class="s1">self.background_colour = background_colour</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">border_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s5">'normal_border'</span><span class="s0">,</span>
+                                                             <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">border_colour != self.border_colour:</span>
+            <span class="s1">self.border_colour = border_colour</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_title_bar_theming_changed():</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">has_any_changed:</span>
+            <span class="s1">self.rebuild()</span>
+
+    <span class="s0">def </span><span class="s1">_check_title_bar_theming_changed(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Check to see if any theming parameters for the title bar have changed. 
+ 
+        :return: True if any of the theming parameters have changed. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">has_any_changed = </span><span class="s0">False</span>
+
+        <span class="s0">def </span><span class="s1">parse_to_bool(str_data: str):</span>
+            <span class="s0">return </span><span class="s1">bool(int(str_data))</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s5">'enable_title_bar'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s0">True,</span>
+                                               <span class="s1">casting_func=parse_to_bool):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self.enable_title_bar:</span>
+
+            <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s5">'title_bar_height'</span><span class="s0">,</span>
+                                                   <span class="s1">default_value=</span><span class="s3">28</span><span class="s0">,</span>
+                                                   <span class="s1">casting_func=int):</span>
+                <span class="s1">has_any_changed = </span><span class="s0">True</span>
+                <span class="s1">self.title_bar_close_button_width = self.title_bar_height</span>
+
+            <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s5">'enable_close_button'</span><span class="s0">,</span>
+                                                   <span class="s1">default_value=</span><span class="s0">True,</span>
+                                                   <span class="s1">casting_func=parse_to_bool):</span>
+                <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+            <span class="s0">if not </span><span class="s1">self.enable_close_button:</span>
+                <span class="s1">self.title_bar_close_button_width = </span><span class="s3">0</span>
+
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.title_bar_height = </span><span class="s3">0</span>
+        <span class="s0">return </span><span class="s1">has_any_changed</span>
+
+    <span class="s0">def </span><span class="s1">should_use_window_edge_resize_cursor(self) -&gt; bool:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Returns true if this window is in a state where we should display one of the resizing 
+        cursors 
+ 
+        :return: True if a resizing cursor is needed. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">(self.hovered </span><span class="s0">or </span><span class="s1">self.resizing_mode_active) </span><span class="s0">and </span><span class="s1">any(self.edge_hovering)</span>
+
+    <span class="s0">def </span><span class="s1">get_hovering_edge_id(self) -&gt; str:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Gets the ID of the combination of edges we are hovering for use by the cursor system. 
+ 
+        :return: a string containing the edge combination ID (e.g. xy,yx,xl,xr,yt,yb) 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">((self.edge_hovering[</span><span class="s3">0</span><span class="s1">] </span><span class="s0">and </span><span class="s1">self.edge_hovering[</span><span class="s3">1</span><span class="s1">]) </span><span class="s0">or</span>
+                <span class="s1">(self.edge_hovering[</span><span class="s3">2</span><span class="s1">] </span><span class="s0">and </span><span class="s1">self.edge_hovering[</span><span class="s3">3</span><span class="s1">])):</span>
+            <span class="s0">return </span><span class="s5">'xy'</span>
+        <span class="s0">elif </span><span class="s1">((self.edge_hovering[</span><span class="s3">0</span><span class="s1">] </span><span class="s0">and </span><span class="s1">self.edge_hovering[</span><span class="s3">3</span><span class="s1">]) </span><span class="s0">or</span>
+              <span class="s1">(self.edge_hovering[</span><span class="s3">2</span><span class="s1">] </span><span class="s0">and </span><span class="s1">self.edge_hovering[</span><span class="s3">1</span><span class="s1">])):</span>
+            <span class="s0">return </span><span class="s5">'yx'</span>
+        <span class="s0">elif </span><span class="s1">self.edge_hovering[</span><span class="s3">0</span><span class="s1">]:</span>
+            <span class="s0">return </span><span class="s5">'xl'</span>
+        <span class="s0">elif </span><span class="s1">self.edge_hovering[</span><span class="s3">2</span><span class="s1">]:</span>
+            <span class="s0">return </span><span class="s5">'xr'</span>
+        <span class="s0">elif </span><span class="s1">self.edge_hovering[</span><span class="s3">3</span><span class="s1">]:</span>
+            <span class="s0">return </span><span class="s5">'yb'</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s5">'yt'</span>
+
+    <span class="s0">def </span><span class="s1">on_moved_to_front(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Called when a window is moved to the front of the stack. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">window_front_event = pygame.event.Event(pygame.USEREVENT</span><span class="s0">,</span>
+                                                <span class="s1">{</span><span class="s5">'user_type'</span><span class="s1">: UI_WINDOW_MOVED_TO_FRONT</span><span class="s0">,</span>
+                                                 <span class="s5">'ui_element'</span><span class="s1">: self</span><span class="s0">,</span>
+                                                 <span class="s5">'ui_object_id'</span><span class="s1">: self.most_specific_combined_id})</span>
+        <span class="s1">pygame.event.post(window_front_event)</span>
+
+    <span class="s0">def </span><span class="s1">set_display_title(self</span><span class="s0">, </span><span class="s1">new_title: str):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Set the title of the window. 
+ 
+        :param new_title: The title to set. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.window_display_title = new_title</span>
+        <span class="s1">self.title_bar.set_text(self.window_display_title)</span>
+
+    <span class="s0">def </span><span class="s1">disable(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Disables the window and it's contents so it is no longer interactive. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.is_enabled:</span>
+            <span class="s1">self.is_enabled = </span><span class="s0">False</span>
+            <span class="s1">self._window_root_container.disable()</span>
+
+    <span class="s0">def </span><span class="s1">enable(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Enables the window and it's contents so it is interactive again. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if not </span><span class="s1">self.is_enabled:</span>
+            <span class="s1">self.is_enabled = </span><span class="s0">True</span>
+            <span class="s1">self._window_root_container.enable()</span>
+
+    <span class="s0">def </span><span class="s1">show(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        In addition to the base UIElement.show() - show the _window_root_container which will 
+        propagate and show all the children. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().show()</span>
+
+        <span class="s1">self._window_root_container.show()</span>
+
+    <span class="s0">def </span><span class="s1">hide(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        In addition to the base UIElement.hide() - hide the _window_root_container which will 
+        propagate and hide all the children. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().hide()</span>
+
+        <span class="s1">self._window_root_container.hide()</span>
+</pre>
+</body>
+</html>

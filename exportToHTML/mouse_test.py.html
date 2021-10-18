@@ -1,0 +1,170 @@
+<html>
+<head>
+<title>mouse_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+mouse_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">unittest</span>
+
+
+<span class="s0">class </span><span class="s1">MouseModuleTest(unittest.TestCase):</span>
+    <span class="s0">def </span><span class="s1">todo_test_get_cursor(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.mouse.get_cursor:</span>
+
+          <span class="s2"># pygame.mouse.get_cursor(): return (size, hotspot, xormasks, andmasks)</span>
+          <span class="s2"># get the image for the system mouse cursor</span>
+          <span class="s2">#</span>
+          <span class="s2"># Get the information about the mouse system cursor. The return value</span>
+          <span class="s2"># is the same data as the arguments passed into</span>
+          <span class="s2"># pygame.mouse.set_cursor().</span>
+          <span class="s2">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_get_focused(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.mouse.get_focused:</span>
+
+          <span class="s2"># pygame.mouse.get_focused(): return bool</span>
+          <span class="s2"># check if the display is receiving mouse input</span>
+          <span class="s2">#</span>
+          <span class="s2"># Returns true when pygame is receiving mouse input events (or, in</span>
+          <span class="s2"># windowing terminology, is &quot;active&quot; or has the &quot;focus&quot;).</span>
+          <span class="s2">#</span>
+          <span class="s2"># This method is most useful when working in a window. By contrast, in</span>
+          <span class="s2"># full-screen mode, this method always returns true.</span>
+          <span class="s2">#</span>
+          <span class="s2"># Note: under MS Windows, the window that has the mouse focus also has</span>
+          <span class="s2"># the keyboard focus. But under X-Windows, one window can receive</span>
+          <span class="s2"># mouse events and another receive keyboard events.</span>
+          <span class="s2"># pygame.mouse.get_focused() indicates whether the pygame window</span>
+          <span class="s2"># receives mouse events.</span>
+          <span class="s2">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_get_pos(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.mouse.get_pos:</span>
+
+          <span class="s2"># pygame.mouse.get_pos(): return (x, y)</span>
+          <span class="s2"># get the mouse cursor position</span>
+          <span class="s2">#</span>
+          <span class="s2"># Returns the X and Y position of the mouse cursor. The position is</span>
+          <span class="s2"># relative the the top-left corner of the display. The cursor position</span>
+          <span class="s2"># can be located outside of the display window, but is always</span>
+          <span class="s2"># constrained to the screen.</span>
+          <span class="s2">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_get_pressed(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.mouse.get_pressed:</span>
+
+          <span class="s2"># pygame.moouse.get_pressed(): return (button1, button2, button3)</span>
+          <span class="s2"># get the state of the mouse buttons</span>
+          <span class="s2">#</span>
+          <span class="s2"># Returns a sequence of booleans representing the state of all the</span>
+          <span class="s2"># mouse buttons. A true value means the mouse is currently being</span>
+          <span class="s2"># pressed at the time of the call.</span>
+          <span class="s2">#</span>
+          <span class="s2"># Note, to get all of the mouse events it is better to use either</span>
+          <span class="s2">#  pygame.event.wait() or pygame.event.get() and check all of those events</span>
+          <span class="s2"># to see if they are MOUSEBUTTONDOWN, MOUSEBUTTONUP, or MOUSEMOTION.</span>
+          <span class="s2"># Note, that on X11 some XServers use middle button emulation.  When</span>
+          <span class="s2"># you click both buttons 1 and 3 at the same time a 2 button event can</span>
+          <span class="s2"># be emitted.</span>
+          <span class="s2">#</span>
+          <span class="s2"># Note, remember to call pygame.event.get() before this function.</span>
+          <span class="s2"># Otherwise it will not work.</span>
+          <span class="s2">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_get_rel(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.mouse.get_rel:</span>
+
+          <span class="s2"># pygame.mouse.get_rel(): return (x, y)</span>
+          <span class="s2"># get the amount of mouse movement</span>
+          <span class="s2">#</span>
+          <span class="s2"># Returns the amount of movement in X and Y since the previous call to</span>
+          <span class="s2"># this function. The relative movement of the mouse cursor is</span>
+          <span class="s2"># constrained to the edges of the screen, but see the virtual input</span>
+          <span class="s2"># mouse mode for a way around this.  Virtual input mode is described</span>
+          <span class="s2"># at the top of the page.</span>
+          <span class="s2">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_set_cursor(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.mouse.set_cursor:</span>
+
+          <span class="s2"># pygame.mouse.set_cursor(size, hotspot, xormasks, andmasks): return None</span>
+          <span class="s2"># set the image for the system mouse cursor</span>
+          <span class="s2">#</span>
+          <span class="s2"># When the mouse cursor is visible, it will be displayed as a black</span>
+          <span class="s2"># and white bitmap using the given bitmask arrays. The size is a</span>
+          <span class="s2"># sequence containing the cursor width and height. Hotspot is a</span>
+          <span class="s2"># sequence containing the cursor hotspot position. xormasks is a</span>
+          <span class="s2"># sequence of bytes containing the cursor xor data masks. Lastly is</span>
+          <span class="s2"># andmasks, a sequence of bytes containting the cursor bitmask data.</span>
+          <span class="s2">#</span>
+          <span class="s2"># Width must be a multiple of 8, and the mask arrays must be the</span>
+          <span class="s2"># correct size for the given width and height. Otherwise an exception</span>
+          <span class="s2"># is raised.</span>
+          <span class="s2">#</span>
+          <span class="s2"># See the pygame.cursor module for help creating default and custom</span>
+          <span class="s2"># masks for the system cursor.</span>
+          <span class="s2">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_set_pos(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.mouse.set_pos:</span>
+
+          <span class="s2"># pygame.mouse.set_pos([x, y]): return None</span>
+          <span class="s2"># set the mouse cursor position</span>
+          <span class="s2">#</span>
+          <span class="s2"># Set the current mouse position to arguments given. If the mouse</span>
+          <span class="s2"># cursor is visible it will jump to the new coordinates. Moving the</span>
+          <span class="s2"># mouse will generate a new pygaqme.MOUSEMOTION event.</span>
+          <span class="s2">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_set_visible(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.mouse.set_visible:</span>
+
+          <span class="s2"># pygame.mouse.set_visible(bool): return bool</span>
+          <span class="s2"># hide or show the mouse cursor</span>
+          <span class="s2">#</span>
+          <span class="s2"># If the bool argument is true, the mouse cursor will be visible. This</span>
+          <span class="s2"># will return the previous visible state of the cursor.</span>
+          <span class="s2">#</span>
+
+        <span class="s1">self.fail()</span>
+
+<span class="s2">################################################################################</span>
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s3">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

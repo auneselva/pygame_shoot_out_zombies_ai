@@ -1,0 +1,73 @@
+<html>
+<head>
+<title>pgbufferproxy.h</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #0f9795;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+pgbufferproxy.h</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+  pygame - Python Game Library 
+  Copyright (C) 2000-2001  Pete Shinners 
+  Copyright (C) 2007  Rene Dudfield, Richard Goedeken 
+ 
+  This library is free software; you can redistribute it and/or 
+  modify it under the terms of the GNU Library General Public 
+  License as published by the Free Software Foundation; either 
+  version 2 of the License, or (at your option) any later version. 
+ 
+  This library is distributed in the hope that it will be useful, 
+  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  Library General Public License for more details. 
+ 
+  You should have received a copy of the GNU Library General Public 
+  License along with this library; if not, write to the Free 
+  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+ 
+  Pete Shinners 
+  pete@shinners.org 
+*/</span>
+
+<span class="s0">/* Bufferproxy module C api. 
+   Depends on pygame.h being included first. 
+ */</span>
+<span class="s2">#if </span><span class="s1">!defined(PG_BUFPROXY_HEADER)</span>
+
+<span class="s2">#define </span><span class="s1">PYGAMEAPI_BUFPROXY_NUMSLOTS </span><span class="s3">4</span>
+<span class="s2">#define </span><span class="s1">PYGAMEAPI_BUFPROXY_FIRSTSLOT </span><span class="s3">0</span>
+
+<span class="s2">#if </span><span class="s1">!(defined(PYGAMEAPI_BUFPROXY_INTERNAL) || defined(NO_PYGAME_C_API))</span>
+<span class="s2">static void </span><span class="s1">*PgBUFPROXY_C_API[PYGAMEAPI_BUFPROXY_NUMSLOTS];</span>
+
+<span class="s2">typedef </span><span class="s1">PyObject *(*_pgbufproxy_new_t)(PyObject *, getbufferproc);</span>
+<span class="s2">typedef </span><span class="s1">PyObject *(*_pgbufproxy_get_obj_t)(PyObject *);</span>
+<span class="s2">typedef int </span><span class="s1">(*_pgbufproxy_trip_t)(PyObject *);</span>
+
+<span class="s2">#define </span><span class="s1">pgBufproxy_Type (*(PyTypeObject*)PgBUFPROXY_C_API[</span><span class="s3">0</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgBufproxy_New (*(_pgbufproxy_new_t)PgBUFPROXY_C_API[</span><span class="s3">1</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgBufproxy_GetParent \</span>
+    <span class="s1">(*(_pgbufproxy_get_obj_t)PgBUFPROXY_C_API[</span><span class="s3">2</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgBufproxy_Trip (*(_pgbufproxy_trip_t)PgBUFPROXY_C_API[</span><span class="s3">3</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgBufproxy_Check(x) ((x)</span><span class="s4">-&gt;</span><span class="s1">ob_type == (pgBufproxy_Type))</span>
+<span class="s2">#define </span><span class="s1">import_pygame_bufferproxy() \</span>
+    <span class="s1">_IMPORT_PYGAME_MODULE(bufferproxy, BUFPROXY, PgBUFPROXY_C_API)</span>
+
+<span class="s2">#endif </span><span class="s0">/* #if !(defined(PYGAMEAPI_BUFPROXY_INTERNAL) || ... */</span>
+
+<span class="s2">#define </span><span class="s1">PG_BUFPROXY_HEADER</span>
+
+<span class="s2">#endif </span><span class="s0">/* #if !defined(PG_BUFPROXY_HEADER) */</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<html>
+<head>
+<title>basicmenu.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6897bb;}
+.s3 { color: #808080;}
+.s4 { color: #629755; font-style: italic;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+basicmenu.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">functions</span><span class="s0">, </span><span class="s1">parameters</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">application</span>
+
+
+
+<span class="s0">class </span><span class="s1">BasicMenu(object):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">elements=</span><span class="s0">None, </span><span class="s1">fps=</span><span class="s2">45</span><span class="s1">):</span>
+        <span class="s0">if not </span><span class="s1">elements:</span>
+            <span class="s1">elements = []</span>
+        <span class="s1">self._elements = [] </span><span class="s3">#will be set in self.set_elements</span>
+        <span class="s1">self.set_elements(elements)</span>
+        <span class="s1">self.fps = fps</span>
+        <span class="s1">self.leave = </span><span class="s0">False</span>
+        <span class="s1">self.population = self.get_population()</span>
+        <span class="s1">self.events = self.get_events()</span>
+        <span class="s1">self.finish_population()</span>
+        <span class="s1">self.time_before_kill = </span><span class="s0">None</span>
+        <span class="s1">self.clock = pygame.time.Clock()</span>
+        <span class="s0">if </span><span class="s1">application.TICK_BUSY:</span>
+            <span class="s1">self.clock_tick = self.clock.tick_busy_loop</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.clock_tick = self.clock.tick</span>
+        <span class="s1">self.something_to_add = []</span>
+        <span class="s1">self.ask_for_refresh = </span><span class="s0">False</span>
+        <span class="s1">pygame.key.set_repeat(parameters.KEY_DELAY</span><span class="s0">, </span><span class="s1">parameters.KEY_INTERVAL)</span>
+
+    <span class="s0">def </span><span class="s1">kill_after(self</span><span class="s0">, </span><span class="s1">duration_in_frames):</span>
+        <span class="s1">self.time_before_kill = duration_in_frames</span>
+
+    <span class="s0">def </span><span class="s1">rebuild(self</span><span class="s0">, </span><span class="s1">elements=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">self.__init__(elements)</span>
+
+    <span class="s0">def </span><span class="s1">refresh(self):</span>
+        <span class="s1">self.population = self.get_population()</span>
+        <span class="s1">self.events = self.get_events()</span>
+
+    <span class="s0">def </span><span class="s1">finish_population(self):</span>
+        <span class="s4">&quot;&quot;&quot;Control that all elements have been finished&quot;&quot;&quot;</span>
+        <span class="s0">for </span><span class="s1">e </span><span class="s0">in </span><span class="s1">self.population:</span>
+            <span class="s0">if not</span><span class="s1">(e._finished):</span>
+                <span class="s1">functions.debug_msg(str(e) + </span><span class="s5">&quot; was not _finished !</span><span class="s0">\ 
+                                                </span><span class="s5">Automatic finish.&quot;</span><span class="s1">)</span>
+                <span class="s1">e.finish()</span>
+
+    <span class="s0">def </span><span class="s1">refresh_population(self</span><span class="s0">, </span><span class="s1">painting=</span><span class="s0">False, </span><span class="s1">placing=</span><span class="s0">True, </span><span class="s1">one_wheel=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s4">&quot;&quot;&quot;Calls element's refresh functions. &lt;painting&gt; enable graphical 
+        refreshment. 
+        Caution : misc_refresh method of elements is called if placing is True. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">wheeled = </span><span class="s0">None</span>
+        <span class="s0">for </span><span class="s1">e </span><span class="s0">in </span><span class="s1">self.population:</span>
+            <span class="s0">if </span><span class="s1">hasattr(e</span><span class="s0">, </span><span class="s5">&quot;active_wheel&quot;</span><span class="s1">):</span>
+                <span class="s0">if </span><span class="s1">e.active_wheel:</span>
+                    <span class="s0">if </span><span class="s1">wheeled:</span>
+                        <span class="s1">functions.debug_msg(str(e) + </span><span class="s5">&quot; is not the only wheel-active.&quot;</span><span class="s1">)</span>
+                        <span class="s0">if </span><span class="s1">one_wheel:</span>
+                            <span class="s1">e.active_wheel = </span><span class="s0">False</span>
+                            <span class="s1">onstants.debug_msg(str(e) + </span><span class="s5">&quot; wheel was deactivated.&quot;</span><span class="s1">)</span>
+                    <span class="s0">else</span><span class="s1">:</span>
+                        <span class="s1">wheeled = </span><span class="s0">True</span>
+            <span class="s0">if </span><span class="s1">painting:  </span><span class="s3"># used for debug</span>
+                <span class="s1">e.redraw()</span>
+            <span class="s0">if </span><span class="s1">placing:</span>
+                <span class="s0">if </span><span class="s1">hasattr(e</span><span class="s0">, </span><span class="s5">&quot;misc_refresh&quot;</span><span class="s1">):</span>
+                    <span class="s1">e.misc_refresh()</span>
+
+    <span class="s0">def </span><span class="s1">get_population(self):</span>
+        <span class="s1">pop = []</span>
+        <span class="s0">for </span><span class="s1">e </span><span class="s0">in </span><span class="s1">self._elements:</span>
+            <span class="s1">pop.append(e)</span>
+            <span class="s1">pop.extend(e.get_descendants())</span>
+        <span class="s0">return </span><span class="s1">set(pop)</span>
+
+    <span class="s0">def </span><span class="s1">add_to_population(self</span><span class="s0">, </span><span class="s1">element):</span>
+        <span class="s1">self._elements.append(element)</span>
+        <span class="s1">self.refresh()</span>
+
+    <span class="s0">def </span><span class="s1">remove_from_population(self</span><span class="s0">, </span><span class="s1">element):</span>
+        <span class="s1">self._elements.remove(element)</span>
+        <span class="s1">self.refresh()</span>
+
+    <span class="s0">def </span><span class="s1">get_events(self):</span>
+        <span class="s4">&quot;&quot;&quot;Returns a dictionnary of type: 
+        events[event_a] = [element1, element2, ... ]. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">events = {}</span>
+        <span class="s0">for </span><span class="s1">element </span><span class="s0">in </span><span class="s1">self.population:</span>
+            <span class="s0">for </span><span class="s1">reaction </span><span class="s0">in </span><span class="s1">element._reactions:</span>
+                <span class="s1">event = reaction.reacts_to</span>
+                <span class="s0">if </span><span class="s1">event </span><span class="s0">in </span><span class="s1">events:</span>
+                    <span class="s1">events[event].append(element)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">events[event] = [element]</span>
+        <span class="s0">for </span><span class="s1">event </span><span class="s0">in </span><span class="s1">events:</span>
+            <span class="s1">events[event] = set(events[event])</span>
+        <span class="s0">return </span><span class="s1">events</span>
+
+    <span class="s0">def </span><span class="s1">freeze(self):</span>
+        <span class="s4">&quot;&quot;&quot;Freezes all self's elements.&quot;&quot;&quot;</span>
+        <span class="s0">for </span><span class="s1">el </span><span class="s0">in </span><span class="s1">self._elements:</span>
+            <span class="s1">el.freeze()</span>
+
+    <span class="s0">def </span><span class="s1">set_elements(self</span><span class="s0">, </span><span class="s1">elements):</span>
+        <span class="s4">&quot;&quot;&quot;Assign the right value to self._elements&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">isinstance(elements</span><span class="s0">, </span><span class="s1">list):</span>
+            <span class="s1">self._elements = elements</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self._elements = list([elements])</span>
+
+    <span class="s0">def </span><span class="s1">blit_and_update(self):</span>
+        <span class="s0">for </span><span class="s1">e </span><span class="s0">in </span><span class="s1">self._elements:</span>
+            <span class="s1">e.blit()</span>
+            <span class="s1">e.update()</span>
+
+    <span class="s0">def </span><span class="s1">react(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s1">elements = self.events.get(event.type</span><span class="s0">, </span><span class="s1">[])</span>
+        <span class="s0">for </span><span class="s1">element </span><span class="s0">in </span><span class="s1">elements:</span>
+            <span class="s1">element.react(event)</span>
+
+    <span class="s0">def </span><span class="s1">block_unused_events(self):</span>
+        <span class="s4">&quot;&quot;&quot;! This disable the possibility to handle unexpected events&quot;&quot;&quot;</span>
+        <span class="s1">pygame.event.set_allowed(</span><span class="s0">None</span><span class="s1">)</span>
+        <span class="s1">pygame.event.set_allowed(pygame.QUIT)</span>
+        <span class="s0">for </span><span class="s1">event </span><span class="s0">in </span><span class="s1">self.events:</span>
+            <span class="s1">pygame.event.set_allowed(event)</span>
+
+    <span class="s0">def </span><span class="s1">treatement(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s0">if </span><span class="s1">event.type == pygame.QUIT:</span>
+            <span class="s1">pygame.font.quit()</span>
+            <span class="s1">pygame.quit()</span>
+            <span class="s1">exit()</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.react(event)</span>
+
+    <span class="s0">def </span><span class="s1">set_leave(self):</span>
+        <span class="s1">self.leave = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">react_to_all_events(self):</span>
+<span class="s3">##        self.clock_tick(self.fps)</span>
+        <span class="s0">for </span><span class="s1">event </span><span class="s0">in </span><span class="s1">pygame.event.get():</span>
+            <span class="s0">if not </span><span class="s1">event </span><span class="s0">in </span><span class="s1">self.ignore:</span>
+                <span class="s1">self.treatement(event)</span>
+
+    <span class="s0">def </span><span class="s1">play(self</span><span class="s0">, </span><span class="s1">preblit=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s1">functions.set_current_menu(self)</span>
+        <span class="s0">if </span><span class="s1">preblit:</span>
+            <span class="s1">self.blit_and_update()</span>
+        <span class="s0">while not </span><span class="s1">self.leave:</span>
+            <span class="s0">if </span><span class="s1">self.time_before_kill </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">self.time_before_kill -= </span><span class="s2">1</span>
+                <span class="s0">if </span><span class="s1">self.time_before_kill &lt; </span><span class="s2">0</span><span class="s1">:</span>
+                    <span class="s1">self.leave = </span><span class="s0">True</span>
+                    <span class="s0">break</span>
+            <span class="s0">if </span><span class="s1">application.SHOW_FPS:</span>
+                <span class="s1">print(self.clock.get_fps())</span>
+            <span class="s1">self.clock_tick(self.fps)</span>
+            <span class="s1">self.react_to_all_events()</span>
+
+
+<span class="s0">def </span><span class="s1">interactive_pause(max_time_in_seconds</span><span class="s0">, </span><span class="s1">element=</span><span class="s0">None, </span><span class="s1">fps=</span><span class="s2">45</span><span class="s1">):</span>
+    <span class="s0">if </span><span class="s1">element </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s1">element = Ghost()</span>
+    <span class="s1">menu = BasicMenu(element</span><span class="s0">, </span><span class="s1">fps=fps)</span>
+    <span class="s1">menu.kill_after(menu.fps * max_time_in_seconds)</span>
+    <span class="s1">menu.play()</span>
+    <span class="s0">return </span><span class="s1">menu.kill_after</span>
+</pre>
+</body>
+</html>

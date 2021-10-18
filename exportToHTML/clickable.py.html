@@ -1,0 +1,86 @@
+<html>
+<head>
+<title>clickable.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6a8759;}
+.s4 { color: #808080;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+clickable.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">pygame.event </span><span class="s0">import </span><span class="s1">post</span><span class="s0">, </span><span class="s1">Event</span>
+
+<span class="s0">from </span><span class="s1">thorpy.elements.pressable </span><span class="s0">import </span><span class="s1">Pressable</span>
+<span class="s0">from </span><span class="s1">thorpy.elements.hoverable </span><span class="s0">import </span><span class="s1">Hoverable</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.constants </span><span class="s0">import </span><span class="s1">STATE_NORMAL</span><span class="s0">, </span><span class="s1">STATE_PRESSED</span><span class="s0">, </span><span class="s1">EVENT_PRESS</span><span class="s0">, </span><span class="s1">EVENT_UNPRESS</span><span class="s0">, </span><span class="s1">THORPY_EVENT</span>
+
+
+<span class="s0">class </span><span class="s1">Clickable(Pressable</span><span class="s0">, </span><span class="s1">Hoverable):</span>
+    <span class="s2">&quot;&quot;&quot;Clickable Element (Pressable and hoverable)&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">text=</span><span class="s3">&quot;&quot;</span><span class="s0">, </span><span class="s1">elements=</span><span class="s0">None, </span><span class="s1">normal_params=</span><span class="s0">None,</span>
+                 <span class="s1">press_params=</span><span class="s0">None, </span><span class="s1">finish=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot;Pressable and hoverable element. 
+        &lt;text&gt;: the text of the element. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super(Clickable</span><span class="s0">, </span><span class="s1">self).__init__(text</span><span class="s0">, </span><span class="s1">elements</span><span class="s0">, </span><span class="s1">normal_params</span><span class="s0">,</span>
+                                        <span class="s1">press_params</span><span class="s0">,</span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">self.normal_params.polite_set(</span><span class="s3">&quot;states hover&quot;</span><span class="s0">,</span>
+                                      <span class="s1">list([STATE_NORMAL</span><span class="s0">, </span><span class="s1">STATE_PRESSED]))</span>
+        <span class="s0">if </span><span class="s1">finish:</span>
+            <span class="s1">self.finish()</span>
+
+    <span class="s0">def </span><span class="s1">finish(self):</span>
+        <span class="s1">Pressable.finish(self)</span>
+        <span class="s1">self._set_hovered_states_auto()</span>
+<span class="s4">##        Hoverable.finish(self)</span>
+
+    <span class="s0">def </span><span class="s1">_remove_help(self):</span>
+        <span class="s0">if </span><span class="s1">self._help_element:</span>
+            <span class="s1">self._help_element.unblit()</span>
+            <span class="s1">self._help_element.update()</span>
+            <span class="s1">self._help_element.set_recursive(</span><span class="s3">&quot;visible&quot;</span><span class="s0">, False</span><span class="s1">)</span>
+            <span class="s1">self._waited = </span><span class="s5">0</span>
+
+    <span class="s0">def </span><span class="s1">_press(self):</span>
+        <span class="s1">state_ok = self.current_state == self._states[STATE_NORMAL]</span>
+        <span class="s0">if </span><span class="s1">state_ok:</span>
+            <span class="s1">self.change_state(STATE_PRESSED)</span>
+            <span class="s1">self._hover()</span>
+            <span class="s1">ev_press = Event(THORPY_EVENT</span><span class="s0">, </span><span class="s1">id=EVENT_PRESS</span><span class="s0">, </span><span class="s1">el=self)</span>
+            <span class="s1">post(ev_press)</span>
+            <span class="s1">self._remove_help()</span>
+
+    <span class="s0">def </span><span class="s1">_unpress(self):</span>
+        <span class="s1">self.change_state(STATE_NORMAL)</span>
+        <span class="s1">ev_unpress = Event(THORPY_EVENT</span><span class="s0">, </span><span class="s1">id=EVENT_UNPRESS</span><span class="s0">, </span><span class="s1">el=self)</span>
+        <span class="s1">post(ev_unpress)</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_unpress(self</span><span class="s0">, </span><span class="s1">pygame_event):</span>
+        <span class="s1">state_ok = self.current_state == self._states[STATE_PRESSED]</span>
+        <span class="s0">if </span><span class="s1">state_ok:</span>
+            <span class="s1">self._unpress()</span>
+            <span class="s0">if </span><span class="s1">self.collide(pygame_event.pos</span><span class="s0">, </span><span class="s1">STATE_PRESSED):</span>
+                <span class="s1">self._hover()</span>
+                <span class="s1">self.run_user_func()</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self._unhover()</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_unpress_key(self):</span>
+        <span class="s1">state_ok = self.current_state == self._states[STATE_PRESSED]</span>
+        <span class="s0">if </span><span class="s1">state_ok:</span>
+            <span class="s1">self._unpress()</span>
+            <span class="s1">self._hover()</span>
+            <span class="s1">self.run_user_func()</span>
+</pre>
+</body>
+</html>

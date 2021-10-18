@@ -1,0 +1,181 @@
+<html>
+<head>
+<title>blit_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+blit_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">unittest</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+<span class="s0">from </span><span class="s1">pygame.locals </span><span class="s0">import </span><span class="s1">*</span>
+
+<span class="s0">class </span><span class="s1">BlitTest( unittest.TestCase ):</span>
+    <span class="s0">def </span><span class="s1">test_SRCALPHA( self ):</span>
+        <span class="s2">&quot;&quot;&quot; SRCALPHA tests. 
+        &quot;&quot;&quot;</span>
+        <span class="s3">#blend(s, 0, d) = d</span>
+        <span class="s1">s = pygame.Surface((</span><span class="s4">1</span><span class="s0">,</span><span class="s4">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">s.fill((</span><span class="s4">255</span><span class="s0">, </span><span class="s4">255</span><span class="s0">,</span><span class="s4">255</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+
+        <span class="s1">d = pygame.Surface((</span><span class="s4">1</span><span class="s0">,</span><span class="s4">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">d.fill((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">,</span><span class="s4">255</span><span class="s0">, </span><span class="s4">255</span><span class="s1">))</span>
+
+        <span class="s1">s.blit(d</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(s.get_at((</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">d.get_at((</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">)) )</span>
+
+        <span class="s3">#blend(s, 255, d) = s</span>
+        <span class="s1">s = pygame.Surface((</span><span class="s4">1</span><span class="s0">,</span><span class="s4">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">s.fill((</span><span class="s4">123</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">255</span><span class="s1">))</span>
+        <span class="s1">s1 = pygame.Surface((</span><span class="s4">1</span><span class="s0">,</span><span class="s4">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">s1.fill((</span><span class="s4">123</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">255</span><span class="s1">))</span>
+        <span class="s1">d = pygame.Surface((</span><span class="s4">1</span><span class="s0">,</span><span class="s4">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">d.fill((</span><span class="s4">10</span><span class="s0">, </span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">s.blit(d</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(s.get_at((</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">s1.get_at((</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">)) )</span>
+
+        <span class="s3">#TODO: these should be true too.</span>
+        <span class="s3">#blend(0, sA, 0) = 0</span>
+        <span class="s3">#blend(255, sA, 255) = 255</span>
+        <span class="s3">#blend(s, sA, d) &lt;= 255</span>
+
+    <span class="s0">def </span><span class="s1">test_BLEND( self ):</span>
+        <span class="s2">&quot;&quot;&quot; BLEND_ tests. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s3">#test that it doesn't overflow, and that it is saturated.</span>
+        <span class="s1">s = pygame.Surface((</span><span class="s4">1</span><span class="s0">,</span><span class="s4">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">s.fill((</span><span class="s4">255</span><span class="s0">, </span><span class="s4">255</span><span class="s0">,</span><span class="s4">255</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+
+        <span class="s1">d = pygame.Surface((</span><span class="s4">1</span><span class="s0">,</span><span class="s4">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">d.fill((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">,</span><span class="s4">255</span><span class="s0">, </span><span class="s4">255</span><span class="s1">))</span>
+
+        <span class="s1">s.blit(d</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">)</span><span class="s0">, None, </span><span class="s1">BLEND_ADD)</span>
+
+        <span class="s3">#print &quot;d %s&quot; % (d.get_at((0,0)),)</span>
+        <span class="s3">#print s.get_at((0,0))</span>
+        <span class="s3">#self.assertEqual(s.get_at((0,0))[2], 255 )</span>
+        <span class="s3">#self.assertEqual(s.get_at((0,0))[3], 0 )</span>
+
+
+
+        <span class="s1">s.blit(d</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">)</span><span class="s0">, None, </span><span class="s1">BLEND_RGBA_ADD)</span>
+        <span class="s3">#print s.get_at((0,0))</span>
+        <span class="s1">self.assertEqual(s.get_at((</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">))[</span><span class="s4">3</span><span class="s1">]</span><span class="s0">, </span><span class="s4">255 </span><span class="s1">)</span>
+
+
+        <span class="s3"># test adding works.</span>
+        <span class="s1">s.fill((</span><span class="s4">20</span><span class="s0">, </span><span class="s4">255</span><span class="s0">,</span><span class="s4">255</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">d.fill((</span><span class="s4">10</span><span class="s0">, </span><span class="s4">0</span><span class="s0">,</span><span class="s4">255</span><span class="s0">, </span><span class="s4">255</span><span class="s1">))</span>
+        <span class="s1">s.blit(d</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">)</span><span class="s0">, None, </span><span class="s1">BLEND_ADD)</span>
+        <span class="s1">self.assertEqual(s.get_at((</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">))[</span><span class="s4">2</span><span class="s1">]</span><span class="s0">, </span><span class="s4">255 </span><span class="s1">)</span>
+
+        <span class="s3"># test subbing works.</span>
+        <span class="s1">s.fill((</span><span class="s4">20</span><span class="s0">, </span><span class="s4">255</span><span class="s0">,</span><span class="s4">255</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">d.fill((</span><span class="s4">10</span><span class="s0">, </span><span class="s4">0</span><span class="s0">,</span><span class="s4">255</span><span class="s0">, </span><span class="s4">255</span><span class="s1">))</span>
+        <span class="s1">s.blit(d</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">)</span><span class="s0">, None, </span><span class="s1">BLEND_SUB)</span>
+        <span class="s1">self.assertEqual(s.get_at((</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">))[</span><span class="s4">0</span><span class="s1">]</span><span class="s0">, </span><span class="s4">10 </span><span class="s1">)</span>
+
+        <span class="s3"># no overflow in sub blend.</span>
+        <span class="s1">s.fill((</span><span class="s4">20</span><span class="s0">, </span><span class="s4">255</span><span class="s0">,</span><span class="s4">255</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">d.fill((</span><span class="s4">30</span><span class="s0">, </span><span class="s4">0</span><span class="s0">,</span><span class="s4">255</span><span class="s0">, </span><span class="s4">255</span><span class="s1">))</span>
+        <span class="s1">s.blit(d</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">)</span><span class="s0">, None, </span><span class="s1">BLEND_SUB)</span>
+        <span class="s1">self.assertEqual(s.get_at((</span><span class="s4">0</span><span class="s0">,</span><span class="s4">0</span><span class="s1">))[</span><span class="s4">0</span><span class="s1">]</span><span class="s0">, </span><span class="s4">0 </span><span class="s1">)</span>
+
+
+    <span class="s0">def </span><span class="s1">make_blit_list(self</span><span class="s0">, </span><span class="s1">num_surfs):</span>
+
+        <span class="s1">blit_list = []</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(num_surfs):</span>
+            <span class="s1">dest = (i * </span><span class="s4">10</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+            <span class="s1">surf = pygame.Surface((</span><span class="s4">10</span><span class="s0">, </span><span class="s4">10</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+            <span class="s1">color = (i * </span><span class="s4">1</span><span class="s0">, </span><span class="s1">i * </span><span class="s4">1</span><span class="s0">, </span><span class="s1">i * </span><span class="s4">1</span><span class="s1">)</span>
+            <span class="s1">surf.fill(color)</span>
+            <span class="s1">blit_list.append((surf</span><span class="s0">, </span><span class="s1">dest))</span>
+        <span class="s0">return </span><span class="s1">blit_list</span>
+
+    <span class="s0">def </span><span class="s1">test_blits(self):</span>
+
+        <span class="s1">NUM_SURFS = </span><span class="s4">255</span>
+        <span class="s1">PRINT_TIMING = </span><span class="s4">0</span>
+        <span class="s1">dst = pygame.Surface((NUM_SURFS * </span><span class="s4">10</span><span class="s0">, </span><span class="s4">10</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">dst.fill((</span><span class="s4">230</span><span class="s0">, </span><span class="s4">230</span><span class="s0">, </span><span class="s4">230</span><span class="s1">))</span>
+        <span class="s1">blit_list = self.make_blit_list(NUM_SURFS)</span>
+
+        <span class="s0">def </span><span class="s1">blits(blit_list):</span>
+            <span class="s0">for </span><span class="s1">surface</span><span class="s0">, </span><span class="s1">dest </span><span class="s0">in </span><span class="s1">blit_list:</span>
+                <span class="s1">dst.blit(surface</span><span class="s0">, </span><span class="s1">dest)</span>
+
+        <span class="s0">from </span><span class="s1">time </span><span class="s0">import </span><span class="s1">time</span>
+        <span class="s1">t0 = time()</span>
+        <span class="s1">results = blits(blit_list)</span>
+        <span class="s1">t1 = time()</span>
+        <span class="s0">if </span><span class="s1">PRINT_TIMING:</span>
+            <span class="s1">print(</span><span class="s5">&quot;python blits: %s&quot; </span><span class="s1">% (t1-t0))</span>
+
+        <span class="s1">dst.fill((</span><span class="s4">230</span><span class="s0">, </span><span class="s4">230</span><span class="s0">, </span><span class="s4">230</span><span class="s1">))</span>
+        <span class="s1">t0 = time()</span>
+        <span class="s1">results = dst.blits(blit_list)</span>
+        <span class="s1">t1 = time()</span>
+        <span class="s0">if </span><span class="s1">PRINT_TIMING:</span>
+            <span class="s1">print(</span><span class="s5">&quot;Surface.blits :%s&quot; </span><span class="s1">% (t1-t0))</span>
+
+
+        <span class="s3"># check if we blit all the different colors in the correct spots.</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(NUM_SURFS):</span>
+            <span class="s1">color = (i * </span><span class="s4">1</span><span class="s0">, </span><span class="s1">i * </span><span class="s4">1</span><span class="s0">, </span><span class="s1">i * </span><span class="s4">1</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(dst.get_at((i * </span><span class="s4">10</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">color)</span>
+            <span class="s1">self.assertEqual(dst.get_at(((i * </span><span class="s4">10</span><span class="s1">) + </span><span class="s4">5</span><span class="s0">, </span><span class="s4">5</span><span class="s1">))</span><span class="s0">, </span><span class="s1">color)</span>
+
+        <span class="s1">self.assertEqual(len(results)</span><span class="s0">, </span><span class="s1">NUM_SURFS)</span>
+
+        <span class="s1">t0 = time()</span>
+        <span class="s1">results = dst.blits(blit_list</span><span class="s0">, </span><span class="s1">doreturn = </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">t1 = time()</span>
+        <span class="s0">if </span><span class="s1">PRINT_TIMING:</span>
+            <span class="s1">print(</span><span class="s5">&quot;Surface.blits doreturn=0: %s&quot; </span><span class="s1">% (t1-t0))</span>
+        <span class="s1">self.assertEqual(results</span><span class="s0">, None</span><span class="s1">)</span>
+
+
+        <span class="s1">t0 = time()</span>
+        <span class="s1">results = dst.blits(((surf</span><span class="s0">, </span><span class="s1">dest) </span><span class="s0">for </span><span class="s1">surf</span><span class="s0">, </span><span class="s1">dest </span><span class="s0">in </span><span class="s1">blit_list))</span>
+        <span class="s1">t1 = time()</span>
+        <span class="s0">if </span><span class="s1">PRINT_TIMING:</span>
+            <span class="s1">print(</span><span class="s5">&quot;Surface.blits generator: %s&quot; </span><span class="s1">% (t1-t0))</span>
+
+
+    <span class="s0">def </span><span class="s1">test_blits_not_sequence(self):</span>
+        <span class="s1">dst = pygame.Surface((</span><span class="s4">100</span><span class="s0">, </span><span class="s4">10</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">dst.blits</span><span class="s0">, None</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_blits_wrong_length(self):</span>
+        <span class="s1">dst = pygame.Surface((</span><span class="s4">100</span><span class="s0">, </span><span class="s4">10</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">dst.blits</span><span class="s0">, </span><span class="s1">[pygame.Surface((</span><span class="s4">10</span><span class="s0">, </span><span class="s4">10</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)])</span>
+
+    <span class="s0">def </span><span class="s1">test_blits_bad_surf_args(self):</span>
+        <span class="s1">dst = pygame.Surface((</span><span class="s4">100</span><span class="s0">, </span><span class="s4">10</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">dst.blits</span><span class="s0">, </span><span class="s1">[(</span><span class="s0">None, None</span><span class="s1">)])</span>
+
+    <span class="s0">def </span><span class="s1">test_blits_bad_dest(self):</span>
+        <span class="s1">dst = pygame.Surface((</span><span class="s4">100</span><span class="s0">, </span><span class="s4">10</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">dst.blits</span><span class="s0">, </span><span class="s1">[(pygame.Surface((</span><span class="s4">10</span><span class="s0">, </span><span class="s4">10</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s4">32</span><span class="s1">)</span><span class="s0">, None</span><span class="s1">)])</span>
+
+
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s5">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

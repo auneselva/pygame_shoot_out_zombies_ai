@@ -1,0 +1,208 @@
+<html>
+<head>
+<title>wheel.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #629755; font-style: italic;}
+.s4 { color: #6a8759;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+wheel.py</font>
+</center></td></tr></table>
+<pre><span class="s0"># -*- coding: utf-8 -*-</span>
+<span class="s2">from </span><span class="s1">__future__ </span><span class="s2">import </span><span class="s1">absolute_import</span>
+
+<span class="s2">import </span><span class="s1">logging</span>
+<span class="s2">import </span><span class="s1">os</span>
+
+<span class="s2">from </span><span class="s1">pip._internal.cache </span><span class="s2">import </span><span class="s1">WheelCache</span>
+<span class="s2">from </span><span class="s1">pip._internal.cli </span><span class="s2">import </span><span class="s1">cmdoptions</span>
+<span class="s2">from </span><span class="s1">pip._internal.cli.base_command </span><span class="s2">import </span><span class="s1">RequirementCommand</span>
+<span class="s2">from </span><span class="s1">pip._internal.exceptions </span><span class="s2">import </span><span class="s1">CommandError</span><span class="s2">, </span><span class="s1">PreviousBuildDirError</span>
+<span class="s2">from </span><span class="s1">pip._internal.operations.prepare </span><span class="s2">import </span><span class="s1">RequirementPreparer</span>
+<span class="s2">from </span><span class="s1">pip._internal.req </span><span class="s2">import </span><span class="s1">RequirementSet</span>
+<span class="s2">from </span><span class="s1">pip._internal.req.req_tracker </span><span class="s2">import </span><span class="s1">RequirementTracker</span>
+<span class="s2">from </span><span class="s1">pip._internal.resolve </span><span class="s2">import </span><span class="s1">Resolver</span>
+<span class="s2">from </span><span class="s1">pip._internal.utils.temp_dir </span><span class="s2">import </span><span class="s1">TempDirectory</span>
+<span class="s2">from </span><span class="s1">pip._internal.wheel </span><span class="s2">import </span><span class="s1">WheelBuilder</span>
+
+<span class="s1">logger = logging.getLogger(__name__)</span>
+
+
+<span class="s2">class </span><span class="s1">WheelCommand(RequirementCommand):</span>
+    <span class="s3">&quot;&quot;&quot; 
+    Build Wheel archives for your requirements and dependencies. 
+ 
+    Wheel is a built-package format, and offers the advantage of not 
+    recompiling your software during every install. For more details, see the 
+    wheel docs: https://wheel.readthedocs.io/en/latest/ 
+ 
+    Requirements: setuptools&gt;=0.8, and wheel. 
+ 
+    'pip wheel' uses the bdist_wheel setuptools extension from the wheel 
+    package to build individual wheels. 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">name = </span><span class="s4">'wheel'</span>
+    <span class="s1">usage = </span><span class="s4">&quot;&quot;&quot; 
+      %prog [options] &lt;requirement specifier&gt; ... 
+      %prog [options] -r &lt;requirements file&gt; ... 
+      %prog [options] [-e] &lt;vcs project url&gt; ... 
+      %prog [options] [-e] &lt;local project path&gt; ... 
+      %prog [options] &lt;archive url/path&gt; ...&quot;&quot;&quot;</span>
+
+    <span class="s1">summary = </span><span class="s4">'Build wheels from your requirements.'</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">*args</span><span class="s2">, </span><span class="s1">**kw):</span>
+        <span class="s1">super(WheelCommand</span><span class="s2">, </span><span class="s1">self).__init__(*args</span><span class="s2">, </span><span class="s1">**kw)</span>
+
+        <span class="s1">cmd_opts = self.cmd_opts</span>
+
+        <span class="s1">cmd_opts.add_option(</span>
+            <span class="s4">'-w'</span><span class="s2">, </span><span class="s4">'--wheel-dir'</span><span class="s2">,</span>
+            <span class="s1">dest=</span><span class="s4">'wheel_dir'</span><span class="s2">,</span>
+            <span class="s1">metavar=</span><span class="s4">'dir'</span><span class="s2">,</span>
+            <span class="s1">default=os.curdir</span><span class="s2">,</span>
+            <span class="s1">help=(</span><span class="s4">&quot;Build wheels into &lt;dir&gt;, where the default is the &quot;</span>
+                  <span class="s4">&quot;current working directory.&quot;</span><span class="s1">)</span><span class="s2">,</span>
+        <span class="s1">)</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.no_binary())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.only_binary())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.prefer_binary())</span>
+        <span class="s1">cmd_opts.add_option(</span>
+            <span class="s4">'--build-option'</span><span class="s2">,</span>
+            <span class="s1">dest=</span><span class="s4">'build_options'</span><span class="s2">,</span>
+            <span class="s1">metavar=</span><span class="s4">'options'</span><span class="s2">,</span>
+            <span class="s1">action=</span><span class="s4">'append'</span><span class="s2">,</span>
+            <span class="s1">help=</span><span class="s4">&quot;Extra arguments to be supplied to 'setup.py bdist_wheel'.&quot;</span><span class="s2">,</span>
+        <span class="s1">)</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.no_build_isolation())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.use_pep517())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.no_use_pep517())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.constraints())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.editable())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.requirements())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.src())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.ignore_requires_python())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.no_deps())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.build_dir())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.progress_bar())</span>
+
+        <span class="s1">cmd_opts.add_option(</span>
+            <span class="s4">'--global-option'</span><span class="s2">,</span>
+            <span class="s1">dest=</span><span class="s4">'global_options'</span><span class="s2">,</span>
+            <span class="s1">action=</span><span class="s4">'append'</span><span class="s2">,</span>
+            <span class="s1">metavar=</span><span class="s4">'options'</span><span class="s2">,</span>
+            <span class="s1">help=</span><span class="s4">&quot;Extra global options to be supplied to the setup.py &quot;</span>
+            <span class="s4">&quot;call before the 'bdist_wheel' command.&quot;</span><span class="s1">)</span>
+
+        <span class="s1">cmd_opts.add_option(</span>
+            <span class="s4">'--pre'</span><span class="s2">,</span>
+            <span class="s1">action=</span><span class="s4">'store_true'</span><span class="s2">,</span>
+            <span class="s1">default=</span><span class="s2">False,</span>
+            <span class="s1">help=(</span><span class="s4">&quot;Include pre-release and development versions. By default, &quot;</span>
+                  <span class="s4">&quot;pip only finds stable versions.&quot;</span><span class="s1">)</span><span class="s2">,</span>
+        <span class="s1">)</span>
+
+        <span class="s1">cmd_opts.add_option(cmdoptions.no_clean())</span>
+        <span class="s1">cmd_opts.add_option(cmdoptions.require_hashes())</span>
+
+        <span class="s1">index_opts = cmdoptions.make_option_group(</span>
+            <span class="s1">cmdoptions.index_group</span><span class="s2">,</span>
+            <span class="s1">self.parser</span><span class="s2">,</span>
+        <span class="s1">)</span>
+
+        <span class="s1">self.parser.insert_option_group(</span><span class="s5">0</span><span class="s2">, </span><span class="s1">index_opts)</span>
+        <span class="s1">self.parser.insert_option_group(</span><span class="s5">0</span><span class="s2">, </span><span class="s1">cmd_opts)</span>
+
+    <span class="s2">def </span><span class="s1">run(self</span><span class="s2">, </span><span class="s1">options</span><span class="s2">, </span><span class="s1">args):</span>
+        <span class="s1">cmdoptions.check_install_build_global(options)</span>
+
+        <span class="s1">index_urls = [options.index_url] + options.extra_index_urls</span>
+        <span class="s2">if </span><span class="s1">options.no_index:</span>
+            <span class="s1">logger.debug(</span><span class="s4">'Ignoring indexes: %s'</span><span class="s2">, </span><span class="s4">','</span><span class="s1">.join(index_urls))</span>
+            <span class="s1">index_urls = []</span>
+
+        <span class="s2">if </span><span class="s1">options.build_dir:</span>
+            <span class="s1">options.build_dir = os.path.abspath(options.build_dir)</span>
+
+        <span class="s1">options.src_dir = os.path.abspath(options.src_dir)</span>
+
+        <span class="s2">with </span><span class="s1">self._build_session(options) </span><span class="s2">as </span><span class="s1">session:</span>
+            <span class="s1">finder = self._build_package_finder(options</span><span class="s2">, </span><span class="s1">session)</span>
+            <span class="s1">build_delete = (</span><span class="s2">not </span><span class="s1">(options.no_clean </span><span class="s2">or </span><span class="s1">options.build_dir))</span>
+            <span class="s1">wheel_cache = WheelCache(options.cache_dir</span><span class="s2">, </span><span class="s1">options.format_control)</span>
+
+            <span class="s2">with </span><span class="s1">RequirementTracker() </span><span class="s2">as </span><span class="s1">req_tracker</span><span class="s2">, </span><span class="s1">TempDirectory(</span>
+                <span class="s1">options.build_dir</span><span class="s2">, </span><span class="s1">delete=build_delete</span><span class="s2">, </span><span class="s1">kind=</span><span class="s4">&quot;wheel&quot;</span>
+            <span class="s1">) </span><span class="s2">as </span><span class="s1">directory:</span>
+
+                <span class="s1">requirement_set = RequirementSet(</span>
+                    <span class="s1">require_hashes=options.require_hashes</span><span class="s2">,</span>
+                <span class="s1">)</span>
+
+                <span class="s2">try</span><span class="s1">:</span>
+                    <span class="s1">self.populate_requirement_set(</span>
+                        <span class="s1">requirement_set</span><span class="s2">, </span><span class="s1">args</span><span class="s2">, </span><span class="s1">options</span><span class="s2">, </span><span class="s1">finder</span><span class="s2">, </span><span class="s1">session</span><span class="s2">,</span>
+                        <span class="s1">self.name</span><span class="s2">, </span><span class="s1">wheel_cache</span>
+                    <span class="s1">)</span>
+
+                    <span class="s1">preparer = RequirementPreparer(</span>
+                        <span class="s1">build_dir=directory.path</span><span class="s2">,</span>
+                        <span class="s1">src_dir=options.src_dir</span><span class="s2">,</span>
+                        <span class="s1">download_dir=</span><span class="s2">None,</span>
+                        <span class="s1">wheel_download_dir=options.wheel_dir</span><span class="s2">,</span>
+                        <span class="s1">progress_bar=options.progress_bar</span><span class="s2">,</span>
+                        <span class="s1">build_isolation=options.build_isolation</span><span class="s2">,</span>
+                        <span class="s1">req_tracker=req_tracker</span><span class="s2">,</span>
+                    <span class="s1">)</span>
+
+                    <span class="s1">resolver = Resolver(</span>
+                        <span class="s1">preparer=preparer</span><span class="s2">,</span>
+                        <span class="s1">finder=finder</span><span class="s2">,</span>
+                        <span class="s1">session=session</span><span class="s2">,</span>
+                        <span class="s1">wheel_cache=wheel_cache</span><span class="s2">,</span>
+                        <span class="s1">use_user_site=</span><span class="s2">False,</span>
+                        <span class="s1">upgrade_strategy=</span><span class="s4">&quot;to-satisfy-only&quot;</span><span class="s2">,</span>
+                        <span class="s1">force_reinstall=</span><span class="s2">False,</span>
+                        <span class="s1">ignore_dependencies=options.ignore_dependencies</span><span class="s2">,</span>
+                        <span class="s1">ignore_requires_python=options.ignore_requires_python</span><span class="s2">,</span>
+                        <span class="s1">ignore_installed=</span><span class="s2">True,</span>
+                        <span class="s1">isolated=options.isolated_mode</span><span class="s2">,</span>
+                        <span class="s1">use_pep517=options.use_pep517</span>
+                    <span class="s1">)</span>
+                    <span class="s1">resolver.resolve(requirement_set)</span>
+
+                    <span class="s0"># build wheels</span>
+                    <span class="s1">wb = WheelBuilder(</span>
+                        <span class="s1">finder</span><span class="s2">, </span><span class="s1">preparer</span><span class="s2">, </span><span class="s1">wheel_cache</span><span class="s2">,</span>
+                        <span class="s1">build_options=options.build_options </span><span class="s2">or </span><span class="s1">[]</span><span class="s2">,</span>
+                        <span class="s1">global_options=options.global_options </span><span class="s2">or </span><span class="s1">[]</span><span class="s2">,</span>
+                        <span class="s1">no_clean=options.no_clean</span><span class="s2">,</span>
+                    <span class="s1">)</span>
+                    <span class="s1">build_failures = wb.build(</span>
+                        <span class="s1">requirement_set.requirements.values()</span><span class="s2">, </span><span class="s1">session=session</span><span class="s2">,</span>
+                    <span class="s1">)</span>
+                    <span class="s2">if </span><span class="s1">len(build_failures) != </span><span class="s5">0</span><span class="s1">:</span>
+                        <span class="s2">raise </span><span class="s1">CommandError(</span>
+                            <span class="s4">&quot;Failed to build one or more wheels&quot;</span>
+                        <span class="s1">)</span>
+                <span class="s2">except </span><span class="s1">PreviousBuildDirError:</span>
+                    <span class="s1">options.no_clean = </span><span class="s2">True</span>
+                    <span class="s2">raise</span>
+                <span class="s2">finally</span><span class="s1">:</span>
+                    <span class="s2">if not </span><span class="s1">options.no_clean:</span>
+                        <span class="s1">requirement_set.cleanup_files()</span>
+                        <span class="s1">wheel_cache.cleanup()</span>
+</pre>
+</body>
+</html>

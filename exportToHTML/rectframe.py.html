@@ -1,0 +1,63 @@
+<html>
+<head>
+<title>rectframe.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+rectframe.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">pygame.draw </span><span class="s0">import </span><span class="s1">rect </span><span class="s0">as </span><span class="s1">draw_rect</span>
+<span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">Rect</span>
+
+<span class="s0">from </span><span class="s1">thorpy.painting.painters.basicframe </span><span class="s0">import </span><span class="s1">BasicFrame</span>
+<span class="s0">from </span><span class="s1">thorpy._utils.colorscomputing </span><span class="s0">import </span><span class="s1">normalize_color</span><span class="s0">, </span><span class="s1">grow_color</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">style</span>
+
+
+<span class="s0">class </span><span class="s1">RectFrame(BasicFrame):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">size=</span><span class="s0">None, </span><span class="s1">color=</span><span class="s0">None, </span><span class="s1">clip=</span><span class="s2">&quot;auto&quot;</span><span class="s0">,</span>
+                 <span class="s1">dark=</span><span class="s0">None, </span><span class="s1">light=</span><span class="s0">None, </span><span class="s1">thick=</span><span class="s3">2</span><span class="s0">, </span><span class="s1">pressed=</span><span class="s0">False, </span><span class="s1">hover=</span><span class="s0">False</span><span class="s1">):</span>
+        <span class="s0">if </span><span class="s1">size </span><span class="s0">is None</span><span class="s1">: size=style.SIZE</span>
+        <span class="s0">if </span><span class="s1">color </span><span class="s0">is None</span><span class="s1">: color=style.DEF_COLOR</span>
+        <span class="s0">if </span><span class="s1">clip </span><span class="s0">is </span><span class="s2">&quot;auto&quot;</span><span class="s1">:</span>
+            <span class="s1">inflation = -</span><span class="s3">2 </span><span class="s1">* thick</span>
+            <span class="s1">clip = (inflation</span><span class="s0">, </span><span class="s1">inflation)</span>
+        <span class="s1">BasicFrame.__init__(self</span><span class="s0">,</span>
+                            <span class="s1">size=size</span><span class="s0">,</span>
+                            <span class="s1">color=color</span><span class="s0">,</span>
+                            <span class="s1">clip=clip</span><span class="s0">,</span>
+                            <span class="s1">pressed=pressed</span><span class="s0">,</span>
+                            <span class="s1">hovered=hovered)</span>
+        <span class="s1">self.light = style.LIGHT_FACTOR </span><span class="s0">if </span><span class="s1">light </span><span class="s0">is None else </span><span class="s1">light</span>
+        <span class="s1">self.dark = style.DARK_FACTOR </span><span class="s0">if </span><span class="s1">dark </span><span class="s0">is None else </span><span class="s1">dark</span>
+        <span class="s0">if </span><span class="s1">isinstance(self.light</span><span class="s0">, </span><span class="s1">float):</span>
+            <span class="s1">self.light = normalize_color(grow_color(self.light</span><span class="s0">, </span><span class="s1">self.color))</span>
+        <span class="s0">if </span><span class="s1">isinstance(self.dark</span><span class="s0">, </span><span class="s1">float):</span>
+            <span class="s1">self.dark = normalize_color(grow_color(self.dark</span><span class="s0">, </span><span class="s1">self.color))</span>
+        <span class="s1">self.thick = thick</span>
+
+    <span class="s0">def </span><span class="s1">draw(self):</span>
+        <span class="s1">surface = BasicFrame.draw(self)</span>
+        <span class="s0">if not </span><span class="s1">self.pressed:</span>
+            <span class="s1">draw_rect(surface</span><span class="s0">, </span><span class="s1">self.dark</span><span class="s0">, </span><span class="s1">Rect((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">self.size)</span><span class="s0">, </span><span class="s1">self.thick)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">draw_rect(surface</span><span class="s0">, </span><span class="s1">self.light</span><span class="s0">, </span><span class="s1">Rect((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">self.size)</span><span class="s0">, </span><span class="s1">self.thick)</span>
+        <span class="s0">return </span><span class="s1">surface</span>
+
+    <span class="s0">def </span><span class="s1">get_surface(self):</span>
+        <span class="s1">surface = self.draw()</span>
+        <span class="s1">surface.set_clip(self.clip)</span>
+        <span class="s0">return </span><span class="s1">surface</span>
+</pre>
+</body>
+</html>

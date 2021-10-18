@@ -1,0 +1,121 @@
+<html>
+<head>
+<title>fusionner.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+fusionner.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Used to produce a graphical Element&quot;&quot;&quot;</span>
+<span class="s2">from </span><span class="s1">pygame.rect </span><span class="s2">import </span><span class="s1">Rect</span>
+
+<span class="s2">from </span><span class="s1">thorpy.miscgui </span><span class="s2">import </span><span class="s1">style</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui.title </span><span class="s2">import </span><span class="s1">Title</span>
+
+
+<span class="s2">class </span><span class="s1">_Fusionner(object):</span>
+    <span class="s0">&quot;&quot;&quot;Put painter and title together to produce an image, using painter's 
+    properties. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">painter</span><span class="s2">, </span><span class="s1">title):</span>
+        <span class="s1">self.painter = painter</span>
+        <span class="s1">self.title = title</span>
+        <span class="s1">self.img = self.get_fusion()</span>
+        <span class="s1">self.rect = Rect((</span><span class="s3">0</span><span class="s2">, </span><span class="s3">0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">self.painter.size)</span>
+
+    <span class="s2">def </span><span class="s1">scale_to_title(self</span><span class="s2">, </span><span class="s1">margins=</span><span class="s2">None, </span><span class="s1">center_title=</span><span class="s2">True,</span>
+                       <span class="s1">refresh_title=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s1">margins = style.MARGINS </span><span class="s2">if </span><span class="s1">margins </span><span class="s2">is None else </span><span class="s1">margins</span>
+        <span class="s1">size_txt = self.title.get_rect(</span><span class="s2">True</span><span class="s1">).size</span>
+        <span class="s1">size = (size_txt[</span><span class="s3">0</span><span class="s1">] + </span><span class="s3">2</span><span class="s1">*margins[</span><span class="s3">0</span><span class="s1">] + </span><span class="s3">1</span><span class="s2">,</span>
+                <span class="s1">size_txt[</span><span class="s3">1</span><span class="s1">] + </span><span class="s3">2</span><span class="s1">*margins[</span><span class="s3">1</span><span class="s1">] + </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.painter.size = size</span>
+        <span class="s1">self.refresh(center_title</span><span class="s2">, </span><span class="s1">refresh_title)</span>
+
+    <span class="s2">def </span><span class="s1">get_fusion(self</span><span class="s2">, </span><span class="s1">center_title=</span><span class="s2">True, </span><span class="s1">title=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Fusion the painter.img and the title.img and returns this fusion.&quot;&quot;&quot;</span>
+        <span class="s2">if not </span><span class="s1">title:</span>
+            <span class="s1">title = self.title</span>
+        <span class="s2">return </span><span class="s1">self.painter.get_fusion(title</span><span class="s2">, </span><span class="s1">center_title)</span>
+
+    <span class="s2">def </span><span class="s1">get_hover_fusion(self</span><span class="s2">, </span><span class="s1">center_title=</span><span class="s2">True, </span><span class="s1">writer=</span><span class="s2">None, </span><span class="s1">color=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Returns images corresponding to self.title._lines, with &lt;writer&gt; as 
+        writer. Default arg writer=None, means that title's writer is used. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">color = style.COLOR_TXT_HOVER </span><span class="s2">if </span><span class="s1">color </span><span class="s2">is None else </span><span class="s1">color</span>
+        <span class="s2">if not </span><span class="s1">writer:</span>
+            <span class="s1">writer = self.title._writer</span>
+        <span class="s4">#</span>
+        <span class="s1">pos = self.title._pos</span>
+        <span class="s1">space = self.title._space</span>
+        <span class="s1">align = self.title._align</span>
+        <span class="s1">cut_word = self.title._cut_word</span>
+        <span class="s1">lines = self.title._lines</span>
+        <span class="s1">old_col = self.title._writer.color</span>
+        <span class="s4">#</span>
+        <span class="s1">writer.set_color(color)</span>
+        <span class="s1">title = Title(</span><span class="s5">&quot;&quot;</span><span class="s2">, </span><span class="s1">writer</span><span class="s2">, </span><span class="s1">pos</span><span class="s2">, </span><span class="s1">space</span><span class="s2">, </span><span class="s1">align</span><span class="s2">, </span><span class="s1">cut_word)</span>
+        <span class="s1">title._lines = lines</span>
+        <span class="s1">title._imgs = title._writer.get_imgs(lines)</span>
+        <span class="s1">title._text = self.title._text</span>
+        <span class="s1">img = self.get_fusion(center_title</span><span class="s2">, </span><span class="s1">title)</span>
+        <span class="s1">writer.set_color(old_col)</span>
+        <span class="s2">return </span><span class="s1">img</span>
+
+    <span class="s2">def </span><span class="s1">refresh(self</span><span class="s2">, </span><span class="s1">center_title=</span><span class="s2">True, </span><span class="s1">refresh_title=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Fusion the painter.img and the title.img into self.img&quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">refresh_title:</span>
+            <span class="s1">self.title.refresh_imgs()</span>
+        <span class="s1">self.painter.refresh_clip()</span>
+        <span class="s1">self.img = self.get_fusion(center_title)</span>
+        <span class="s1">self.refresh_rect()</span>
+
+    <span class="s2">def </span><span class="s1">refresh_rect(self):</span>
+        <span class="s1">self.rect.size = self.img.get_size()</span>
+
+
+<span class="s2">class </span><span class="s1">FusionnerText(_Fusionner):</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">title):</span>
+        <span class="s1">self.title = title</span>
+        <span class="s1">self.img = self.get_fusion()</span>
+        <span class="s1">img_size = self.img.get_size()</span>
+        <span class="s1">self.rect = Rect((</span><span class="s3">0</span><span class="s2">, </span><span class="s3">0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">img_size)</span>
+
+    <span class="s2">def </span><span class="s1">get_hover_fusion(self</span><span class="s2">, </span><span class="s1">center_title=</span><span class="s2">None, </span><span class="s1">writer=</span><span class="s2">None, </span><span class="s1">color=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s1">color=style.COLOR_TXT_HOVER </span><span class="s2">if </span><span class="s1">color </span><span class="s2">is None else </span><span class="s1">color</span>
+        <span class="s1">old_col = self.title._writer.color</span>
+        <span class="s2">if </span><span class="s1">len(self.title._lines) != len(self.title._imgs):</span>
+            <span class="s2">raise </span><span class="s1">Exception(</span><span class="s5">&quot;title problem&quot;</span><span class="s1">)</span>
+        <span class="s1">self.title._writer.set_color(color)</span>
+        <span class="s1">img = self.title.get_imgs()[</span><span class="s3">0</span><span class="s1">] </span><span class="s4">#only simple text use it, not multisimple text</span>
+        <span class="s1">self.title._writer.set_color(old_col)</span>
+        <span class="s2">return </span><span class="s1">img</span>
+
+    <span class="s2">def </span><span class="s1">get_fusion(self</span><span class="s2">, </span><span class="s1">center_title=</span><span class="s2">None, </span><span class="s1">writer=</span><span class="s2">None</span><span class="s1">):</span><span class="s4">#writer unused for compatibilty reasons</span>
+        <span class="s2">return </span><span class="s1">self.title._imgs[</span><span class="s3">0</span><span class="s1">]</span>
+
+    <span class="s2">def </span><span class="s1">refresh(self</span><span class="s2">, </span><span class="s1">center_title=</span><span class="s2">None, </span><span class="s1">refresh_title=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">refresh_title:</span>
+            <span class="s1">self.title.refresh_imgs()</span>
+        <span class="s1">self.img = self.get_fusion()</span>
+        <span class="s1">self.refresh_rect()</span>
+
+    <span class="s2">def </span><span class="s1">scale_to_title(self</span><span class="s2">, </span><span class="s1">margins=</span><span class="s2">None, </span><span class="s1">center_title=</span><span class="s2">True,</span>
+                       <span class="s1">refresh_title=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s2">pass</span>
+</pre>
+</body>
+</html>

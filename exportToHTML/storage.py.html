@@ -1,0 +1,303 @@
+<html>
+<head>
+<title>storage.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+storage.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Provide functions and a class to store and order elements&quot;&quot;&quot;</span>
+<span class="s2">from </span><span class="s1">pygame </span><span class="s2">import </span><span class="s1">Rect</span>
+
+<span class="s2">from </span><span class="s1">thorpy.miscgui </span><span class="s2">import </span><span class="s1">style</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui.functions </span><span class="s2">import </span><span class="s1">get_screen</span>
+
+<span class="s2">def </span><span class="s1">_set_topleft(el</span><span class="s2">, </span><span class="s1">pos):</span>
+    <span class="s0">&quot;&quot;&quot;Set element &lt;el&gt;'s topleft using its storer_rect as reference.&quot;&quot;&quot;</span>
+    <span class="s1">left</span><span class="s2">, </span><span class="s1">top = pos</span>
+    <span class="s1">x_shift = </span><span class="s3">0</span>
+    <span class="s1">y_shift = </span><span class="s3">0</span>
+    <span class="s2">if </span><span class="s1">left </span><span class="s2">is not None</span><span class="s1">:</span>
+        <span class="s1">x_shift = left - el.get_storer_rect().left</span>
+    <span class="s2">if </span><span class="s1">top </span><span class="s2">is not None</span><span class="s1">:</span>
+        <span class="s1">y_shift = top - el.get_storer_rect().top</span>
+    <span class="s1">el.move((x_shift</span><span class="s2">, </span><span class="s1">y_shift))</span>
+
+<span class="s2">def </span><span class="s1">_set_center(el</span><span class="s2">, </span><span class="s1">pos):</span>
+    <span class="s0">&quot;&quot;&quot;Set element &lt;el&gt;'s center using its storer_rect as reference.&quot;&quot;&quot;</span>
+    <span class="s1">center_x</span><span class="s2">, </span><span class="s1">center_y = pos</span>
+    <span class="s1">x_shift = </span><span class="s3">0</span>
+    <span class="s1">y_shift = </span><span class="s3">0</span>
+    <span class="s2">if </span><span class="s1">center_x </span><span class="s2">is not None</span><span class="s1">:</span>
+        <span class="s1">x_shift = center_x - el.get_storer_rect().centerx</span>
+    <span class="s2">if </span><span class="s1">center_y </span><span class="s2">is not None</span><span class="s1">:</span>
+        <span class="s1">y_shift = center_y - el.get_storer_rect().centery</span>
+    <span class="s1">el.move((x_shift</span><span class="s2">, </span><span class="s1">y_shift))</span>
+
+<span class="s2">def </span><span class="s1">v_store(rect</span><span class="s2">, </span><span class="s1">children</span><span class="s2">, </span><span class="s1">xcoord=</span><span class="s2">None, </span><span class="s1">ystart=</span><span class="s4">&quot;auto&quot;</span><span class="s2">, </span><span class="s1">margin=</span><span class="s2">None,</span>
+             <span class="s1">gap=</span><span class="s2">None, </span><span class="s1">align=</span><span class="s4">&quot;center&quot;</span><span class="s1">):</span>
+    <span class="s1">children = [c </span><span class="s2">for </span><span class="s1">c </span><span class="s2">in </span><span class="s1">children]</span>
+    <span class="s1">children = sorted(children</span><span class="s2">, </span><span class="s1">key=</span><span class="s2">lambda </span><span class="s1">x: x.rank)</span>
+    <span class="s2">if not </span><span class="s1">children:</span>
+        <span class="s2">return </span><span class="s1">rect</span>
+    <span class="s1">margin = style.MARGINS[</span><span class="s3">1</span><span class="s1">] </span><span class="s2">if </span><span class="s1">margin </span><span class="s2">is None else </span><span class="s1">margin</span>
+    <span class="s1">gap = style.GAPS[</span><span class="s3">1</span><span class="s1">] </span><span class="s2">if </span><span class="s1">gap </span><span class="s2">is None else </span><span class="s1">gap</span>
+    <span class="s1">(xc</span><span class="s2">, </span><span class="s1">yc) = rect.center</span>
+    <span class="s1">(x0</span><span class="s2">, </span><span class="s1">y0) = rect.topleft</span>
+    <span class="s1">xc = xc </span><span class="s2">if </span><span class="s1">xcoord </span><span class="s2">is None else </span><span class="s1">xcoord</span>
+    <span class="s2">if </span><span class="s1">ystart </span><span class="s2">is None or </span><span class="s1">ystart == </span><span class="s4">&quot;auto&quot;</span><span class="s1">:</span>
+        <span class="s1">y = y0 + margin - gap</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s1">y = ystart</span>
+    <span class="s1">previous_size = </span><span class="s3">0</span>
+    <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">children:</span>
+<span class="s5">##        print(&quot; el&quot;, e.id, e.get_storer_rect())</span>
+        <span class="s1">y += previous_size + gap</span>
+        <span class="s2">if </span><span class="s1">align == </span><span class="s4">&quot;left&quot;</span><span class="s1">:</span>
+            <span class="s1">_set_topleft(e</span><span class="s2">, </span><span class="s1">(xc</span><span class="s2">,</span><span class="s1">y))</span>
+        <span class="s2">elif </span><span class="s1">align == </span><span class="s4">&quot;center&quot;</span><span class="s1">:</span>
+            <span class="s1">_set_center(e</span><span class="s2">, </span><span class="s1">(xc</span><span class="s2">, None</span><span class="s1">))  </span><span class="s5"># only move x</span>
+            <span class="s1">_set_topleft(e</span><span class="s2">, </span><span class="s1">(</span><span class="s2">None, </span><span class="s1">y))  </span><span class="s5"># only move y</span>
+        <span class="s2">elif </span><span class="s1">align == </span><span class="s4">&quot;right&quot;</span><span class="s1">:</span>
+            <span class="s1">_set_topleft(e</span><span class="s2">, </span><span class="s1">(xc - e.get_storer_rect().width</span><span class="s2">, </span><span class="s1">y))</span>
+        <span class="s2">elif </span><span class="s1">align </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">_set_topleft(e</span><span class="s2">, </span><span class="s1">(</span><span class="s2">None, </span><span class="s1">y))  </span><span class="s5"># only move y</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">raise </span><span class="s1">Exception(</span><span class="s4">&quot;Align mode unknown.&quot;</span><span class="s1">)</span>
+        <span class="s1">previous_size = e.get_storer_rect().height</span>
+    <span class="s1">bottom = children[-</span><span class="s3">1</span><span class="s1">].get_storer_rect().bottom + margin</span>
+    <span class="s1">top = children[</span><span class="s3">0</span><span class="s1">].get_storer_rect().top - margin</span>
+    <span class="s1">height = bottom - top</span>
+    <span class="s2">if </span><span class="s1">ystart == </span><span class="s4">&quot;auto&quot;</span><span class="s1">:</span>
+        <span class="s1">fr = rect</span>
+        <span class="s1">cr = children[</span><span class="s3">0</span><span class="s1">].get_storer_rect()</span>
+        <span class="s1">yshift = fr.top - cr.top + (fr.height - height)//</span><span class="s3">2</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">children:</span>
+            <span class="s1">e.move((</span><span class="s3">0</span><span class="s2">, </span><span class="s1">yshift))</span>
+    <span class="s2">return </span><span class="s1">height</span>
+
+<span class="s2">def </span><span class="s1">h_store(rect</span><span class="s2">, </span><span class="s1">children</span><span class="s2">, </span><span class="s1">ycoord=</span><span class="s2">None, </span><span class="s1">xstart=</span><span class="s4">&quot;auto&quot;</span><span class="s2">, </span><span class="s1">margin=</span><span class="s2">None, </span><span class="s1">gap=</span><span class="s2">None,</span>
+             <span class="s1">align=</span><span class="s4">&quot;center&quot;</span><span class="s1">):</span>
+    <span class="s1">children = [c </span><span class="s2">for </span><span class="s1">c </span><span class="s2">in </span><span class="s1">children]</span>
+    <span class="s1">children = sorted(children</span><span class="s2">, </span><span class="s1">key=</span><span class="s2">lambda </span><span class="s1">x: x.rank)</span>
+    <span class="s2">if not </span><span class="s1">children:</span>
+        <span class="s2">return </span><span class="s1">rect</span>
+    <span class="s1">margin = style.MARGINS[</span><span class="s3">0</span><span class="s1">] </span><span class="s2">if </span><span class="s1">margin </span><span class="s2">is None else </span><span class="s1">margin</span>
+    <span class="s1">gap = style.GAPS[</span><span class="s3">0</span><span class="s1">] </span><span class="s2">if </span><span class="s1">gap </span><span class="s2">is None else </span><span class="s1">gap</span>
+    <span class="s1">(xc</span><span class="s2">, </span><span class="s1">yc) = rect.center</span>
+    <span class="s1">(x0</span><span class="s2">, </span><span class="s1">y0) = rect.topleft</span>
+    <span class="s1">yc = yc </span><span class="s2">if </span><span class="s1">ycoord </span><span class="s2">is None else </span><span class="s1">ycoord</span>
+    <span class="s2">if </span><span class="s1">xstart </span><span class="s2">is None or </span><span class="s1">xstart == </span><span class="s4">&quot;auto&quot;</span><span class="s1">:</span>
+        <span class="s1">x = x0 + margin - gap</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s1">x = xstart</span>
+    <span class="s1">previous_size = </span><span class="s3">0</span>
+    <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">children:</span>
+        <span class="s1">x += previous_size + gap</span>
+        <span class="s2">if </span><span class="s1">align == </span><span class="s4">&quot;top&quot;</span><span class="s1">:</span>
+            <span class="s1">_set_topleft(e</span><span class="s2">, </span><span class="s1">(x</span><span class="s2">,</span><span class="s1">yc))</span>
+        <span class="s2">elif </span><span class="s1">align == </span><span class="s4">&quot;center&quot;</span><span class="s1">:</span>
+            <span class="s1">_set_center(e</span><span class="s2">, </span><span class="s1">(</span><span class="s2">None, </span><span class="s1">yc))  </span><span class="s5"># only move x</span>
+            <span class="s1">_set_topleft(e</span><span class="s2">, </span><span class="s1">(x</span><span class="s2">, None</span><span class="s1">))  </span><span class="s5"># only move y</span>
+        <span class="s2">elif </span><span class="s1">align == </span><span class="s4">&quot;bottom&quot;</span><span class="s1">:</span>
+            <span class="s1">_set_topleft(e</span><span class="s2">, </span><span class="s1">(x</span><span class="s2">, </span><span class="s1">yc - e.get_storer_rect().height))</span>
+        <span class="s2">elif </span><span class="s1">align </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">_set_topleft(e</span><span class="s2">, </span><span class="s1">(</span><span class="s2">None, </span><span class="s1">yc))  </span><span class="s5"># only move y</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">raise </span><span class="s1">Exception(</span><span class="s4">&quot;Align mode unknown.&quot;</span><span class="s1">)</span>
+        <span class="s1">previous_size = e.get_storer_rect().width</span>
+    <span class="s1">left = children[</span><span class="s3">0</span><span class="s1">].get_storer_rect().left - margin</span>
+    <span class="s1">right = children[-</span><span class="s3">1</span><span class="s1">].get_storer_rect().right + margin</span>
+    <span class="s1">width = right - left</span>
+    <span class="s2">if </span><span class="s1">xstart == </span><span class="s4">&quot;auto&quot;</span><span class="s1">:</span>
+        <span class="s1">fr = rect</span>
+        <span class="s1">cr = children[</span><span class="s3">0</span><span class="s1">].get_storer_rect()</span>
+        <span class="s1">xshift = fr.left - cr.left + (fr.width - width)//</span><span class="s3">2</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">children:</span>
+            <span class="s1">e.move((xshift</span><span class="s2">, </span><span class="s3">0</span><span class="s1">))</span>
+    <span class="s2">return </span><span class="s1">width</span>
+
+<span class="s2">def </span><span class="s1">store(frame</span><span class="s2">, </span><span class="s1">elements=</span><span class="s2">None, </span><span class="s1">mode=</span><span class="s4">&quot;v&quot;</span><span class="s2">, </span><span class="s1">x=</span><span class="s4">&quot;auto&quot;</span><span class="s2">, </span><span class="s1">y=</span><span class="s4">&quot;auto&quot;</span><span class="s2">, </span><span class="s1">margin=</span><span class="s2">None,</span>
+            <span class="s1">gap=</span><span class="s2">None, </span><span class="s1">align=</span><span class="s4">&quot;center&quot;</span><span class="s1">):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    &lt;frame&gt; can be either an element or a pygame.Rect 
+    &lt;elements&gt;=None, None (default) will store the children of &lt;frame&gt; 
+    &lt;mode&gt;=&quot;v&quot;, can be either &quot;v&quot; (&quot;vertical&quot;) or &quot;h&quot; (&quot;horizontal&quot;) 
+    &lt;x&gt;=&quot;auto&quot;, x coordinate begin 
+    &lt;y&gt;=&quot;auto&quot;, y coordinate begin 
+    &lt;margin&gt;=None, the margin to be used (this is a single value) 
+    &lt;gap&gt;=None, the gap to be used (this is a single value) 
+    &lt;align&gt;=&quot;center&quot;, &quot;top&quot; or &quot;bottom&quot; 
+    &quot;&quot;&quot;</span>
+    <span class="s5">#frame argument handling</span>
+    <span class="s2">if </span><span class="s1">frame == </span><span class="s4">&quot;screen&quot;</span><span class="s1">:</span>
+        <span class="s1">frame = get_screen().get_rect()</span>
+    <span class="s2">if </span><span class="s1">isinstance(frame</span><span class="s2">, </span><span class="s1">Rect):</span>
+        <span class="s1">rect = frame</span>
+        <span class="s2">if </span><span class="s1">elements </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">elements = []</span>
+<span class="s5">##    elif frame.__class__.__name__ == &quot;Box&quot;:</span>
+<span class="s5">##        raise Exception(&quot;You cannot call store on a Box instance.&quot;+\</span>
+<span class="s5">##                            &quot;The Box element has its own store method.&quot;)</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s2">if </span><span class="s1">elements </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">elements = frame.get_elements()</span>
+        <span class="s1">rect = frame.get_storer_rect()</span>
+    <span class="s5">#end frame arg handling</span>
+    <span class="s2">if </span><span class="s1">mode == </span><span class="s4">&quot;v&quot; </span><span class="s2">or </span><span class="s1">mode == </span><span class="s4">&quot;vertical&quot;</span><span class="s1">:</span>
+        <span class="s1">x = </span><span class="s2">None if </span><span class="s1">x == </span><span class="s4">&quot;auto&quot; </span><span class="s2">else </span><span class="s1">x</span>
+        <span class="s1">size = v_store(rect</span><span class="s2">, </span><span class="s1">elements</span><span class="s2">, </span><span class="s1">x</span><span class="s2">, </span><span class="s1">y</span><span class="s2">, </span><span class="s1">margin</span><span class="s2">, </span><span class="s1">gap</span><span class="s2">, </span><span class="s1">align)</span>
+    <span class="s2">elif </span><span class="s1">mode == </span><span class="s4">&quot;h&quot; </span><span class="s2">or </span><span class="s1">mode == </span><span class="s4">&quot;horizontal&quot;</span><span class="s1">:</span>
+        <span class="s1">y = </span><span class="s2">None if </span><span class="s1">y == </span><span class="s4">&quot;auto&quot; </span><span class="s2">else </span><span class="s1">y</span>
+        <span class="s1">size = h_store(rect</span><span class="s2">, </span><span class="s1">elements</span><span class="s2">, </span><span class="s1">y</span><span class="s2">, </span><span class="s1">x</span><span class="s2">, </span><span class="s1">margin</span><span class="s2">, </span><span class="s1">gap</span><span class="s2">, </span><span class="s1">align)</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s2">raise </span><span class="s1">Exception(</span><span class="s4">&quot;Store mode unknown.&quot;</span><span class="s1">)</span>
+    <span class="s2">return </span><span class="s1">size</span>
+
+<span class="s2">class </span><span class="s1">Storer:</span>
+    <span class="s0">&quot;&quot;&quot;Store and order elements of an element&quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">element</span><span class="s2">, </span><span class="s1">children=</span><span class="s2">None, </span><span class="s1">mode=</span><span class="s2">None, </span><span class="s1">margins=</span><span class="s2">None,</span>
+                  <span class="s1">gaps=</span><span class="s2">None, </span><span class="s1">align=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">children </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">children = element.get_elements()</span>
+            <span class="s1">children = [c </span><span class="s2">for </span><span class="s1">c </span><span class="s2">in </span><span class="s1">children]</span>
+        <span class="s1">margins = style.MARGINS </span><span class="s2">if </span><span class="s1">margins </span><span class="s2">is None else </span><span class="s1">margins</span>
+        <span class="s1">gaps = style.GAPS </span><span class="s2">if </span><span class="s1">gaps </span><span class="s2">is None else </span><span class="s1">gaps</span>
+        <span class="s1">mode = style.STORE_MODE </span><span class="s2">if </span><span class="s1">mode </span><span class="s2">is None else </span><span class="s1">mode</span>
+        <span class="s1">align = style.STORE_ALIGN </span><span class="s2">if </span><span class="s1">align </span><span class="s2">is None else </span><span class="s1">align</span>
+        <span class="s1">self._element = element</span>
+        <span class="s1">self._mode = mode</span>
+        <span class="s1">self._margins = margins</span>
+        <span class="s1">self._gaps = gaps</span>
+        <span class="s1">self._elements = children</span>
+        <span class="s1">self._align = align</span>
+
+    <span class="s2">def </span><span class="s1">get_max_element_size(self):</span>
+        <span class="s0">&quot;&quot;&quot;Return max height and max width in all self._elements&quot;&quot;&quot;</span>
+        <span class="s1">sizes_x = list()</span>
+        <span class="s1">sizes_y = list()</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self._elements:</span>
+            <span class="s1">size = e.get_storer_size()</span>
+            <span class="s1">sizes_x.append(size[</span><span class="s3">0</span><span class="s1">])</span>
+            <span class="s1">sizes_y.append(size[</span><span class="s3">1</span><span class="s1">])</span>
+        <span class="s2">return </span><span class="s1">(max(sizes_x)</span><span class="s2">, </span><span class="s1">max(sizes_y))</span>
+
+    <span class="s2">def </span><span class="s1">get_elements_size(self):</span>
+        <span class="s0">&quot;&quot;&quot;Get size taken by elements only&quot;&quot;&quot;</span>
+        <span class="s1">h = </span><span class="s3">0</span>
+        <span class="s1">w = </span><span class="s3">0</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self._elements:</span>
+<span class="s5">##            size = e.get_storer_size()</span>
+            <span class="s1">size = e.get_storer_rect().size</span>
+            <span class="s1">w += size[</span><span class="s3">0</span><span class="s1">]</span>
+            <span class="s1">h += size[</span><span class="s3">1</span><span class="s1">]</span>
+        <span class="s2">return </span><span class="s1">(w</span><span class="s2">, </span><span class="s1">h)</span>
+
+    <span class="s2">def </span><span class="s1">get_size(self</span><span class="s2">, </span><span class="s1">axis):</span>
+        <span class="s0">&quot;&quot;&quot;Get whole size needed along axis (0 or 1)&quot;&quot;&quot;</span>
+        <span class="s1">n = len(self._elements)</span>
+        <span class="s1">elts = self.get_elements_size()[axis]</span>
+        <span class="s1">margins = </span><span class="s3">2 </span><span class="s1">* self._margins[axis]</span>
+        <span class="s1">gaps = (n - </span><span class="s3">1</span><span class="s1">) * self._gaps[axis]</span>
+        <span class="s2">return </span><span class="s1">elts + margins + gaps</span>
+
+    <span class="s2">def </span><span class="s1">get_content_size(self):</span>
+        <span class="s0">&quot;&quot;&quot;Get whole size needed&quot;&quot;&quot;</span>
+        <span class="s1">(wmax</span><span class="s2">, </span><span class="s1">hmax) = self.get_max_element_size()</span>
+        <span class="s2">if </span><span class="s1">self._mode == </span><span class="s4">&quot;vertical&quot;</span><span class="s1">:</span>
+            <span class="s1">w = wmax</span>
+            <span class="s1">h = self.get_size(</span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s2">elif </span><span class="s1">self._mode == </span><span class="s4">&quot;horizontal&quot;</span><span class="s1">:</span>
+            <span class="s1">w = self.get_size(</span><span class="s3">0</span><span class="s1">)</span>
+            <span class="s1">h = hmax</span>
+        <span class="s2">return </span><span class="s1">(w</span><span class="s2">, </span><span class="s1">h)</span>
+
+    <span class="s2">def </span><span class="s1">get_axis(self):  </span><span class="s5"># could be done simply with a dict</span>
+        <span class="s2">if </span><span class="s1">self._mode == </span><span class="s4">&quot;vertical&quot;</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s3">1</span>
+        <span class="s2">elif </span><span class="s1">self._mode == </span><span class="s4">&quot;horizontal&quot;</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s3">0</span>
+
+    <span class="s2">def </span><span class="s1">autoset_framesize(self</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Adapt the size to the elements and store them. 
+        Use this if the father needs to be resized, while the elements are 
+        not stored so you cannot use fit_children. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">n = len(self._elements)</span>
+        <span class="s5"># **** axis size ****</span>
+        <span class="s1">axis = self.get_axis()</span>
+        <span class="s1">margins_size = </span><span class="s3">2 </span><span class="s1">* self._margins[axis] </span><span class="s5">#total margin size</span>
+        <span class="s1">gaps_size = (n - </span><span class="s3">1</span><span class="s1">) * self._gaps[axis] </span><span class="s5">#total gaps size</span>
+        <span class="s1">elements_size = self.get_elements_size()[axis] </span><span class="s5">#total content size</span>
+        <span class="s1">size_axis = margins_size + gaps_size + elements_size</span>
+        <span class="s5"># **** antiaxis size ****</span>
+        <span class="s1">aaxis = int(</span><span class="s2">not </span><span class="s1">axis) </span><span class="s5">#anti-axis</span>
+        <span class="s1">m_aa = </span><span class="s3">2 </span><span class="s1">* self._margins[aaxis] </span><span class="s5">#total antiaxis margins size</span>
+<span class="s5">##        g_aa = (n - 1) * self._gaps[aaxis] #total antiaxis gaps size</span>
+        <span class="s1">g_aa = </span><span class="s3">0</span>
+        <span class="s1">e_aa = self.get_max_element_size()[aaxis] </span><span class="s5">#max antiaxis size</span>
+        <span class="s1">size_aaxis = e_aa + m_aa + g_aa</span>
+        <span class="s5"># **** set size ****</span>
+        <span class="s2">if </span><span class="s1">self._mode == </span><span class="s4">&quot;vertical&quot;</span><span class="s1">:</span>
+            <span class="s1">size = (size_aaxis</span><span class="s2">, </span><span class="s1">size_axis)</span>
+        <span class="s2">elif </span><span class="s1">self._mode == </span><span class="s4">&quot;horizontal&quot;</span><span class="s1">:</span>
+            <span class="s1">size = (size_axis</span><span class="s2">, </span><span class="s1">size_aaxis)</span>
+        <span class="s1">self._element.set_size(size</span><span class="s2">, </span><span class="s1">state)</span>
+        <span class="s1">self.center()  </span><span class="s5"># sort elements</span>
+
+    <span class="s2">def </span><span class="s1">center(self):</span>
+        <span class="s0">&quot;&quot;&quot;Center the elements (align), either vertically or horizontally&quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">self._mode == </span><span class="s4">&quot;vertical&quot;</span><span class="s1">:</span>
+            <span class="s1">margin = self._margins[</span><span class="s3">0</span><span class="s1">]</span>
+            <span class="s1">gap = self._gaps[</span><span class="s3">0</span><span class="s1">]</span>
+            <span class="s1">y = </span><span class="s2">None</span>
+            <span class="s2">if </span><span class="s1">self._align == </span><span class="s4">&quot;center&quot;</span><span class="s1">:</span>
+                <span class="s1">x=</span><span class="s4">&quot;auto&quot;</span>
+            <span class="s2">elif </span><span class="s1">self._align == </span><span class="s4">&quot;left&quot;</span><span class="s1">:</span>
+                <span class="s1">x=self._element.get_storer_rect().left + self._margins[</span><span class="s3">0</span><span class="s1">]</span>
+            <span class="s2">elif </span><span class="s1">self._align == </span><span class="s4">&quot;right&quot;</span><span class="s1">:</span>
+                <span class="s1">x=self._element.get_storer_rect().right - self._margins[</span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s2">elif </span><span class="s1">self._mode == </span><span class="s4">&quot;horizontal&quot;</span><span class="s1">:</span>
+            <span class="s1">margin = self._margins[</span><span class="s3">1</span><span class="s1">]</span>
+            <span class="s1">gap = self._gaps[</span><span class="s3">1</span><span class="s1">]</span>
+            <span class="s1">x = </span><span class="s2">None</span>
+            <span class="s2">if </span><span class="s1">self._align == </span><span class="s4">&quot;center&quot;</span><span class="s1">:</span>
+                <span class="s1">y=</span><span class="s4">&quot;auto&quot;</span>
+            <span class="s2">elif </span><span class="s1">self._align == </span><span class="s4">&quot;top&quot;</span><span class="s1">:</span>
+                <span class="s1">y=self._element.get_storer_rect().top + self._margins[</span><span class="s3">0</span><span class="s1">]</span>
+            <span class="s2">elif </span><span class="s1">self._align == </span><span class="s4">&quot;bottom&quot;</span><span class="s1">:</span>
+                <span class="s1">y=self._element.get_storer_rect().bottom - self._margins[</span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s1">size=store(frame=self._element</span><span class="s2">,</span>
+                      <span class="s1">elements=self._elements</span><span class="s2">,</span>
+                      <span class="s1">mode=self._mode</span><span class="s2">,</span>
+                      <span class="s1">x=x</span><span class="s2">,</span>
+                      <span class="s1">y=y</span><span class="s2">,</span>
+                      <span class="s1">margin=margin</span><span class="s2">,</span>
+                      <span class="s1">gap=gap</span><span class="s2">,</span>
+                      <span class="s1">align=self._align)</span>
+
+    <span class="s2">def </span><span class="s1">_debug_control_collisions(self):</span>
+        <span class="s1">d = {tuple(e.get_storer_rect()):e </span><span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self._elements}</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self._elements:</span>
+            <span class="s1">dn = d.copy()</span>
+            <span class="s1">dn.pop(tuple(e.get_storer_rect()))</span>
+        <span class="s1">self._element.blit()</span>
+        <span class="s1">self._element._recurs_blit_debug(ghost=</span><span class="s2">True, </span><span class="s1">stor=</span><span class="s2">False, </span><span class="s1">fus=</span><span class="s2">False, </span><span class="s1">exception=</span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self._element._path_element._blit_debug()</span>
+        <span class="s2">from </span><span class="s1">thorpy.miscgui </span><span class="s2">import </span><span class="s1">functions</span>
+        <span class="s1">functions.get_current_application().save_screenshot()</span>
+</pre>
+</body>
+</html>

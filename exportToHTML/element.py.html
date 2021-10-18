@@ -1,0 +1,705 @@
+<html>
+<head>
+<title>element.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6a8759;}
+.s4 { color: #808080;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+element.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Graphical element of an application.&quot;&quot;&quot;</span>
+
+<span class="s2">from </span><span class="s1">__future__ </span><span class="s2">import </span><span class="s1">division</span>
+
+<span class="s2">from </span><span class="s1">copy </span><span class="s2">import </span><span class="s1">copy</span>
+
+<span class="s2">from </span><span class="s1">pygame </span><span class="s2">import </span><span class="s1">Rect</span><span class="s2">, </span><span class="s1">SRCALPHA</span>
+
+<span class="s2">from </span><span class="s1">thorpy.painting.fusionner </span><span class="s2">import </span><span class="s1">_Fusionner</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui.title </span><span class="s2">import </span><span class="s1">Title</span>
+<span class="s2">from </span><span class="s1">thorpy.elements.ghost </span><span class="s2">import </span><span class="s1">Ghost</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui.state </span><span class="s2">import </span><span class="s1">State</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui._screened </span><span class="s2">import </span><span class="s1">_Screened</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui.reaction </span><span class="s2">import </span><span class="s1">Reaction</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui </span><span class="s2">import </span><span class="s1">constants</span><span class="s2">, </span><span class="s1">functions</span><span class="s2">, </span><span class="s1">parameters</span><span class="s2">, </span><span class="s1">style</span><span class="s2">, </span><span class="s1">painterstyle</span>
+
+
+<span class="s2">class </span><span class="s1">Element(_Screened</span><span class="s2">, </span><span class="s1">Ghost):</span>
+    <span class="s0">&quot;&quot;&quot;Simplest graphical element of an application.&quot;&quot;&quot;</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s2">def </span><span class="s1">make(cls</span><span class="s2">, </span><span class="s1">text=</span><span class="s3">&quot;&quot;</span><span class="s2">, </span><span class="s1">elements=</span><span class="s2">None, </span><span class="s1">size=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">size </span><span class="s2">is None</span><span class="s1">: size=style.MAKE_SIZE</span>
+        <span class="s1">e = cls(text</span><span class="s2">, </span><span class="s1">elements</span><span class="s2">, </span><span class="s1">finish=</span><span class="s2">False</span><span class="s1">)</span>
+        <span class="s1">e.finish()</span>
+        <span class="s1">e._make_size(size)</span>
+        <span class="s2">return </span><span class="s1">e</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">text=</span><span class="s3">&quot;&quot;</span><span class="s2">, </span><span class="s1">elements=</span><span class="s2">None, </span><span class="s1">normal_params=</span><span class="s2">None, </span><span class="s1">finish=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Simplest graphical element of an application. 
+        &lt;text&gt;: the text to be displayed. 
+        &lt;elements&gt;: list of children elements.&quot;&quot;&quot;</span>
+        <span class="s1">_Screened.__init__(self)</span>
+        <span class="s1">Ghost.__init__(self</span><span class="s2">, </span><span class="s1">elements</span><span class="s2">, </span><span class="s1">normal_params</span><span class="s2">, </span><span class="s1">finish=</span><span class="s2">False</span><span class="s1">)</span>
+        <span class="s1">self._finished = </span><span class="s2">False</span>
+        <span class="s1">self.normal_params.polite_set(</span><span class="s3">&quot;txt&quot;</span><span class="s2">, </span><span class="s1">text)</span>
+        <span class="s1">self.visible = self.normal_params.params.get(</span><span class="s3">&quot;visible&quot;</span><span class="s2">, True</span><span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">finish:</span>
+            <span class="s1">self.finish()</span>
+
+    <span class="s2">def </span><span class="s1">finish(self):</span>
+        <span class="s1">fusionner_attr = self.normal_params.get_fusionner()</span>
+        <span class="s1">state_normal = State(fusionner_attr)</span>
+        <span class="s1">self._states[constants.STATE_NORMAL] = state_normal</span>
+        <span class="s1">self.current_state = self._states[constants.STATE_NORMAL]</span>
+        <span class="s1">self._finished = </span><span class="s2">True</span>
+
+    <span class="s2">def </span><span class="s1">get_fus_rects(self</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Returns a list containing the fus rect of all self's elements.&quot;&quot;&quot;</span>
+        <span class="s1">rects = [self.get_fus_rect(state)]</span>
+        <span class="s1">original_state = state</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">state = self.current_state_key</span>
+        <span class="s1">state = original_state</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self._blit_before:</span>
+            <span class="s1">rects.extend(e.get_fus_rects(state))</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self._blit_after:</span>
+            <span class="s1">rects.extend(e.get_fus_rects(state))</span>
+        <span class="s2">return </span><span class="s1">rects</span>
+
+    <span class="s2">def </span><span class="s1">get_title(self):</span>
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s1">self.current_state.fusionner.title</span>
+        <span class="s2">except </span><span class="s1">AttributeError:</span>
+            <span class="s2">return </span><span class="s1">str(self)</span>
+
+    <span class="s2">def </span><span class="s1">set_title(self</span><span class="s2">, </span><span class="s1">title</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.set_title(title</span><span class="s2">, </span><span class="s1">state)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">self._states[state].fusionner.title = title</span>
+            <span class="s1">self._states[state].fusionner.refresh()</span>
+
+    <span class="s2">def </span><span class="s1">change_title(self</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">**kwargs):</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.change_title(state</span><span class="s2">, </span><span class="s1">**kwargs)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">arg </span><span class="s2">in </span><span class="s1">kwargs:</span>
+                <span class="s1">setattr(self._states[state].fusionner.title</span><span class="s2">, </span><span class="s1">arg</span><span class="s2">, </span><span class="s1">kwargs[arg])</span>
+            <span class="s1">self._states[state].fusionner.refresh()</span>
+
+    <span class="s2">def </span><span class="s1">set_writer(self</span><span class="s2">, </span><span class="s1">writer</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s1">title = self.get_title()</span>
+        <span class="s1">title._writer = writer</span>
+        <span class="s1">self.set_title(title</span><span class="s2">, </span><span class="s1">state)</span>
+
+    <span class="s2">def </span><span class="s1">get_text(self):</span>
+        <span class="s1">title = self.get_title()</span>
+        <span class="s2">if </span><span class="s1">isinstance(title</span><span class="s2">, </span><span class="s1">str):</span>
+            <span class="s2">return </span><span class="s1">title</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">text = title._text</span>
+            <span class="s2">if </span><span class="s1">text:</span>
+                <span class="s2">return </span><span class="s1">text</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s3">&quot;no name : &quot; </span><span class="s1">+ str(self) + constants.SYNTAX_BEG</span>
+
+    <span class="s2">def </span><span class="s1">set_visible(self</span><span class="s2">, </span><span class="s1">value):</span>
+        <span class="s1">self.visible = value</span>
+
+    <span class="s2">def </span><span class="s1">build_state(self</span><span class="s2">, </span><span class="s1">key</span><span class="s2">, </span><span class="s1">painter=</span><span class="s2">None, </span><span class="s1">title=</span><span class="s2">None, </span><span class="s1">fusionner_class=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Add state&quot;&quot;&quot;</span>
+<span class="s4">##        if not key in self._states:</span>
+        <span class="s2">if </span><span class="s1">fusionner_class </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">FusionnerClass = _Fusionner</span>
+        <span class="s2">if </span><span class="s1">title </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">title = Title(</span><span class="s3">&quot;&quot;</span><span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">painter == -</span><span class="s5">1</span><span class="s1">:</span>
+            <span class="s1">fusionner = FusionnerClass(title)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">fusionner = FusionnerClass(painter</span><span class="s2">, </span><span class="s1">title)</span>
+        <span class="s1">state = State(fusionner)</span>
+        <span class="s1">self._states[key] = state</span>
+
+    <span class="s2">def </span><span class="s1">set_font_color(self</span><span class="s2">, </span><span class="s1">color</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">center_title=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;set font color for a given state&quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.set_font_color(color</span><span class="s2">, </span><span class="s1">state</span><span class="s2">, </span><span class="s1">center_title)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">self._states[state].fusionner.title._writer.set_color(color)</span>
+            <span class="s1">self._states[state].fusionner.title.refresh_imgs()</span>
+            <span class="s1">self._states[state].fusionner.refresh(center_title)</span>
+
+    <span class="s2">def </span><span class="s1">set_font_effects(self</span><span class="s2">, </span><span class="s1">biu</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">center=</span><span class="s2">True, </span><span class="s1">preserve=</span><span class="s2">False</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;biu = tuple : (bold, italic, underline)&quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.set_font_effects(biu</span><span class="s2">, </span><span class="s1">state</span><span class="s2">, </span><span class="s1">center</span><span class="s2">, </span><span class="s1">preserve)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">(bold</span><span class="s2">, </span><span class="s1">italic</span><span class="s2">, </span><span class="s1">underline) = biu</span>
+            <span class="s1">self._states[state].fusionner.title._writer.set_effects(</span>
+                <span class="s1">bold</span><span class="s2">,</span>
+                <span class="s1">italic</span><span class="s2">,</span>
+                <span class="s1">underline)</span>
+            <span class="s1">self._states[state].fusionner.title.refresh_imgs()</span>
+            <span class="s1">self._states[state].fusionner.refresh(center</span><span class="s2">, </span><span class="s1">preserve)</span>
+            <span class="s1">self.scale_rects_to_fus()</span>
+
+    <span class="s2">def </span><span class="s1">set_font_size(self</span><span class="s2">, </span><span class="s1">size</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">center_title=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;set font color&quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.set_font_size(size</span><span class="s2">, </span><span class="s1">state</span><span class="s2">, </span><span class="s1">center_title)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">self._states[state].fusionner.title._writer.set_size(size)</span>
+            <span class="s1">self._states[state].fusionner.title.refresh_imgs()</span>
+            <span class="s1">self._states[state].fusionner.refresh(center_title)</span>
+            <span class="s1">self.scale_rects_to_fus()</span>
+
+    <span class="s2">def </span><span class="s1">set_font(self</span><span class="s2">, </span><span class="s1">fontname</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">center_title=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;set font color&quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.set_font(fontname</span><span class="s2">, </span><span class="s1">state</span><span class="s2">, </span><span class="s1">center_title)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">self._states[state].fusionner.title._writer.set_font(fontname)</span>
+            <span class="s1">self._states[state].fusionner.title.refresh_imgs()</span>
+            <span class="s1">self._states[state].fusionner.refresh(center_title)</span>
+            <span class="s1">self.scale_rects_to_fus()</span>
+
+    <span class="s2">def </span><span class="s1">replace_img_color(self</span><span class="s2">, </span><span class="s1">source</span><span class="s2">, </span><span class="s1">target</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">center=</span><span class="s2">True,</span>
+                          <span class="s1">preserve=</span><span class="s2">False</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Replace colors from &lt;source&gt; to &lt;target&gt; for &lt;state&gt;.&quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.replace_img_color(source</span><span class="s2">, </span><span class="s1">target</span><span class="s2">, </span><span class="s1">state</span><span class="s2">, </span><span class="s1">center</span><span class="s2">, </span><span class="s1">preserve)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">self._states[state].fusionner.painter.change_color(source</span><span class="s2">, </span><span class="s1">target)</span>
+            <span class="s1">self._states[state].fusionner.refresh(center</span><span class="s2">, </span><span class="s1">preserve)</span>
+
+    <span class="s2">def </span><span class="s1">set_text(self</span><span class="s2">, </span><span class="s1">text=</span><span class="s2">None, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">center_title=</span><span class="s2">True, </span><span class="s1">size=</span><span class="s2">None,</span>
+                <span class="s1">cut=-</span><span class="s5">1</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        cut : - if cut is a string, this string will be used when needed to cut 
+            the word. 
+              - else if cut==-1 the line will be cut (default) 
+        &quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.set_text(text</span><span class="s2">, </span><span class="s1">state</span><span class="s2">, </span><span class="s1">center_title</span><span class="s2">, </span><span class="s1">size</span><span class="s2">, </span><span class="s1">cut)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">if </span><span class="s1">text </span><span class="s2">is None</span><span class="s1">:</span>
+                <span class="s1">text = self._states[state].fusionner.title._text</span>
+            <span class="s2">if </span><span class="s1">cut:</span>
+                <span class="s1">go_cut = </span><span class="s2">True</span>
+                <span class="s2">if </span><span class="s1">isinstance(cut</span><span class="s2">, </span><span class="s1">str):</span>
+                    <span class="s1">self._states[state].fusionner.title._cut_word = cut</span>
+                <span class="s2">elif </span><span class="s1">cut == -</span><span class="s5">1</span><span class="s1">:</span>
+                    <span class="s1">go_cut = -</span><span class="s5">1</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s1">go_cut = </span><span class="s2">False</span>
+            <span class="s1">self._states[state].fusionner.title.set_text(text</span><span class="s2">, </span><span class="s1">size</span><span class="s2">, </span><span class="s1">go_cut)</span>
+            <span class="s1">self._states[state].fusionner.refresh(center_title</span><span class="s2">,</span>
+                                                  <span class="s1">refresh_title=</span><span class="s2">False</span><span class="s1">)</span>
+            <span class="s1">self._states[state].ghost_rect = self.get_fus_rect()</span>
+            <span class="s1">self.redraw()</span>
+
+    <span class="s2">def </span><span class="s1">get_style(self):</span>
+        <span class="s2">return </span><span class="s1">self.normal_params.params.get(</span><span class="s3">&quot;style&quot;</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">set_style(self</span><span class="s2">, </span><span class="s1">new_style):</span>
+        <span class="s1">self.normal_params.params[</span><span class="s3">&quot;style&quot;</span><span class="s1">] = new_style</span>
+
+    <span class="s2">def </span><span class="s1">get_lines(self</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s1">{state: self._states[state].fusionner.title._lines </span><span class="s2">for </span><span class="s1">state\</span>
+                    <span class="s2">in </span><span class="s1">self.states}</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">return </span><span class="s1">self._states[state].fusionner.title._lines</span>
+
+    <span class="s2">def </span><span class="s1">_make_size(self</span><span class="s2">, </span><span class="s1">size):</span>
+        <span class="s2">if </span><span class="s1">size == </span><span class="s3">&quot;scaled&quot;</span><span class="s1">:</span>
+            <span class="s1">self.scale_to_title()</span>
+        <span class="s2">elif </span><span class="s1">size:</span>
+            <span class="s1">self.set_size(size)</span>
+
+    <span class="s2">def </span><span class="s1">redraw(self</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">painter=</span><span class="s2">None, </span><span class="s1">title=</span><span class="s2">None, </span><span class="s1">refresh_title=</span><span class="s2">False</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.redraw(state</span><span class="s2">, </span><span class="s1">painter</span><span class="s2">, </span><span class="s1">title</span><span class="s2">, </span><span class="s1">refresh_title)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">if </span><span class="s1">painter:</span>
+                <span class="s2">try</span><span class="s1">:</span>
+                    <span class="s1">self._states[state].fusionner.painter = painter</span>
+                <span class="s2">except </span><span class="s1">AttributeError:</span>
+                    <span class="s1">functions.debug_msg(</span>
+                        <span class="s3">&quot;Impossible to change Element's painter: &quot; </span><span class="s1">+</span>
+                        <span class="s1">str(self) +</span>
+                        <span class="s3">&quot; in state: &quot; </span><span class="s1">+</span>
+                        <span class="s1">str(state))</span>
+            <span class="s2">if </span><span class="s1">title:</span>
+                <span class="s2">try</span><span class="s1">:</span>
+                    <span class="s1">self._states[state].fusionner.title = title</span>
+                    <span class="s1">refresh_title = </span><span class="s2">True</span>
+                <span class="s2">except </span><span class="s1">AttributeError:</span>
+                    <span class="s1">functions.debug_msg(</span>
+                        <span class="s3">&quot;Impossible to change Element's title: &quot; </span><span class="s1">+</span>
+                        <span class="s1">str(self) +</span>
+                        <span class="s3">&quot; in state: &quot; </span><span class="s1">+</span>
+                        <span class="s1">str(state))</span>
+            <span class="s1">self._states[state].fusionner.refresh(refresh_title=refresh_title)</span>
+            <span class="s1">self._states[state].refresh_ghost_rect()</span>
+
+    <span class="s2">def </span><span class="s1">set_size(self</span><span class="s2">, </span><span class="s1">size</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">center_title=</span><span class="s2">True, </span><span class="s1">adapt_text=</span><span class="s2">True,</span>
+                 <span class="s1">cut=</span><span class="s2">None, </span><span class="s1">margins=</span><span class="s2">None, </span><span class="s1">refresh_title=</span><span class="s2">False</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;&lt;margins&gt; is used for text cutting only.&quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">margins </span><span class="s2">is None</span><span class="s1">: margins=style.MARGINS</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.set_size(size</span><span class="s2">, </span><span class="s1">state</span><span class="s2">, </span><span class="s1">center_title</span><span class="s2">, </span><span class="s1">adapt_text</span><span class="s2">, </span><span class="s1">cut</span><span class="s2">,</span>
+                              <span class="s1">margins)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">try</span><span class="s1">:</span>
+                <span class="s2">if </span><span class="s1">size[</span><span class="s5">0</span><span class="s1">] </span><span class="s2">is None</span><span class="s1">:</span>
+                    <span class="s1">sizex = self._states[state].fusionner.painter.size[</span><span class="s5">0</span><span class="s1">]</span>
+                <span class="s2">else</span><span class="s1">:</span>
+                    <span class="s1">sizex = size[</span><span class="s5">0</span><span class="s1">]</span>
+                <span class="s2">if </span><span class="s1">size[</span><span class="s5">1</span><span class="s1">] </span><span class="s2">is None</span><span class="s1">:</span>
+                    <span class="s1">sizey = self._states[state].fusionner.painter.size[</span><span class="s5">1</span><span class="s1">]</span>
+                <span class="s2">else</span><span class="s1">:</span>
+                    <span class="s1">sizey = size[</span><span class="s5">1</span><span class="s1">]</span>
+                <span class="s1">size = (sizex</span><span class="s2">, </span><span class="s1">sizey)</span>
+                <span class="s1">self._states[state].fusionner.painter.set_size(size)</span>
+                <span class="s2">if </span><span class="s1">adapt_text:</span>
+                    <span class="s1">txt_size = (size[</span><span class="s5">0</span><span class="s1">] - </span><span class="s5">2 </span><span class="s1">* margins[</span><span class="s5">0</span><span class="s1">]</span><span class="s2">,</span>
+                                <span class="s1">size[</span><span class="s5">1</span><span class="s1">] - </span><span class="s5">2 </span><span class="s1">* margins[</span><span class="s5">1</span><span class="s1">])</span>
+                    <span class="s1">self.set_text(self._states[state].fusionner.title._text</span><span class="s2">,</span>
+                                  <span class="s1">state</span><span class="s2">, </span><span class="s1">center_title</span><span class="s2">, </span><span class="s1">txt_size</span><span class="s2">, </span><span class="s1">cut)</span>
+                    <span class="s1">refresh_title = </span><span class="s2">False</span>
+                <span class="s1">self.redraw(state</span><span class="s2">, </span><span class="s1">refresh_title=refresh_title)</span>
+            <span class="s2">except </span><span class="s1">AttributeError:</span>
+                <span class="s1">functions.debug_msg(</span>
+                    <span class="s3">&quot;Impossible to change Element's size: &quot; </span><span class="s1">+</span>
+                    <span class="s1">str(self) +</span>
+                    <span class="s3">&quot;</span><span class="s2">\n </span><span class="s3">State: &quot; </span><span class="s1">+</span>
+                    <span class="s1">str(state))</span>
+                <span class="s2">if </span><span class="s1">self._lift:</span>
+                    <span class="s1">self.refresh_lift()</span>
+
+    <span class="s2">def </span><span class="s1">enlarge(self</span><span class="s2">, </span><span class="s1">value</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">preserve_center=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self.get_states():</span>
+                <span class="s1">self.enlarge(value</span><span class="s2">, </span><span class="s1">state</span><span class="s2">, </span><span class="s1">preserve_center)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">rect = self.get_fus_rect(state)</span>
+            <span class="s1">x</span><span class="s2">, </span><span class="s1">y = value</span>
+            <span class="s1">w</span><span class="s2">, </span><span class="s1">h = rect.size</span>
+            <span class="s1">center = rect.center</span>
+            <span class="s2">if </span><span class="s1">isinstance(x</span><span class="s2">, </span><span class="s1">float):</span>
+                <span class="s1">x *= w</span>
+            <span class="s2">if </span><span class="s1">isinstance(y</span><span class="s2">, </span><span class="s1">float):</span>
+                <span class="s1">y *= h</span>
+            <span class="s1">new_size = (w+x</span><span class="s2">, </span><span class="s1">h+y)</span>
+            <span class="s1">self.set_size(new_size</span><span class="s2">, </span><span class="s1">state=state)</span>
+            <span class="s2">if </span><span class="s1">preserve_center:</span>
+                <span class="s1">self.set_center(center</span><span class="s2">, </span><span class="s1">state=state)</span>
+
+
+    <span class="s2">def </span><span class="s1">fit_children(self</span><span class="s2">, </span><span class="s1">margins=</span><span class="s2">None, </span><span class="s1">state=constants.STATE_NORMAL</span><span class="s2">,</span>
+                     <span class="s1">only_children=</span><span class="s2">True, </span><span class="s1">axis=(</span><span class="s2">True,True</span><span class="s1">)):</span>
+        <span class="s0">&quot;&quot;&quot;Scale to englobe children&quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">margins </span><span class="s2">is None</span><span class="s1">: margins=style.MARGINS</span>
+        <span class="s1">fr = self.get_family_rect(state</span><span class="s2">, </span><span class="s1">only_children=only_children)</span>
+        <span class="s1">width</span><span class="s2">, </span><span class="s1">height = </span><span class="s2">None, None</span>
+        <span class="s2">if </span><span class="s1">axis[</span><span class="s5">0</span><span class="s1">]:</span>
+            <span class="s1">width = fr.width + </span><span class="s5">2</span><span class="s1">*margins[</span><span class="s5">0</span><span class="s1">]</span>
+        <span class="s2">if </span><span class="s1">axis[</span><span class="s5">1</span><span class="s1">]:</span>
+            <span class="s1">height = fr.height + </span><span class="s5">2</span><span class="s1">*margins[</span><span class="s5">1</span><span class="s1">]</span>
+        <span class="s1">self.set_size((width</span><span class="s2">, </span><span class="s1">height))</span>
+        <span class="s1">x</span><span class="s2">, </span><span class="s1">y = </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span>
+        <span class="s2">if </span><span class="s1">axis[</span><span class="s5">0</span><span class="s1">]:</span>
+            <span class="s1">x = self.get_storer_rect().x - fr.x + margins[</span><span class="s5">0</span><span class="s1">]</span>
+        <span class="s2">if </span><span class="s1">axis[</span><span class="s5">1</span><span class="s1">]:</span>
+            <span class="s1">y = self.get_storer_rect().y - fr.y + margins[</span><span class="s5">1</span><span class="s1">]</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self.get_elements():</span>
+            <span class="s1">e.move((x</span><span class="s2">, </span><span class="s1">y))</span>
+        <span class="s2">if </span><span class="s1">self._lift:</span>
+            <span class="s1">self.refresh_lift()</span>
+
+    <span class="s2">def </span><span class="s1">click_quit_reaction(self</span><span class="s2">, </span><span class="s1">pygame_event):</span>
+        <span class="s0">&quot;&quot;&quot;Makes the element disappear if click is not colliding it.&quot;&quot;&quot;</span>
+        <span class="s1">self.click_quit = </span><span class="s2">True</span>
+        <span class="s1">(x</span><span class="s2">, </span><span class="s1">y) = pygame_event.pos</span>
+        <span class="s2">if not </span><span class="s1">self.collide((x</span><span class="s2">, </span><span class="s1">y)</span><span class="s2">, </span><span class="s1">constants.STATE_NORMAL):</span>
+            <span class="s1">functions.quit_menu_func()</span>
+
+    <span class="s2">def </span><span class="s1">set_main_color(self</span><span class="s2">, </span><span class="s1">color</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.set_main_color(color</span><span class="s2">, </span><span class="s1">state)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">try</span><span class="s1">:</span>
+                <span class="s1">self._states[state].fusionner.painter.set_color(color)</span>
+                <span class="s1">self.redraw(state)</span>
+            <span class="s2">except </span><span class="s1">AttributeError:</span>
+                <span class="s1">functions.debug_msg(</span>
+                    <span class="s3">&quot;Impossible to change Element's main color: &quot;</span><span class="s2">, </span><span class="s1">self</span><span class="s2">,</span>
+                    <span class="s3">&quot;</span><span class="s2">\n </span><span class="s3">State: &quot; </span><span class="s1">+ str(state))</span>
+
+    <span class="s2">def </span><span class="s1">set_painter(self</span><span class="s2">, </span><span class="s1">painter</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">autopress=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Use before finish. If not, use set_active_painter instead.&quot;&quot;&quot;</span>
+        <span class="s1">self.normal_params.params[</span><span class="s3">&quot;painter&quot;</span><span class="s1">] = painter</span>
+        <span class="s2">if </span><span class="s1">self._finished:</span>
+            <span class="s1">self.change_painter(painter</span><span class="s2">, </span><span class="s1">state</span><span class="s2">, </span><span class="s1">autopress)</span>
+<span class="s4">##            functions.debug_msg(&quot;Attention, this element is not finished : &quot; +</span>
+<span class="s4">##                                str(self) + &quot;. Use set_active_painter instead&quot;)</span>
+
+    <span class="s2">def </span><span class="s1">change_painter(self</span><span class="s2">, </span><span class="s1">painter</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">autopress=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.change_painter(painter</span><span class="s2">, </span><span class="s1">state</span><span class="s2">, </span><span class="s1">autopress)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">painter = copy(painter)  </span><span class="s4"># copy painter</span>
+            <span class="s2">if </span><span class="s1">autopress:  </span><span class="s4"># _press if need to</span>
+                <span class="s1">painter.pressed = </span><span class="s2">True</span>
+            <span class="s1">self._states[state].fusionner.painter = painter</span>
+            <span class="s1">self._states[state].fusionner.refresh()</span>
+
+    <span class="s2">def </span><span class="s1">scale_to_title(self</span><span class="s2">, </span><span class="s1">margins=</span><span class="s2">None, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;scale to content&quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">Element.scale_to_title(self</span><span class="s2">, </span><span class="s1">margins</span><span class="s2">, </span><span class="s1">state)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">self._states[state].fusionner.scale_to_title(margins</span><span class="s2">, True, False</span><span class="s1">)</span>
+            <span class="s1">self._states[state].refresh_ghost_rect()</span>
+
+    <span class="s2">def </span><span class="s1">scale_rects_to_fus(self</span><span class="s2">, </span><span class="s1">ghost=</span><span class="s2">True, </span><span class="s1">storer=</span><span class="s2">True, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">state </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">state </span><span class="s2">in </span><span class="s1">self._states:</span>
+                <span class="s1">self.scale_rects_to_fus(ghost</span><span class="s2">, </span><span class="s1">storer</span><span class="s2">, </span><span class="s1">state)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">self._states[state].refresh_ghost_rect()</span>
+
+    <span class="s2">def </span><span class="s1">get_image(self</span><span class="s2">, </span><span class="s1">state=constants.STATE_NORMAL):</span>
+        <span class="s2">return </span><span class="s1">self._states[state].fusionner.img</span>
+
+    <span class="s2">def </span><span class="s1">set_image(self</span><span class="s2">, </span><span class="s1">img</span><span class="s2">, </span><span class="s1">state=constants.STATE_NORMAL):</span>
+        <span class="s1">self._states[state].fusionner.img = img</span>
+
+    <span class="s2">def </span><span class="s1">_change_animation_frame(self</span><span class="s2">, </span><span class="s1">event</span><span class="s2">, </span><span class="s1">imgs</span><span class="s2">, </span><span class="s1">interval</span><span class="s2">, </span><span class="s1">state):</span>
+        <span class="s1">self._tot_ticks += event.tick</span>
+        <span class="s2">if </span><span class="s1">self._tot_ticks &gt;= interval:</span>
+            <span class="s1">state = self.current_state_key </span><span class="s2">if </span><span class="s1">state </span><span class="s2">is None else </span><span class="s1">state</span>
+            <span class="s1">self._current_frame += </span><span class="s5">1</span>
+            <span class="s1">self._current_frame %= len(imgs)</span>
+            <span class="s1">self.unblit()</span>
+            <span class="s1">self.set_image(imgs[self._current_frame]</span><span class="s2">, </span><span class="s1">state)</span>
+            <span class="s1">self.blit()</span>
+            <span class="s1">self.update()</span>
+            <span class="s1">self._tot_ticks = </span><span class="s5">0</span>
+
+    <span class="s2">def </span><span class="s1">set_animated(self</span><span class="s2">, </span><span class="s1">pps</span><span class="s2">, </span><span class="s1">imgs</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        &lt;pps&gt;: Number of periods per seconds. It means that regardless of the number 
+               of frames, the whole set of frame is refreshed &lt;pps&gt; times per 
+               second (of course, a high pps is limited by machine performances). 
+        &lt;imgs&gt;: List of frames (pygame surfaces). 
+        &lt;state&gt;: Element state for which the animation accounts. 
+                 None means element's current state. 
+        NOTE : self's fus_rect and state properties doesn't adapt to the images, 
+        so use images of the same size in order to prevent bugs. 
+        Next version will provide auto-inflatable animations. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">n = len(imgs)</span>
+        <span class="s4">#factor 1000 because the thick will be in millisec</span>
+        <span class="s4">#factor 2 because Clock.get_time() returns time between two last iters.</span>
+        <span class="s1">interval = </span><span class="s5">1000. </span><span class="s1">/ (pps*n)</span>
+        <span class="s1">self._tot_ticks = </span><span class="s5">0</span>
+        <span class="s1">self._current_frame = </span><span class="s5">0</span>
+        <span class="s1">reac = Reaction(constants.THORPY_EVENT</span><span class="s2">,</span>
+                        <span class="s1">self._change_animation_frame</span><span class="s2">,</span>
+                        <span class="s1">{</span><span class="s3">&quot;id&quot;</span><span class="s1">:constants.EVENT_TIME}</span><span class="s2">,</span>
+                        <span class="s1">{</span><span class="s3">&quot;imgs&quot;</span><span class="s1">:imgs</span><span class="s2">, </span><span class="s3">&quot;interval&quot;</span><span class="s1">:interval</span><span class="s2">, </span><span class="s3">&quot;state&quot;</span><span class="s1">:state}</span><span class="s2">,</span>
+                        <span class="s3">&quot;thorpy animation&quot;</span><span class="s1">)</span>
+        <span class="s1">self.add_reaction(reac)</span>
+
+
+
+<span class="s4"># ******************* BLIT FUNCTIONS ********************</span>
+
+
+    <span class="s2">def </span><span class="s1">blit(self):</span>
+        <span class="s0">&quot;&quot;&quot;Recursive blit&quot;&quot;&quot;</span>
+        <span class="s1">self._clip_screen()</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self._blit_before:</span>
+            <span class="s1">e.blit()</span>
+        <span class="s2">if </span><span class="s1">self.visible:</span>
+            <span class="s1">self.solo_blit()</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self._blit_after:</span>
+            <span class="s1">e.blit()</span>
+        <span class="s1">self._unclip_screen()</span>
+
+
+    <span class="s2">def </span><span class="s1">_blit_debug2(self</span><span class="s2">, </span><span class="s1">pos=</span><span class="s2">None, </span><span class="s1">temps=</span><span class="s5">2</span><span class="s2">, </span><span class="s1">bckgr=constants.YELLOW):</span>
+        <span class="s0">&quot;&quot;&quot;fill bckgr, blit(), flip screen and sleep&quot;&quot;&quot;</span>
+        <span class="s2">import </span><span class="s1">pygame</span>
+        <span class="s2">import </span><span class="s1">time</span>
+        <span class="s2">if </span><span class="s1">pos:</span>
+            <span class="s1">self.set_topleft(pos)</span>
+        <span class="s2">if </span><span class="s1">bckgr:</span>
+            <span class="s1">self.surface.fill(bckgr)</span>
+        <span class="s1">self.blit()</span>
+        <span class="s1">pygame.display.flip()</span>
+        <span class="s1">time.sleep(temps)</span>
+
+
+
+    <span class="s2">def </span><span class="s1">solo_blit(self):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        Most basic blit : blit the self.fusionner's image on self.surface, at 
+        position topleft of self.fusionner. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.surface.blit(self.current_state.fusionner.img</span><span class="s2">,</span>
+                          <span class="s1">self.current_state.fusionner.rect.topleft)</span>
+
+    <span class="s2">def </span><span class="s1">solo_partial_blit(self</span><span class="s2">, </span><span class="s1">rect):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        Blit the part of this element (and not its childrens) which is within 
+        &lt;rect&gt;. Deprecated and not used ! 
+        &quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">self.visible:</span>
+            <span class="s1">self._clip_screen(rect)</span>
+            <span class="s1">self.solo_blit()</span>
+            <span class="s1">self._unclip_screen()</span>
+
+    <span class="s2">def </span><span class="s1">solo_unblit(self</span><span class="s2">, </span><span class="s1">rect=</span><span class="s2">None</span><span class="s1">):</span><span class="s4">#not used in the library!</span>
+        <span class="s0">&quot;&quot;&quot;Partial blit of self's oldest ancester on self's fus rect area.&quot;&quot;&quot;</span>
+        <span class="s1">r = self.get_fus_rect()</span>
+        <span class="s2">if </span><span class="s1">rect </span><span class="s2">is not None</span><span class="s1">:</span>
+            <span class="s1">r = r.clip(rect)</span>
+        <span class="s1">self.unblit(rect=r)</span>
+
+    <span class="s2">def </span><span class="s1">unblit(self</span><span class="s2">, </span><span class="s1">rect=</span><span class="s2">None</span><span class="s1">): </span><span class="s4">#v1</span>
+        <span class="s0">&quot;&quot;&quot;Unblit self and all its descendants.&quot;&quot;&quot;</span>
+        <span class="s1">dr = [e.get_fus_rect() </span><span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self.get_descendants()]</span>
+        <span class="s1">zone = self.get_fus_rect().unionall(dr)</span>
+        <span class="s2">if </span><span class="s1">rect </span><span class="s2">is not None</span><span class="s1">:</span>
+            <span class="s1">zone.clip(rect)</span>
+        <span class="s1">a = self.get_oldest_ancester()</span>
+        <span class="s1">a.partial_blit(exception=self</span><span class="s2">, </span><span class="s1">rect=zone)</span>
+
+    <span class="s2">def </span><span class="s1">update(self):</span>
+        <span class="s0">&quot;&quot;&quot;Recursive update&quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">self.visible:</span>
+            <span class="s1">self.solo_update() </span><span class="s4">#see Ghost</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self._elements:</span>
+            <span class="s1">e.update()</span>
+
+    <span class="s2">def </span><span class="s1">total_unblit(self):</span>
+        <span class="s0">&quot;&quot;&quot;Equivalent to self.surface.partial_blit(self.get_fus_rect())&quot;&quot;&quot;</span>
+        <span class="s1">ancester = self.get_oldest_ancester()</span>
+        <span class="s2">if </span><span class="s1">ancester:</span>
+            <span class="s1">ancester.unblit()</span>
+            <span class="s1">ancester.blit()</span>
+
+    <span class="s2">def </span><span class="s1">total_update(self):</span>
+        <span class="s1">ancester = self.get_oldest_ancester()</span>
+        <span class="s1">ancester.update()</span>
+
+<span class="s4"># ************** END BLIT FUNCTIONS **************</span>
+
+    <span class="s2">def </span><span class="s1">get_fus_rect(self</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;get rect&quot;&quot;&quot;</span>
+        <span class="s2">if not </span><span class="s1">state:</span>
+            <span class="s1">state = self.current_state_key</span>
+        <span class="s2">return </span><span class="s1">self._states[state].fusionner.rect.copy()</span>
+
+    <span class="s2">def </span><span class="s1">get_fus_topleft(self</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;get topleft&quot;&quot;&quot;</span>
+        <span class="s2">if not </span><span class="s1">state:</span>
+            <span class="s1">state = self.current_state_key</span>
+        <span class="s2">return </span><span class="s1">self._states[state].fusionner.rect.topleft</span>
+
+    <span class="s2">def </span><span class="s1">get_fus_size(self</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;get size&quot;&quot;&quot;</span>
+        <span class="s2">if not </span><span class="s1">state:</span>
+            <span class="s1">state = self.current_state_key</span>
+        <span class="s2">return </span><span class="s1">self._states[state].fusionner.rect.size</span>
+
+    <span class="s2">def </span><span class="s1">get_fus_center(self</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;get center&quot;&quot;&quot;</span>
+        <span class="s2">if not </span><span class="s1">state:</span>
+            <span class="s1">state = self.current_state_key</span>
+        <span class="s2">return </span><span class="s1">self._states[state].fusionner.rect.center</span>
+
+    <span class="s2">def </span><span class="s1">get_clip(self):</span>
+        <span class="s0">&quot;&quot;&quot;Try to return the clip rect of the painter of this element. If not 
+        possible, simply returns the rect corresponding to the image. 
+        &quot;&quot;&quot;</span>
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s1">pos = self.get_fus_topleft(self.current_state_key)</span>
+            <span class="s2">return </span><span class="s1">self.current_state.fusionner.painter.clip.move(pos)</span>
+        <span class="s2">except </span><span class="s1">AttributeError:</span>
+            <span class="s2">return </span><span class="s1">self.get_fus_rect()</span>
+
+    <span class="s2">def </span><span class="s1">_clip_screen(self</span><span class="s2">, </span><span class="s1">rect=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        Clip the screen to &lt;rect&gt;. If not rect, rect is set to self's fus rect. 
+        If this element has a _jail, &lt;rect&gt; will be the overlapping between 
+        &lt;rect&gt; and self.jail. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self._add_old_clip()</span>
+        <span class="s2">if </span><span class="s1">rect </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s1">rect = self.get_fus_rect()</span>
+        <span class="s2">if </span><span class="s1">self._jail:</span>
+            <span class="s2">if </span><span class="s1">self._overframe:</span>
+                <span class="s1">rect = self.get_jail_rect()</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s1">rect = self.get_jail_rect().clip(rect)</span>
+        <span class="s1">self.surface.set_clip(rect)</span>
+        <span class="s2">return </span><span class="s1">rect</span>
+
+    <span class="s2">def </span><span class="s1">get_jail_rect(self):</span>
+        <span class="s0">&quot;&quot;&quot;Returns the rect of self's jail. Returns None if self doesn't have 
+        jail. 
+        &quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">self._jail:</span>
+            <span class="s1">r1 = self._jail.get_clip() </span><span class="s4">#rect clip of parent</span>
+            <span class="s1">r2 = self._jail.get_jail_rect() </span><span class="s4">#rect jail of parent</span>
+            <span class="s2">if </span><span class="s1">r2:</span>
+                <span class="s2">return </span><span class="s1">r1.clip(r2)</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s1">r1</span>
+        <span class="s2">return None</span>
+
+    <span class="s2">def </span><span class="s1">_debug_clip(self):</span>
+        <span class="s1">functions.debug_msg(</span>
+            <span class="s1">self.surface.get_clip().contains(</span>
+                <span class="s1">self.get_fus_rect()))</span>
+
+    <span class="s2">def </span><span class="s1">scroll_children(self</span><span class="s2">, </span><span class="s1">exceptions=</span><span class="s2">None, </span><span class="s1">shift=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Typically used when lift dragged. Uses blit and update. 
+        &lt;shift&gt; is the 2D shift in pixels. 
+        &quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">shift </span><span class="s2">is None</span><span class="s1">: shift = parameters.CHILDREN_SHIFT</span>
+        <span class="s1">self.unblit()</span>
+        <span class="s2">if not </span><span class="s1">exceptions:</span>
+            <span class="s1">exceptions = []</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self._elements:</span>
+            <span class="s2">if not </span><span class="s1">e </span><span class="s2">in </span><span class="s1">exceptions:</span>
+                <span class="s1">e.move(shift)</span>
+        <span class="s1">self.blit()</span>
+        <span class="s1">self.update()</span>
+
+    <span class="s2">def </span><span class="s1">set_jailed(self</span><span class="s2">, </span><span class="s1">jail</span><span class="s2">, </span><span class="s1">lock=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s2">if not </span><span class="s1">self._lock_jail:</span>
+            <span class="s1">self._jail = jail</span>
+            <span class="s2">if </span><span class="s1">lock:</span>
+                <span class="s1">self._lock_jail = </span><span class="s2">True</span>
+
+    <span class="s2">def </span><span class="s1">force_unjailed(self):</span>
+        <span class="s1">self._jail = </span><span class="s2">None</span>
+        <span class="s1">self._lock_jail = </span><span class="s2">False</span>
+
+
+    <span class="s2">def </span><span class="s1">set_prison(self):</span>
+        <span class="s0">&quot;&quot;&quot;Modify the descendants of self in such a way that they cannot be 
+        displayed outside self.get_clip(). 
+        Caution: this overrides the previous prisons of the concerned 
+        elements! 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.update = self.solo_update</span>
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">self.get_descendants():</span>
+            <span class="s1">e.set_jailed(self)</span>
+
+    <span class="s2">def </span><span class="s1">has_transparent(self):</span>
+        <span class="s0">&quot;&quot;&quot;Returns False if this element is not transparent. 
+        Note that the children of this element may be transparent. 
+        &quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self.current_state.fusionner.img.get_flags() &amp; SRCALPHA</span>
+
+    <span class="s2">def </span><span class="s1">get_family_rect(self</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None, </span><span class="s1">only_children=</span><span class="s2">False</span><span class="s1">):</span>
+        <span class="s2">if not </span><span class="s1">state:</span>
+            <span class="s1">state = self.current_state_key</span>
+        <span class="s1">gfr = Ghost.get_family_rect(self</span><span class="s2">, </span><span class="s1">state</span><span class="s2">, </span><span class="s1">only_children)</span>
+        <span class="s2">if </span><span class="s1">only_children:</span>
+            <span class="s2">return </span><span class="s1">gfr</span>
+        <span class="s2">elif </span><span class="s1">self.visible:</span>
+            <span class="s2">if </span><span class="s1">self._finished:</span>
+                <span class="s1">r = self.get_fus_rect(state)</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s1">r = self.get_ghost_rect(state)</span>
+            <span class="s2">return </span><span class="s1">r.union(gfr)</span>
+
+    <span class="s2">def </span><span class="s1">is_family_bigger(self</span><span class="s2">, </span><span class="s1">state=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s2">if not </span><span class="s1">state:</span>
+            <span class="s1">state = self.current_state_key</span>
+        <span class="s1">fr = Ghost.get_family_rect(self</span><span class="s2">, </span><span class="s1">state)</span>
+        <span class="s1">r = self.get_fus_rect(state)</span>
+        <span class="s1">sl = r.left</span>
+        <span class="s1">st = r.top</span>
+        <span class="s1">sw = r.width</span>
+        <span class="s1">sh = r.height</span>
+        <span class="s2">return </span><span class="s1">(((fr.x &lt; sl) </span><span class="s2">or </span><span class="s1">(fr.w &gt; sw))</span><span class="s2">, </span><span class="s1">((fr.y &lt; st) </span><span class="s2">or </span><span class="s1">(fr.h &gt; sh)))</span>
+
+    <span class="s2">def </span><span class="s1">add_lift(self</span><span class="s2">, </span><span class="s1">axis=</span><span class="s3">&quot;vertical&quot;</span><span class="s2">, </span><span class="s1">type_=</span><span class="s3">&quot;normal&quot;</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">type_ == </span><span class="s3">&quot;normal&quot;</span><span class="s1">:</span>
+            <span class="s2">from </span><span class="s1">thorpy.elements.lift </span><span class="s2">import </span><span class="s1">LiftY</span>
+            <span class="s1">lift_typ = LiftY</span>
+        <span class="s2">elif </span><span class="s1">type_ == </span><span class="s3">&quot;dv&quot;</span><span class="s1">:</span>
+            <span class="s2">from </span><span class="s1">thorpy.elements.lift </span><span class="s2">import </span><span class="s1">LiftDirViewerY</span>
+            <span class="s1">lift_typ = LiftDirViewerY</span>
+        <span class="s2">if </span><span class="s1">axis == </span><span class="s3">&quot;vertical&quot;</span><span class="s1">:</span>
+            <span class="s1">lift = lift_typ(self)  </span><span class="s4"># lift is already finished</span>
+            <span class="s1">lift.rank = float(</span><span class="s3">&quot;inf&quot;</span><span class="s1">)</span>
+            <span class="s1">self.add_elements([lift])</span>
+            <span class="s1">self._lift = lift  </span><span class="s4"># to access easily to the lift</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">functions.debug_msg(</span><span class="s3">&quot;Only vertical lift is available.&quot;</span><span class="s1">)</span>
+<span class="s4">##        self._lift.active_wheel = True</span>
+<span class="s4">##        rect = self.get_fus_rect()</span>
+<span class="s4">##        rect.right = self._lift.get_fus_rect().left</span>
+<span class="s4">##        self.set_clip(tuple(rect))</span>
+
+    <span class="s2">def </span><span class="s1">refresh_lift(self):</span>
+        <span class="s0">&quot;&quot;&quot;Refresh current lift. Removes lift if not needed. Add lift if needed. 
+        &quot;&quot;&quot;</span>
+        <span class="s2">if </span><span class="s1">self._lift:</span>
+            <span class="s1">functions.remove_element(self._lift)</span>
+            <span class="s1">self._lift = </span><span class="s2">None </span><span class="s4">#temporary. Does it really work?</span>
+        <span class="s2">if </span><span class="s1">self.get_family_rect().height &gt; self.get_fus_rect().height:</span>
+            <span class="s1">self.add_lift()</span>
+        <span class="s1">functions.refresh_current_menu()</span>
+
+
+    <span class="s2">def </span><span class="s1">set_help_of(self</span><span class="s2">, </span><span class="s1">hoverable</span><span class="s2">, </span><span class="s1">wait_time=</span><span class="s5">1000</span><span class="s2">, </span><span class="s1">pos=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;NB : help needs a timed menu to work.&quot;&quot;&quot;</span>
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s1">self.visible = </span><span class="s2">False</span>
+            <span class="s1">hoverable.add_elements([self])</span>
+            <span class="s1">hoverable._help_element = self</span>
+            <span class="s1">hoverable._help_wait_time = wait_time</span>
+            <span class="s1">hoverable._help_pos = pos</span>
+            <span class="s1">hoverable._help_reaction = Reaction(constants.THORPY_EVENT</span><span class="s2">,</span>
+                                                <span class="s1">hoverable._reaction_help</span><span class="s2">,</span>
+                                                <span class="s1">{</span><span class="s3">&quot;id&quot;</span><span class="s1">:constants.EVENT_TIME}</span><span class="s2">,</span>
+                                                <span class="s1">reac_name=constants.REAC_HELP)</span>
+        <span class="s2">except </span><span class="s1">AttributeError:</span>
+            <span class="s2">raise </span><span class="s1">Exception(</span><span class="s3">&quot;Cannot set helper of an element who does not have</span><span class="s2">\ 
+                                </span><span class="s3">_reaction_help method.&quot;</span><span class="s1">)</span></pre>
+</body>
+</html>

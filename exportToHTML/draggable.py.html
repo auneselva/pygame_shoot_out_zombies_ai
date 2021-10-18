@@ -1,0 +1,129 @@
+<html>
+<head>
+<title>draggable.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+draggable.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+Clickable element that can be dragged with the mouse. 
+&quot;&quot;&quot;</span>
+
+<span class="s2">from </span><span class="s1">pygame.locals </span><span class="s2">import </span><span class="s1">MOUSEMOTION</span>
+<span class="s2">from </span><span class="s1">pygame.event </span><span class="s2">import </span><span class="s1">post</span><span class="s2">, </span><span class="s1">Event</span>
+
+<span class="s2">from </span><span class="s1">thorpy.elements.clickable </span><span class="s2">import </span><span class="s1">Clickable</span>
+<span class="s2">from </span><span class="s1">thorpy.elements.togglable </span><span class="s2">import </span><span class="s1">Togglable</span>
+<span class="s3">##from thorpy.painting.mousecursor import change_cursor</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui.reaction </span><span class="s2">import </span><span class="s1">Reaction</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui </span><span class="s2">import </span><span class="s1">constants</span><span class="s2">, </span><span class="s1">style</span>
+
+
+<span class="s2">class </span><span class="s1">BasicDraggable(object):</span>
+
+    <span class="s2">def </span><span class="s1">set_free(self</span><span class="s2">, </span><span class="s1">x=</span><span class="s4">1.</span><span class="s2">, </span><span class="s1">y=</span><span class="s4">1.</span><span class="s1">):</span>
+        <span class="s2">if </span><span class="s1">x:</span>
+            <span class="s1">x = </span><span class="s4">1.</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">x = </span><span class="s4">0.</span>
+        <span class="s2">if </span><span class="s1">y:</span>
+            <span class="s1">y = </span><span class="s4">1.</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">y = </span><span class="s4">0.</span>
+        <span class="s1">self._constraints = (x</span><span class="s2">, </span><span class="s1">y)</span>
+
+    <span class="s2">def </span><span class="s1">_drag_move(self</span><span class="s2">, </span><span class="s1">event):</span>
+        <span class="s1">ev_drag = Event(constants.THORPY_EVENT</span><span class="s2">, </span><span class="s1">id=constants.EVENT_DRAG</span><span class="s2">, </span><span class="s1">el=self)</span>
+        <span class="s1">post(ev_drag)</span>
+        <span class="s1">self.move((self._constraints[</span><span class="s4">0</span><span class="s1">] * event.rel[</span><span class="s4">0</span><span class="s1">]</span><span class="s2">,</span>
+                   <span class="s1">self._constraints[</span><span class="s4">1</span><span class="s1">] * event.rel[</span><span class="s4">1</span><span class="s1">]))</span>
+
+    <span class="s2">def </span><span class="s1">_reaction_drag_transp(self</span><span class="s2">, </span><span class="s1">event):</span>
+        <span class="s1">self.unblit_and_reblit_func(func=self._drag_move</span><span class="s2">, </span><span class="s1">event=event)</span>
+
+<span class="s2">class </span><span class="s1">Draggable(Clickable</span><span class="s2">, </span><span class="s1">BasicDraggable):</span>
+    <span class="s0">&quot;&quot;&quot;Clickable that can be dragged/dropped.&quot;&quot;&quot;</span>
+
+    <span class="s3">#Inherits from Togglable not for graphical, but logical reasons :</span>
+    <span class="s3">#   _hover and _press reactions.</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">text=</span><span class="s5">&quot;&quot;</span><span class="s2">, </span><span class="s1">elements=</span><span class="s2">None, </span><span class="s1">normal_params=</span><span class="s2">None,</span>
+                 <span class="s1">press_params=</span><span class="s2">None, </span><span class="s1">finish=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Clickable that can be dragged/dropped.&quot;&quot;&quot;</span>
+        <span class="s1">super(Draggable</span><span class="s2">, </span><span class="s1">self).__init__(text</span><span class="s2">, </span><span class="s1">elements</span><span class="s2">, </span><span class="s1">normal_params</span><span class="s2">,</span>
+                                        <span class="s1">press_params</span><span class="s2">, </span><span class="s1">finish=</span><span class="s2">False</span><span class="s1">)</span>
+        <span class="s3"># not polite set, because of standard _press painter args</span>
+        <span class="s1">self.press_params.params[</span><span class="s5">&quot;painter args&quot;</span><span class="s1">] = {</span><span class="s5">&quot;pressed&quot;</span><span class="s1">: </span><span class="s2">False,</span>
+                                                    <span class="s5">&quot;size&quot;</span><span class="s1">: style.SIZE}</span>
+        <span class="s1">reac_motion = Reaction(MOUSEMOTION</span><span class="s2">, </span><span class="s1">self._reaction_drag</span><span class="s2">,</span>
+                               <span class="s1">reac_name=constants.REAC_MOTION)</span>
+        <span class="s1">self.add_reaction(reac_motion)</span>
+        <span class="s1">self._constraints = (</span><span class="s4">1.</span><span class="s2">, </span><span class="s4">1.</span><span class="s1">)</span>
+        <span class="s2">if </span><span class="s1">finish:</span>
+            <span class="s1">self.finish()</span>
+
+
+    <span class="s2">def </span><span class="s1">_reaction_drag(self</span><span class="s2">, </span><span class="s1">event):</span>
+        <span class="s2">if </span><span class="s1">self.current_state_key == constants.STATE_PRESSED:</span>
+            <span class="s1">self._reaction_drag_transp(event)</span>
+
+
+<span class="s2">class </span><span class="s1">ClickDraggable(Togglable</span><span class="s2">, </span><span class="s1">BasicDraggable):</span>
+    <span class="s0">&quot;&quot;&quot;Togglable clickable that can be dragged/dropped according to its state 
+    pressed/unpressed. 
+    &quot;&quot;&quot;</span>
+    <span class="s3">#Inherits from Togglable not for graphical, but logical reasons :</span>
+    <span class="s3">#   _hover and _press reactions.</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">text=</span><span class="s5">&quot;&quot;</span><span class="s2">, </span><span class="s1">elements=</span><span class="s2">None, </span><span class="s1">normal_params=</span><span class="s2">None,</span>
+                 <span class="s1">press_params=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot;Togglable clickable that can be dragged/dropped according to its state 
+        pressed/unpressed. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super(ClickDraggable</span><span class="s2">, </span><span class="s1">self).__init__(text</span><span class="s2">, </span><span class="s1">elements</span><span class="s2">, </span><span class="s1">normal_params</span><span class="s2">,</span>
+                                        <span class="s1">press_params)</span>
+        <span class="s3"># not polite, because of standard _press painter args</span>
+        <span class="s1">self.press_params.params[</span><span class="s5">&quot;painter args&quot;</span><span class="s1">] = {</span><span class="s5">&quot;pressed&quot;</span><span class="s1">: </span><span class="s2">False,</span>
+                                                    <span class="s5">&quot;size&quot;</span><span class="s1">: style.SIZE}</span>
+        <span class="s1">reac_motion = Reaction(MOUSEMOTION</span><span class="s2">, </span><span class="s1">self._reaction_drag</span><span class="s2">,</span>
+                               <span class="s1">reac_name=constants.REAC_MOTION)</span>
+        <span class="s1">self.add_reaction(reac_motion)</span>
+        <span class="s1">self._constraints = (</span><span class="s4">1.</span><span class="s2">, </span><span class="s4">1.</span><span class="s1">)</span>
+
+
+    <span class="s2">def </span><span class="s1">_reaction_drag(self</span><span class="s2">, </span><span class="s1">event):</span>
+        <span class="s2">if </span><span class="s1">self.current_state_key == constants.STATE_PRESSED:</span>
+            <span class="s1">self._reaction_drag_transp(event)</span>
+
+<span class="s3">##    @staticmethod</span>
+<span class="s3">##    def set_draggable(element, normal_params=None):</span>
+<span class="s3">##        &quot;&quot;&quot;self.imgs[ONE_STATE] is the hovering img to place when hovering element</span>
+<span class="s3">##        while it is in state ONE_STATE. In that case, self.current_state.img =</span>
+<span class="s3">##        self._imgs[ONE_STATE]. When unhovering, the self._normal_imgs[ONE_STATE] is</span>
+<span class="s3">##        recovered in self.current_state.img.</span>
+<span class="s3">##</span>
+<span class="s3">##        Note that at initialization, two fusions are used in standard hovering :</span>
+<span class="s3">##        one for getting _hovered image, another&quot;&quot;&quot;</span>
+<span class="s3">##        from thorpy._utils.functions import fusion_dicts</span>
+<span class="s3">##        draggable = ClickDraggable(normal_params=normal_params)</span>
+<span class="s3">##        d = fusion_dicts(element.__dict__, draggable.__dict__)</span>
+<span class="s3">##        draggable.__dict__ = d</span>
+<span class="s3">##        reac_motion = Reaction(MOUSEMOTION, draggable._reaction_drag,</span>
+<span class="s3">##                               name=REAC_MOTION)</span>
+<span class="s3">##        draggable.add_reaction(reac_motion)</span>
+<span class="s3">##        return draggable</span>
+</pre>
+</body>
+</html>

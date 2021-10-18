@@ -1,0 +1,814 @@
+<html>
+<head>
+<title>ui_text_box.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+ui_text_box.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">warnings</span>
+<span class="s0">import </span><span class="s1">math</span>
+
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Tuple</span><span class="s0">, </span><span class="s1">Dict</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core </span><span class="s0">import </span><span class="s1">ObjectID</span>
+<span class="s0">from </span><span class="s1">pygame_gui._constants </span><span class="s0">import </span><span class="s1">UI_TEXT_BOX_LINK_CLICKED</span>
+<span class="s0">from </span><span class="s1">pygame_gui._constants </span><span class="s0">import </span><span class="s1">TEXT_EFFECT_TYPING_APPEAR</span>
+<span class="s0">from </span><span class="s1">pygame_gui._constants </span><span class="s0">import </span><span class="s1">TEXT_EFFECT_FADE_IN</span><span class="s0">, </span><span class="s1">TEXT_EFFECT_FADE_OUT</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IContainerLikeInterface</span><span class="s0">, </span><span class="s1">IUIManagerInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.ui_element </span><span class="s0">import </span><span class="s1">UIElement</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.drawable_shapes </span><span class="s0">import </span><span class="s1">RectDrawableShape</span><span class="s0">, </span><span class="s1">RoundedRectangleShape</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">basic_blit</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.elements.ui_vertical_scroll_bar </span><span class="s0">import </span><span class="s1">UIVerticalScrollBar</span>
+<span class="s0">from </span><span class="s1">pygame_gui.elements.text </span><span class="s0">import </span><span class="s1">TextBlock</span><span class="s0">, </span><span class="s1">TextHTMLParser</span>
+<span class="s0">from </span><span class="s1">pygame_gui.elements.text </span><span class="s0">import </span><span class="s1">TypingAppearEffect</span><span class="s0">, </span><span class="s1">FadeInEffect</span><span class="s0">, </span><span class="s1">FadeOutEffect</span>
+
+
+<span class="s0">class </span><span class="s1">UITextBox(UIElement):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A Text Box element lets us display word-wrapped, formatted text. If the text to display is 
+    longer than the height of the box given then the element will automatically create a vertical 
+    scroll bar so that all the text can be seen. 
+ 
+    Formatting the text is done via a subset of HTML tags. Currently supported tags are: 
+ 
+    - &lt;b&gt;&lt;/b&gt; or &lt;strong&gt;&lt;/strong&gt; - to encase bold styled text. 
+    - &lt;i&gt;&lt;/i&gt;, &lt;em&gt;&lt;/em&gt; or &lt;var&gt;&lt;/var&gt; - to encase italic styled text. 
+    - &lt;u&gt;&lt;/u&gt; - to encase underlined text. 
+    - &lt;a href='id'&gt;&lt;/a&gt; - to encase 'link' text that can be clicked on to generate events with the 
+                          id given in href. 
+    - &lt;body bgcolor='#FFFFFF'&gt;&lt;/body&gt; - to change the background colour of encased text. 
+    - &lt;br&gt; - to start a new line. 
+    - &lt;font face='verdana' color='#000000' size=3.5&gt;&lt;/font&gt; - To set the font, colour and size of 
+                                                              encased text. 
+ 
+    More may be added in the future if needed or frequently requested. 
+ 
+    NOTE: if dimensions of the initial containing rect are set to -1 the text box will match the 
+    final dimension to whatever the text rendering produces. This lets us make dynamically sized 
+    text boxes depending on their contents. 
+ 
+ 
+    :param html_text: The HTML formatted text to display in this text box. 
+    :param relative_rect: The 'visible area' rectangle, positioned relative to it's container. 
+    :param manager: The UIManager that manages this element. 
+    :param wrap_to_height: False by default, if set to True the box will increase in height to 
+                           match the text within. 
+    :param layer_starting_height: Sets the height, above it's container, to start placing the text 
+                                  box at. 
+    :param container: The container that this element is within. If set to None will be the root 
+                      window's container. 
+    :param parent_element: The element this element 'belongs to' in the theming hierarchy. 
+    :param object_id: A custom defined ID for fine tuning of theming. 
+    :param anchors: A dictionary describing what this element's relative_rect is relative to. 
+    :param visible: Whether the element is visible by default. Warning - container visibility 
+                    may override this. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">html_text: str</span><span class="s0">,</span>
+                 <span class="s1">relative_rect: pygame.Rect</span><span class="s0">,</span>
+                 <span class="s1">manager: IUIManagerInterface</span><span class="s0">,</span>
+                 <span class="s1">wrap_to_height: bool = </span><span class="s0">False,</span>
+                 <span class="s1">layer_starting_height: int = </span><span class="s3">1</span><span class="s0">,</span>
+                 <span class="s1">container: Union[IContainerLikeInterface</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">parent_element: UIElement = </span><span class="s0">None,</span>
+                 <span class="s1">object_id: Union[ObjectID</span><span class="s0">, </span><span class="s1">str</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">anchors: Dict[str</span><span class="s0">, </span><span class="s1">str] = </span><span class="s0">None,</span>
+                 <span class="s1">visible: int = </span><span class="s3">1</span><span class="s1">):</span>
+
+        <span class="s1">super().__init__(relative_rect</span><span class="s0">, </span><span class="s1">manager</span><span class="s0">, </span><span class="s1">container</span><span class="s0">,</span>
+                         <span class="s1">starting_height=layer_starting_height</span><span class="s0">,</span>
+                         <span class="s1">layer_thickness=</span><span class="s3">2</span><span class="s0">,</span>
+                         <span class="s1">anchors=anchors</span><span class="s0">,</span>
+                         <span class="s1">visible=visible</span>
+                         <span class="s1">)</span>
+
+        <span class="s1">self._create_valid_ids(container=container</span><span class="s0">,</span>
+                               <span class="s1">parent_element=parent_element</span><span class="s0">,</span>
+                               <span class="s1">object_id=object_id</span><span class="s0">,</span>
+                               <span class="s1">element_id=</span><span class="s4">'text_box'</span><span class="s1">)</span>
+
+        <span class="s1">self.html_text = html_text</span>
+        <span class="s1">self.font_dict = self.ui_theme.get_font_dictionary()</span>
+
+        <span class="s1">self.wrap_to_height = wrap_to_height</span>
+        <span class="s1">self.link_hover_chunks = []  </span><span class="s5"># container for any link chunks we have</span>
+
+        <span class="s1">self.active_text_effect = </span><span class="s0">None</span>
+        <span class="s1">self.scroll_bar = </span><span class="s0">None</span>
+        <span class="s1">self.scroll_bar_width = </span><span class="s3">20</span>
+
+        <span class="s1">self.border_width = </span><span class="s0">None</span>
+        <span class="s1">self.shadow_width = </span><span class="s0">None</span>
+        <span class="s1">self.padding = (</span><span class="s3">5</span><span class="s0">, </span><span class="s3">5</span><span class="s1">)</span>
+        <span class="s1">self.background_colour = </span><span class="s0">None</span>
+        <span class="s1">self.border_colour = </span><span class="s0">None</span>
+
+        <span class="s1">self.link_normal_colour = </span><span class="s0">None</span>
+        <span class="s1">self.link_hover_colour = </span><span class="s0">None</span>
+        <span class="s1">self.link_selected_colour = </span><span class="s0">None</span>
+        <span class="s1">self.link_normal_underline = </span><span class="s0">False</span>
+        <span class="s1">self.link_hover_underline = </span><span class="s0">True</span>
+        <span class="s1">self.link_style = </span><span class="s0">None</span>
+
+        <span class="s1">self.rounded_corner_offset = </span><span class="s0">None</span>
+        <span class="s1">self.formatted_text_block = </span><span class="s0">None  </span><span class="s5"># TextLine()</span>
+        <span class="s1">self.text_wrap_rect = </span><span class="s0">None</span>
+        <span class="s1">self.background_surf = </span><span class="s0">None</span>
+
+        <span class="s1">self.drawable_shape = </span><span class="s0">None</span>
+        <span class="s1">self.shape = </span><span class="s4">'rectangle'</span>
+        <span class="s1">self.shape_corner_radius = </span><span class="s0">None</span>
+
+        <span class="s1">self.should_trigger_full_rebuild = </span><span class="s0">True</span>
+        <span class="s1">self.time_until_full_rebuild_after_changing_size = </span><span class="s3">0.2</span>
+        <span class="s1">self.full_rebuild_countdown = self.time_until_full_rebuild_after_changing_size</span>
+
+        <span class="s1">self.rebuild_from_changed_theme_data()</span>
+
+    <span class="s0">def </span><span class="s1">kill(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Overrides the standard sprite kill method to also kill any scroll bars belonging to this 
+        text box. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.scroll_bar.kill()</span>
+        <span class="s1">super().kill()</span>
+
+    <span class="s0">def </span><span class="s1">rebuild(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Rebuild whatever needs building. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.scroll_bar.kill()</span>
+
+        <span class="s5"># The text_wrap_area is the part of the text box that we try to keep the text inside</span>
+        <span class="s5"># of so that none  of it overlaps. Essentially we start with the containing box,</span>
+        <span class="s5"># subtract the border, then subtract the padding, then if necessary subtract the width</span>
+        <span class="s5"># of the scroll bar</span>
+        <span class="s1">self.rounded_corner_offset = int(self.shape_corner_radius -</span>
+                                         <span class="s1">(math.sin(math.pi / </span><span class="s3">4</span><span class="s1">) *</span>
+                                          <span class="s1">self.shape_corner_radius))</span>
+        <span class="s1">self.text_wrap_rect = [(self.rect[</span><span class="s3">0</span><span class="s1">] +</span>
+                                <span class="s1">self.padding[</span><span class="s3">0</span><span class="s1">] +</span>
+                                <span class="s1">self.border_width +</span>
+                                <span class="s1">self.shadow_width +</span>
+                                <span class="s1">self.rounded_corner_offset)</span><span class="s0">,</span>
+                               <span class="s1">(self.rect[</span><span class="s3">1</span><span class="s1">] +</span>
+                                <span class="s1">self.padding[</span><span class="s3">1</span><span class="s1">] +</span>
+                                <span class="s1">self.border_width +</span>
+                                <span class="s1">self.shadow_width +</span>
+                                <span class="s1">self.rounded_corner_offset)</span><span class="s0">,</span>
+                               <span class="s1">max(</span><span class="s3">1</span><span class="s0">, </span><span class="s1">(self.rect[</span><span class="s3">2</span><span class="s1">] -</span>
+                                       <span class="s1">(self.padding[</span><span class="s3">0</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) -</span>
+                                       <span class="s1">(self.border_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                       <span class="s1">(self.shadow_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                       <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.rounded_corner_offset)))</span><span class="s0">,</span>
+                               <span class="s1">max(</span><span class="s3">1</span><span class="s0">, </span><span class="s1">(self.rect[</span><span class="s3">3</span><span class="s1">] -</span>
+                                       <span class="s1">(self.padding[</span><span class="s3">1</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) -</span>
+                                       <span class="s1">(self.border_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                       <span class="s1">(self.shadow_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                       <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.rounded_corner_offset)))]</span>
+        <span class="s0">if </span><span class="s1">self.wrap_to_height </span><span class="s0">or </span><span class="s1">self.rect[</span><span class="s3">3</span><span class="s1">] == -</span><span class="s3">1</span><span class="s1">:</span>
+            <span class="s1">self.text_wrap_rect[</span><span class="s3">3</span><span class="s1">] = -</span><span class="s3">1</span>
+        <span class="s0">if </span><span class="s1">self.rect[</span><span class="s3">2</span><span class="s1">] == -</span><span class="s3">1</span><span class="s1">:</span>
+            <span class="s1">self.text_wrap_rect[</span><span class="s3">2</span><span class="s1">] = -</span><span class="s3">1</span>
+
+        <span class="s1">drawable_area_size = (self.text_wrap_rect[</span><span class="s3">2</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.text_wrap_rect[</span><span class="s3">3</span><span class="s1">])</span>
+
+        <span class="s5"># This gives us the height of the text at the 'width' of the text_wrap_area</span>
+        <span class="s1">self.parse_html_into_style_data()</span>
+        <span class="s0">if </span><span class="s1">self.formatted_text_block </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.wrap_to_height </span><span class="s0">or </span><span class="s1">self.rect[</span><span class="s3">3</span><span class="s1">] == -</span><span class="s3">1 </span><span class="s0">or </span><span class="s1">self.rect[</span><span class="s3">2</span><span class="s1">] == -</span><span class="s3">1</span><span class="s1">:</span>
+                <span class="s1">final_text_area_size = self.formatted_text_block.final_dimensions</span>
+                <span class="s1">new_dimensions = ((final_text_area_size[</span><span class="s3">0</span><span class="s1">] + (self.padding[</span><span class="s3">0</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) +</span>
+                                   <span class="s1">(self.border_width * </span><span class="s3">2</span><span class="s1">) + (self.shadow_width * </span><span class="s3">2</span><span class="s1">) +</span>
+                                   <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.rounded_corner_offset))</span><span class="s0">,</span>
+                                  <span class="s1">(final_text_area_size[</span><span class="s3">1</span><span class="s1">] + (self.padding[</span><span class="s3">1</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) +</span>
+                                   <span class="s1">(self.border_width * </span><span class="s3">2</span><span class="s1">) + (self.shadow_width * </span><span class="s3">2</span><span class="s1">) +</span>
+                                   <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.rounded_corner_offset)))</span>
+                <span class="s1">self.set_dimensions(new_dimensions)</span>
+
+                <span class="s5"># need to regen this because it was dynamically generated</span>
+                <span class="s1">drawable_area_size = (max(</span><span class="s3">1</span><span class="s0">, </span><span class="s1">(self.rect[</span><span class="s3">2</span><span class="s1">] -</span>
+                                              <span class="s1">(self.padding[</span><span class="s3">0</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) -</span>
+                                              <span class="s1">(self.border_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                              <span class="s1">(self.shadow_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                              <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.rounded_corner_offset)))</span><span class="s0">,</span>
+                                      <span class="s1">max(</span><span class="s3">1</span><span class="s0">, </span><span class="s1">(self.rect[</span><span class="s3">3</span><span class="s1">] -</span>
+                                              <span class="s1">(self.padding[</span><span class="s3">1</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) -</span>
+                                              <span class="s1">(self.border_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                              <span class="s1">(self.shadow_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                              <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.rounded_corner_offset))))</span>
+
+            <span class="s0">elif </span><span class="s1">self.formatted_text_block.final_dimensions[</span><span class="s3">1</span><span class="s1">] &gt; self.text_wrap_rect[</span><span class="s3">3</span><span class="s1">]:</span>
+                <span class="s5"># We need a scrollbar because our text is longer than the space we</span>
+                <span class="s5"># have to display it. This also means we need to parse the text again.</span>
+                <span class="s1">text_rect_width = (self.rect[</span><span class="s3">2</span><span class="s1">] -</span>
+                                   <span class="s1">(self.padding[</span><span class="s3">0</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) -</span>
+                                   <span class="s1">(self.border_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                   <span class="s1">(self.shadow_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                   <span class="s1">self.rounded_corner_offset - self.scroll_bar_width)</span>
+                <span class="s1">self.text_wrap_rect = [(self.rect[</span><span class="s3">0</span><span class="s1">] + self.padding[</span><span class="s3">0</span><span class="s1">] + self.border_width +</span>
+                                        <span class="s1">self.shadow_width + self.rounded_corner_offset)</span><span class="s0">,</span>
+                                       <span class="s1">(self.rect[</span><span class="s3">1</span><span class="s1">] + self.padding[</span><span class="s3">1</span><span class="s1">] + self.border_width +</span>
+                                        <span class="s1">self.shadow_width + self.rounded_corner_offset)</span><span class="s0">,</span>
+                                       <span class="s1">max(</span><span class="s3">1</span><span class="s0">, </span><span class="s1">text_rect_width)</span><span class="s0">,</span>
+                                       <span class="s1">max(</span><span class="s3">1</span><span class="s0">, </span><span class="s1">(self.rect[</span><span class="s3">3</span><span class="s1">] -</span>
+                                               <span class="s1">(self.padding[</span><span class="s3">1</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) -</span>
+                                               <span class="s1">(self.border_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                               <span class="s1">(self.shadow_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                               <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.rounded_corner_offset)))]</span>
+                <span class="s1">self.parse_html_into_style_data()</span>
+                <span class="s1">percentage_visible = (self.text_wrap_rect[</span><span class="s3">3</span><span class="s1">] /</span>
+                                      <span class="s1">self.formatted_text_block.final_dimensions[</span><span class="s3">1</span><span class="s1">])</span>
+                <span class="s1">scroll_bar_position = (self.relative_rect.right - self.border_width -</span>
+                                       <span class="s1">self.shadow_width - self.scroll_bar_width</span><span class="s0">,</span>
+                                       <span class="s1">self.relative_rect.top + self.border_width +</span>
+                                       <span class="s1">self.shadow_width)</span>
+
+                <span class="s1">scroll_bar_rect = pygame.Rect(scroll_bar_position</span><span class="s0">,</span>
+                                              <span class="s1">(self.scroll_bar_width</span><span class="s0">,</span>
+                                               <span class="s1">self.rect.height -</span>
+                                               <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.border_width) -</span>
+                                               <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.shadow_width)))</span>
+                <span class="s1">self.scroll_bar = UIVerticalScrollBar(scroll_bar_rect</span><span class="s0">,</span>
+                                                      <span class="s1">percentage_visible</span><span class="s0">,</span>
+                                                      <span class="s1">self.ui_manager</span><span class="s0">,</span>
+                                                      <span class="s1">self.ui_container</span><span class="s0">,</span>
+                                                      <span class="s1">parent_element=self</span><span class="s0">,</span>
+                                                      <span class="s1">visible=self.visible)</span>
+                <span class="s1">self.join_focus_sets(self.scroll_bar)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">new_dimensions = (self.rect[</span><span class="s3">2</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.rect[</span><span class="s3">3</span><span class="s1">])</span>
+                <span class="s1">self.set_dimensions(new_dimensions)</span>
+
+        <span class="s1">theming_parameters = {</span><span class="s4">'normal_bg'</span><span class="s1">: self.background_colour</span><span class="s0">,</span>
+                              <span class="s4">'normal_border'</span><span class="s1">: self.border_colour</span><span class="s0">,</span>
+                              <span class="s4">'border_width'</span><span class="s1">: self.border_width</span><span class="s0">,</span>
+                              <span class="s4">'shadow_width'</span><span class="s1">: self.shadow_width</span><span class="s0">,</span>
+                              <span class="s4">'shape_corner_radius'</span><span class="s1">: self.shape_corner_radius}</span>
+
+        <span class="s0">if </span><span class="s1">self.shape == </span><span class="s4">'rectangle'</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape = RectDrawableShape(self.rect</span><span class="s0">, </span><span class="s1">theming_parameters</span><span class="s0">,</span>
+                                                    <span class="s1">[</span><span class="s4">'normal'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.ui_manager)</span>
+        <span class="s0">elif </span><span class="s1">self.shape == </span><span class="s4">'rounded_rectangle'</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape = RoundedRectangleShape(self.rect</span><span class="s0">, </span><span class="s1">theming_parameters</span><span class="s0">,</span>
+                                                        <span class="s1">[</span><span class="s4">'normal'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.ui_manager)</span>
+
+        <span class="s1">self.background_surf = self.drawable_shape.get_fresh_surface()</span>
+
+        <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">height_adjustment = int(self.scroll_bar.start_percentage *</span>
+                                    <span class="s1">self.formatted_text_block.final_dimensions[</span><span class="s3">1</span><span class="s1">])</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">height_adjustment = </span><span class="s3">0</span>
+
+        <span class="s0">if </span><span class="s1">self.rect.width &lt;= </span><span class="s3">0 </span><span class="s0">or </span><span class="s1">self.rect.height &lt;= </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s0">return</span>
+
+        <span class="s1">drawable_area = pygame.Rect((</span><span class="s3">0</span><span class="s0">, </span><span class="s1">height_adjustment)</span><span class="s0">,</span>
+                                    <span class="s1">drawable_area_size)</span>
+        <span class="s1">new_image = pygame.surface.Surface(self.rect.size</span><span class="s0">, </span><span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">new_image.fill(pygame.Color(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">basic_blit(new_image</span><span class="s0">, </span><span class="s1">self.background_surf</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">basic_blit(new_image</span><span class="s0">, </span><span class="s1">self.formatted_text_block.block_sprite</span><span class="s0">,</span>
+                   <span class="s1">(self.padding[</span><span class="s3">0</span><span class="s1">] + self.border_width +</span>
+                    <span class="s1">self.shadow_width + self.rounded_corner_offset</span><span class="s0">,</span>
+                    <span class="s1">self.padding[</span><span class="s3">1</span><span class="s1">] + self.border_width +</span>
+                    <span class="s1">self.shadow_width + self.rounded_corner_offset)</span><span class="s0">,</span>
+                   <span class="s1">drawable_area)</span>
+
+        <span class="s1">self.set_image(new_image)</span>
+
+        <span class="s1">self.formatted_text_block.add_chunks_to_hover_group(self.link_hover_chunks)</span>
+
+        <span class="s1">self.should_trigger_full_rebuild = </span><span class="s0">False</span>
+        <span class="s1">self.full_rebuild_countdown = self.time_until_full_rebuild_after_changing_size</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Called once every update loop of the UI Manager. Used to react to scroll bar movement 
+        (if there is one), update the text effect (if there is one) and check if we are hovering 
+        over any text links (if there are any). 
+ 
+        :param time_delta: The time in seconds between calls to update. Useful for timing things. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().update(time_delta)</span>
+        <span class="s0">if not </span><span class="s1">self.alive():</span>
+            <span class="s0">return</span>
+        <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None and </span><span class="s1">self.scroll_bar.check_has_moved_recently():</span>
+            <span class="s1">height_adjustment = int(self.scroll_bar.start_percentage *</span>
+                                    <span class="s1">self.formatted_text_block.final_dimensions[</span><span class="s3">1</span><span class="s1">])</span>
+
+            <span class="s1">drawable_area_size = (max(</span><span class="s3">1</span><span class="s0">, </span><span class="s1">(self.rect[</span><span class="s3">2</span><span class="s1">] -</span>
+                                          <span class="s1">(self.padding[</span><span class="s3">0</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) -</span>
+                                          <span class="s1">(self.border_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                          <span class="s1">(self.shadow_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                          <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.rounded_corner_offset)))</span><span class="s0">,</span>
+                                  <span class="s1">max(</span><span class="s3">1</span><span class="s0">, </span><span class="s1">(self.rect[</span><span class="s3">3</span><span class="s1">] -</span>
+                                          <span class="s1">(self.padding[</span><span class="s3">1</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) -</span>
+                                          <span class="s1">(self.border_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                          <span class="s1">(self.shadow_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                          <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.rounded_corner_offset))))</span>
+            <span class="s1">drawable_area = pygame.Rect((</span><span class="s3">0</span><span class="s0">, </span><span class="s1">height_adjustment)</span><span class="s0">,</span>
+                                        <span class="s1">drawable_area_size)</span>
+
+            <span class="s0">if </span><span class="s1">self.rect.width &lt;= </span><span class="s3">0 </span><span class="s0">or </span><span class="s1">self.rect.height &lt;= </span><span class="s3">0</span><span class="s1">:</span>
+                <span class="s0">return</span>
+
+            <span class="s1">new_image = pygame.surface.Surface(self.rect.size</span><span class="s0">, </span><span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+            <span class="s1">new_image.fill(pygame.Color(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+            <span class="s1">basic_blit(new_image</span><span class="s0">, </span><span class="s1">self.background_surf</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+            <span class="s1">basic_blit(new_image</span><span class="s0">, </span><span class="s1">self.formatted_text_block.block_sprite</span><span class="s0">,</span>
+                       <span class="s1">(self.padding[</span><span class="s3">0</span><span class="s1">] + self.border_width +</span>
+                        <span class="s1">self.shadow_width +</span>
+                        <span class="s1">self.rounded_corner_offset</span><span class="s0">,</span>
+                        <span class="s1">self.padding[</span><span class="s3">1</span><span class="s1">] + self.border_width +</span>
+                        <span class="s1">self.shadow_width +</span>
+                        <span class="s1">self.rounded_corner_offset)</span><span class="s0">,</span>
+                       <span class="s1">drawable_area)</span>
+            <span class="s1">self.set_image(new_image)</span>
+
+        <span class="s1">mouse_x</span><span class="s0">, </span><span class="s1">mouse_y = self.ui_manager.get_mouse_position()</span>
+        <span class="s1">should_redraw_from_chunks = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">height_adjustment = (self.scroll_bar.start_percentage *</span>
+                                 <span class="s1">self.formatted_text_block.final_dimensions[</span><span class="s3">1</span><span class="s1">])</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">height_adjustment = </span><span class="s3">0</span>
+        <span class="s1">base_x = int(self.rect[</span><span class="s3">0</span><span class="s1">] + self.padding[</span><span class="s3">0</span><span class="s1">] + self.border_width +</span>
+                     <span class="s1">self.shadow_width + self.rounded_corner_offset)</span>
+        <span class="s1">base_y = int(self.rect[</span><span class="s3">1</span><span class="s1">] + self.padding[</span><span class="s3">1</span><span class="s1">] + self.border_width +</span>
+                     <span class="s1">self.shadow_width + self.rounded_corner_offset - height_adjustment)</span>
+
+        <span class="s0">for </span><span class="s1">chunk </span><span class="s0">in </span><span class="s1">self.link_hover_chunks:</span>
+            <span class="s1">hovered_currently = </span><span class="s0">False</span>
+
+            <span class="s1">hover_rect = pygame.Rect((base_x + chunk.rect.x</span><span class="s0">,</span>
+                                      <span class="s1">base_y + chunk.rect.y)</span><span class="s0">,</span>
+                                     <span class="s1">chunk.rect.size)</span>
+            <span class="s0">if </span><span class="s1">hover_rect.collidepoint(mouse_x</span><span class="s0">, </span><span class="s1">mouse_y) </span><span class="s0">and </span><span class="s1">self.rect.collidepoint(mouse_x</span><span class="s0">,</span>
+                                                                                    <span class="s1">mouse_y):</span>
+                <span class="s1">hovered_currently = </span><span class="s0">True</span>
+            <span class="s0">if </span><span class="s1">chunk.is_hovered </span><span class="s0">and not </span><span class="s1">hovered_currently:</span>
+                <span class="s1">chunk.on_unhovered()</span>
+                <span class="s1">should_redraw_from_chunks = </span><span class="s0">True</span>
+            <span class="s0">elif </span><span class="s1">hovered_currently </span><span class="s0">and not </span><span class="s1">chunk.is_hovered:</span>
+                <span class="s1">chunk.on_hovered()</span>
+                <span class="s1">should_redraw_from_chunks = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">should_redraw_from_chunks:</span>
+            <span class="s1">self.redraw_from_chunks()</span>
+
+        <span class="s0">if </span><span class="s1">self.active_text_effect </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.active_text_effect.update(time_delta)</span>
+            <span class="s0">if </span><span class="s1">self.active_text_effect.should_full_redraw():</span>
+                <span class="s1">self.full_redraw()</span>
+            <span class="s0">if </span><span class="s1">self.active_text_effect.should_redraw_from_chunks():</span>
+                <span class="s1">self.redraw_from_chunks()</span>
+
+        <span class="s0">if </span><span class="s1">self.should_trigger_full_rebuild </span><span class="s0">and </span><span class="s1">self.full_rebuild_countdown &lt;= </span><span class="s3">0.0</span><span class="s1">:</span>
+            <span class="s1">self.rebuild()</span>
+
+        <span class="s0">if </span><span class="s1">self.full_rebuild_countdown &gt; </span><span class="s3">0.0</span><span class="s1">:</span>
+            <span class="s1">self.full_rebuild_countdown -= time_delta</span>
+
+    <span class="s0">def </span><span class="s1">on_fresh_drawable_shape_ready(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Called by an element's drawable shape when it has a new image surface ready for use, 
+        normally after a rebuilding/redrawing of some kind. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.background_surf = self.drawable_shape.get_fresh_surface()</span>
+        <span class="s1">self.redraw_from_text_block()</span>
+
+    <span class="s0">def </span><span class="s1">set_relative_position(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                                    <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                                    <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Sets the relative screen position of this text box, updating it's subordinate scroll bar at 
+        the same time. 
+ 
+        :param position: The relative screen position to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().set_relative_position(position)</span>
+
+        <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">scroll_bar_position = (self.relative_rect.right - self.border_width -</span>
+                                   <span class="s1">self.shadow_width - self.scroll_bar_width</span><span class="s0">,</span>
+                                   <span class="s1">self.relative_rect.top + self.border_width +</span>
+                                   <span class="s1">self.shadow_width)</span>
+            <span class="s1">self.scroll_bar.set_relative_position(scroll_bar_position)</span>
+
+    <span class="s0">def </span><span class="s1">set_position(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                           <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                           <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Sets the absolute screen position of this text box, updating it's subordinate scroll bar 
+        at the same time. 
+ 
+        :param position: The absolute screen position to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().set_position(position)</span>
+
+        <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">scroll_bar_position = (self.relative_rect.right - self.border_width -</span>
+                                   <span class="s1">self.shadow_width - self.scroll_bar_width</span><span class="s0">,</span>
+                                   <span class="s1">self.relative_rect.top + self.border_width +</span>
+                                   <span class="s1">self.shadow_width)</span>
+            <span class="s1">self.scroll_bar.set_relative_position(scroll_bar_position)</span>
+
+    <span class="s0">def </span><span class="s1">set_dimensions(self</span><span class="s0">, </span><span class="s1">dimensions: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Method to directly set the dimensions of a text box. 
+ 
+        :param dimensions: The new dimensions to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.relative_rect.width = int(dimensions[</span><span class="s3">0</span><span class="s1">])</span>
+        <span class="s1">self.relative_rect.height = int(dimensions[</span><span class="s3">1</span><span class="s1">])</span>
+        <span class="s1">self.rect.size = self.relative_rect.size</span>
+
+        <span class="s0">if </span><span class="s1">dimensions[</span><span class="s3">0</span><span class="s1">] &gt;= </span><span class="s3">0 </span><span class="s0">and </span><span class="s1">dimensions[</span><span class="s3">1</span><span class="s1">] &gt;= </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.relative_right_margin </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">self.relative_right_margin = self.ui_container.rect.right - self.rect.right</span>
+
+            <span class="s0">if </span><span class="s1">self.relative_bottom_margin </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">self.relative_bottom_margin = self.ui_container.rect.bottom - self.rect.bottom</span>
+
+            <span class="s1">self._update_container_clip()</span>
+
+            <span class="s5"># Quick and dirty temporary scaling to cut down on number of</span>
+            <span class="s5"># full rebuilds triggered when rapid scaling</span>
+            <span class="s0">if </span><span class="s1">self.image </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s0">if </span><span class="s1">(self.full_rebuild_countdown &gt; </span><span class="s3">0.0 </span><span class="s0">and</span>
+                        <span class="s1">(self.relative_rect.width &gt; </span><span class="s3">0 </span><span class="s0">and</span>
+                         <span class="s1">self.relative_rect.height &gt; </span><span class="s3">0</span><span class="s1">)):</span>
+                    <span class="s1">new_image = pygame.surface.Surface(self.relative_rect.size</span><span class="s0">,</span>
+                                                       <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                       <span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+                    <span class="s1">new_image.fill(pygame.Color(</span><span class="s4">'#00000000'</span><span class="s1">))</span>
+                    <span class="s1">basic_blit(new_image</span><span class="s0">, </span><span class="s1">self.image</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+                    <span class="s1">self.set_image(new_image)</span>
+
+                    <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+                        <span class="s1">self.scroll_bar.set_dimensions((self.scroll_bar.relative_rect.width</span><span class="s0">,</span>
+                                                        <span class="s1">self.relative_rect.height -</span>
+                                                        <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.border_width) -</span>
+                                                        <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.shadow_width)))</span>
+                        <span class="s1">scroll_bar_position = (self.relative_rect.right - self.border_width -</span>
+                                               <span class="s1">self.shadow_width - self.scroll_bar_width</span><span class="s0">,</span>
+                                               <span class="s1">self.relative_rect.top + self.border_width +</span>
+                                               <span class="s1">self.shadow_width)</span>
+                        <span class="s1">self.scroll_bar.set_relative_position(scroll_bar_position)</span>
+
+                <span class="s1">self.should_trigger_full_rebuild = </span><span class="s0">True</span>
+                <span class="s1">self.full_rebuild_countdown = self.time_until_full_rebuild_after_changing_size</span>
+
+    <span class="s0">def </span><span class="s1">parse_html_into_style_data(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Parses HTML styled string text into a format more useful for styling pygame.font 
+        rendered text. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">parser = TextHTMLParser(self.ui_theme</span><span class="s0">, </span><span class="s1">self.combined_element_ids)</span>
+        <span class="s1">parser.push_style(</span><span class="s4">'body'</span><span class="s0">, </span><span class="s1">{</span><span class="s4">&quot;bg_colour&quot;</span><span class="s1">: self.background_colour})</span>
+        <span class="s1">parser.feed(self.html_text)</span>
+
+        <span class="s1">self.formatted_text_block = TextBlock(parser.text_data</span><span class="s0">,</span>
+                                              <span class="s1">self.text_wrap_rect</span><span class="s0">,</span>
+                                              <span class="s1">parser.indexed_styles</span><span class="s0">,</span>
+                                              <span class="s1">self.font_dict</span><span class="s0">,</span>
+                                              <span class="s1">self.link_style</span><span class="s0">,</span>
+                                              <span class="s1">self.background_colour</span><span class="s0">,</span>
+                                              <span class="s1">self.wrap_to_height</span>
+                                              <span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">redraw_from_text_block(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Redraws the final parts of the text box element that don't include redrawing the actual 
+        text. Useful if we've just moved the position of the text (say, with a scroll bar) 
+        without actually changing the text itself. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.rect.width &lt;= </span><span class="s3">0 </span><span class="s0">or </span><span class="s1">self.rect.height &lt;= </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s0">return</span>
+        <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">height_adjustment = int(self.scroll_bar.start_percentage *</span>
+                                    <span class="s1">self.formatted_text_block.final_dimensions[</span><span class="s3">1</span><span class="s1">])</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">height_adjustment = </span><span class="s3">0</span>
+        <span class="s1">drawable_area_size = (max(</span><span class="s3">1</span><span class="s0">, </span><span class="s1">(self.rect[</span><span class="s3">2</span><span class="s1">] -</span>
+                                      <span class="s1">(self.padding[</span><span class="s3">0</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) -</span>
+                                      <span class="s1">(self.border_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                      <span class="s1">(self.shadow_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                      <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.rounded_corner_offset)))</span><span class="s0">,</span>
+                              <span class="s1">max(</span><span class="s3">1</span><span class="s0">, </span><span class="s1">(self.rect[</span><span class="s3">3</span><span class="s1">] -</span>
+                                      <span class="s1">(self.padding[</span><span class="s3">1</span><span class="s1">] * </span><span class="s3">2</span><span class="s1">) -</span>
+                                      <span class="s1">(self.border_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                      <span class="s1">(self.shadow_width * </span><span class="s3">2</span><span class="s1">) -</span>
+                                      <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.rounded_corner_offset))))</span>
+        <span class="s1">drawable_area = pygame.Rect((</span><span class="s3">0</span><span class="s0">, </span><span class="s1">height_adjustment)</span><span class="s0">,</span>
+                                    <span class="s1">drawable_area_size)</span>
+        <span class="s1">new_image = pygame.surface.Surface(self.rect.size</span><span class="s0">, </span><span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">new_image.fill(pygame.Color(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">basic_blit(new_image</span><span class="s0">, </span><span class="s1">self.background_surf</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">basic_blit(new_image</span><span class="s0">, </span><span class="s1">self.formatted_text_block.block_sprite</span><span class="s0">,</span>
+                   <span class="s1">(self.padding[</span><span class="s3">0</span><span class="s1">] + self.border_width +</span>
+                    <span class="s1">self.shadow_width + self.rounded_corner_offset</span><span class="s0">,</span>
+                    <span class="s1">self.padding[</span><span class="s3">1</span><span class="s1">] + self.border_width +</span>
+                    <span class="s1">self.shadow_width + self.rounded_corner_offset)</span><span class="s0">,</span>
+                   <span class="s1">drawable_area)</span>
+        <span class="s1">self.set_image(new_image)</span>
+
+    <span class="s0">def </span><span class="s1">redraw_from_chunks(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Redraws from slightly earlier in the process than 'redraw_from_text_block'. Useful if we 
+        have redrawn individual chunks already (say, to change their style slightly after being 
+        hovered) and now want to update the text block with those changes without doing a 
+        full redraw. 
+ 
+        This won't work very well if redrawing a chunk changed it's dimensions. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.formatted_text_block.redraw_from_chunks(self.active_text_effect)</span>
+        <span class="s1">self.redraw_from_text_block()</span>
+
+    <span class="s0">def </span><span class="s1">full_redraw(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Trigger a full redraw of the entire text box. Useful if we have messed with the text 
+        chunks in a more fundamental fashion and need to reposition them (say, if some of them 
+        have gotten wider after being made bold). 
+ 
+        NOTE: This doesn't re-parse the text of our box. If you need to do that, just create a 
+        new text box. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.formatted_text_block.redraw(self.active_text_effect)</span>
+        <span class="s1">self.redraw_from_text_block()</span>
+        <span class="s1">self.link_hover_chunks = []</span>
+        <span class="s1">self.formatted_text_block.add_chunks_to_hover_group(self.link_hover_chunks)</span>
+
+    <span class="s0">def </span><span class="s1">process_event(self</span><span class="s0">, </span><span class="s1">event: pygame.event.Event) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Deals with input events. In this case we just handle clicks on any links in the text. 
+ 
+        :param event: A pygame event to check for a reaction to. 
+ 
+        :return: Returns True if we consumed this event. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">consumed_event = </span><span class="s0">False</span>
+        <span class="s1">should_redraw_from_chunks = </span><span class="s0">False</span>
+        <span class="s1">should_full_redraw = </span><span class="s0">False</span>
+        <span class="s0">if </span><span class="s1">event.type == pygame.MOUSEBUTTONDOWN </span><span class="s0">and </span><span class="s1">event.button == </span><span class="s3">1</span><span class="s1">:</span>
+            <span class="s1">scaled_mouse_pos = self.ui_manager.calculate_scaled_mouse_position(event.pos)</span>
+            <span class="s0">if </span><span class="s1">self.hover_point(scaled_mouse_pos[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">scaled_mouse_pos[</span><span class="s3">1</span><span class="s1">]):</span>
+                <span class="s1">consumed_event = </span><span class="s0">True</span>
+
+                <span class="s0">if </span><span class="s1">self.is_enabled:</span>
+                    <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+                        <span class="s1">text_block_full_height = self.formatted_text_block.final_dimensions[</span><span class="s3">1</span><span class="s1">]</span>
+                        <span class="s1">height_adjustment = (self.scroll_bar.start_percentage *</span>
+                                             <span class="s1">text_block_full_height)</span>
+                    <span class="s0">else</span><span class="s1">:</span>
+                        <span class="s1">height_adjustment = </span><span class="s3">0</span>
+                    <span class="s1">base_x = int(self.rect[</span><span class="s3">0</span><span class="s1">] + self.padding[</span><span class="s3">0</span><span class="s1">] + self.border_width +</span>
+                                 <span class="s1">self.shadow_width + self.rounded_corner_offset)</span>
+                    <span class="s1">base_y = int(self.rect[</span><span class="s3">1</span><span class="s1">] + self.padding[</span><span class="s3">1</span><span class="s1">] + self.border_width +</span>
+                                 <span class="s1">self.shadow_width + self.rounded_corner_offset - height_adjustment)</span>
+                    <span class="s0">for </span><span class="s1">chunk </span><span class="s0">in </span><span class="s1">self.link_hover_chunks:</span>
+
+                        <span class="s1">hover_rect = pygame.Rect((base_x + chunk.rect.x</span><span class="s0">,</span>
+                                                  <span class="s1">base_y + chunk.rect.y)</span><span class="s0">,</span>
+                                                 <span class="s1">chunk.rect.size)</span>
+                        <span class="s0">if </span><span class="s1">hover_rect.collidepoint(scaled_mouse_pos[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">scaled_mouse_pos[</span><span class="s3">1</span><span class="s1">]):</span>
+                            <span class="s1">consumed_event = </span><span class="s0">True</span>
+                            <span class="s0">if not </span><span class="s1">chunk.is_selected:</span>
+                                <span class="s1">chunk.on_selected()</span>
+                                <span class="s0">if </span><span class="s1">chunk.metrics_changed_after_redraw:</span>
+                                    <span class="s1">should_full_redraw = </span><span class="s0">True</span>
+                                <span class="s0">else</span><span class="s1">:</span>
+                                    <span class="s1">should_redraw_from_chunks = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self.is_enabled </span><span class="s0">and </span><span class="s1">event.type == pygame.MOUSEBUTTONUP </span><span class="s0">and </span><span class="s1">event.button == </span><span class="s3">1</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">height_adjustment = (self.scroll_bar.start_percentage *</span>
+                                     <span class="s1">self.formatted_text_block.final_dimensions[</span><span class="s3">1</span><span class="s1">])</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">height_adjustment = </span><span class="s3">0</span>
+            <span class="s1">base_x = int(self.rect[</span><span class="s3">0</span><span class="s1">] + self.padding[</span><span class="s3">0</span><span class="s1">] + self.border_width +</span>
+                         <span class="s1">self.shadow_width + self.rounded_corner_offset)</span>
+            <span class="s1">base_y = int(self.rect[</span><span class="s3">1</span><span class="s1">] + self.padding[</span><span class="s3">1</span><span class="s1">] + self.border_width +</span>
+                         <span class="s1">self.shadow_width + self.rounded_corner_offset - height_adjustment)</span>
+            <span class="s1">scaled_mouse_pos = self.ui_manager.calculate_scaled_mouse_position(event.pos)</span>
+            <span class="s0">for </span><span class="s1">chunk </span><span class="s0">in </span><span class="s1">self.link_hover_chunks:</span>
+
+                <span class="s1">hover_rect = pygame.Rect((base_x + chunk.rect.x</span><span class="s0">,</span>
+                                          <span class="s1">base_y + chunk.rect.y)</span><span class="s0">,</span>
+                                         <span class="s1">chunk.rect.size)</span>
+                <span class="s0">if </span><span class="s1">(hover_rect.collidepoint(scaled_mouse_pos[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">scaled_mouse_pos[</span><span class="s3">1</span><span class="s1">]) </span><span class="s0">and</span>
+                        <span class="s1">self.rect.collidepoint(scaled_mouse_pos[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">scaled_mouse_pos[</span><span class="s3">1</span><span class="s1">])):</span>
+                    <span class="s1">consumed_event = </span><span class="s0">True</span>
+                    <span class="s0">if </span><span class="s1">chunk.is_selected:</span>
+                        <span class="s1">event_data = {</span><span class="s4">'user_type'</span><span class="s1">: UI_TEXT_BOX_LINK_CLICKED</span><span class="s0">,</span>
+                                      <span class="s4">'link_target'</span><span class="s1">: chunk.link_href</span><span class="s0">,</span>
+                                      <span class="s4">'ui_element'</span><span class="s1">: self</span><span class="s0">,</span>
+                                      <span class="s4">'ui_object_id'</span><span class="s1">: self.most_specific_combined_id}</span>
+                        <span class="s1">pygame.event.post(pygame.event.Event(pygame.USEREVENT</span><span class="s0">, </span><span class="s1">event_data))</span>
+
+                <span class="s0">if </span><span class="s1">chunk.is_selected:</span>
+                    <span class="s1">chunk.on_unselected()</span>
+                    <span class="s0">if </span><span class="s1">chunk.metrics_changed_after_redraw:</span>
+                        <span class="s1">should_full_redraw = </span><span class="s0">True</span>
+                    <span class="s0">else</span><span class="s1">:</span>
+                        <span class="s1">should_redraw_from_chunks = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">should_redraw_from_chunks:</span>
+            <span class="s1">self.redraw_from_chunks()</span>
+
+        <span class="s0">if </span><span class="s1">should_full_redraw:</span>
+            <span class="s1">self.full_redraw()</span>
+
+        <span class="s0">return </span><span class="s1">consumed_event</span>
+
+    <span class="s0">def </span><span class="s1">set_active_effect(self</span><span class="s0">, </span><span class="s1">effect_name: Union[str</span><span class="s0">, None</span><span class="s1">]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Set an animation effect to run on the text box. The effect will start running immediately 
+        after this call. 
+ 
+        These effects are currently supported: 
+ 
+        - 'typing_appear' - Will look as if the text is being typed in. 
+        - 'fade_in' - The text will fade in from the background colour (Only supported on Pygame 2) 
+        - 'fade_out' - The text will fade out to the background colour (only supported on Pygame 2) 
+ 
+        :param effect_name: The name fo the t to set. If set to None instead it will cancel any 
+                            active effect. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">effect_name </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">self.active_text_effect = </span><span class="s0">None</span>
+        <span class="s0">elif </span><span class="s1">isinstance(effect_name</span><span class="s0">, </span><span class="s1">str):</span>
+            <span class="s0">if </span><span class="s1">effect_name == TEXT_EFFECT_TYPING_APPEAR:</span>
+                <span class="s1">effect = TypingAppearEffect(self.formatted_text_block.characters)</span>
+                <span class="s1">self.active_text_effect = effect</span>
+                <span class="s1">self.full_redraw()</span>
+            <span class="s0">elif </span><span class="s1">effect_name == TEXT_EFFECT_FADE_IN:</span>
+                <span class="s1">effect = FadeInEffect(self.formatted_text_block.characters)</span>
+                <span class="s1">self.active_text_effect = effect</span>
+                <span class="s1">self.redraw_from_chunks()</span>
+            <span class="s0">elif </span><span class="s1">effect_name == TEXT_EFFECT_FADE_OUT:</span>
+                <span class="s1">effect = FadeOutEffect(self.formatted_text_block.characters)</span>
+                <span class="s1">self.active_text_effect = effect</span>
+                <span class="s1">self.redraw_from_chunks()</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">warnings.warn(</span><span class="s4">'Unsupported effect name: ' </span><span class="s1">+ effect_name + </span><span class="s4">' for text box'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">rebuild_from_changed_theme_data(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Called by the UIManager to check the theming data and rebuild whatever needs rebuilding 
+        for this element when the theme data has changed. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().rebuild_from_changed_theme_data()</span>
+        <span class="s1">has_any_changed = </span><span class="s0">False</span>
+
+        <span class="s5"># misc parameters</span>
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'shape'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s4">'rectangle'</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=str</span><span class="s0">,</span>
+                                               <span class="s1">allowed_values=[</span><span class="s4">'rectangle'</span><span class="s0">,</span>
+                                                               <span class="s4">'rounded_rectangle'</span><span class="s1">]):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_shape_theming_changed(defaults={</span><span class="s4">'border_width'</span><span class="s1">: </span><span class="s3">1</span><span class="s0">,</span>
+                                                       <span class="s4">'shadow_width'</span><span class="s1">: </span><span class="s3">2</span><span class="s0">,</span>
+                                                       <span class="s4">'shape_corner_radius'</span><span class="s1">: </span><span class="s3">2</span><span class="s1">}):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">def </span><span class="s1">tuple_extract(str_data: str) -&gt; Tuple[int</span><span class="s0">, </span><span class="s1">int]:</span>
+            <span class="s0">return </span><span class="s1">int(str_data.split(</span><span class="s4">','</span><span class="s1">)[</span><span class="s3">0</span><span class="s1">])</span><span class="s0">, </span><span class="s1">int(str_data.split(</span><span class="s4">','</span><span class="s1">)[</span><span class="s3">1</span><span class="s1">])</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'padding'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=(</span><span class="s3">5</span><span class="s0">, </span><span class="s3">5</span><span class="s1">)</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=tuple_extract):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s5"># colour parameters</span>
+        <span class="s1">background_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s4">'dark_bg'</span><span class="s0">,</span>
+                                                                 <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">background_colour != self.background_colour:</span>
+            <span class="s1">self.background_colour = background_colour</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">border_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s4">'normal_border'</span><span class="s0">,</span>
+                                                             <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">border_colour != self.border_colour:</span>
+            <span class="s1">self.border_colour = border_colour</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_link_style_changed():</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">has_any_changed:</span>
+            <span class="s1">self.rebuild()</span>
+
+    <span class="s0">def </span><span class="s1">_check_link_style_changed(self) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Checks for any changes in hyper link related styling in the theme data. 
+ 
+        :return: True if changes detected. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">has_any_changed = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'link_normal_underline'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s0">True,</span>
+                                               <span class="s1">casting_func=bool):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'link_hover_underline'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s0">True,</span>
+                                               <span class="s1">casting_func=bool):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">link_normal_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s4">'link_text'</span><span class="s0">,</span>
+                                                                  <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">link_normal_colour != self.link_normal_colour:</span>
+            <span class="s1">self.link_normal_colour = link_normal_colour</span>
+        <span class="s1">link_hover_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s4">'link_hover'</span><span class="s0">,</span>
+                                                                 <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">link_hover_colour != self.link_hover_colour:</span>
+            <span class="s1">self.link_hover_colour = link_hover_colour</span>
+        <span class="s1">link_selected_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s4">'link_selected'</span><span class="s0">,</span>
+                                                                    <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">link_selected_colour != self.link_selected_colour:</span>
+            <span class="s1">self.link_selected_colour = link_selected_colour</span>
+        <span class="s1">link_style = {</span><span class="s4">'link_text'</span><span class="s1">: self.link_normal_colour</span><span class="s0">,</span>
+                      <span class="s4">'link_hover'</span><span class="s1">: self.link_hover_colour</span><span class="s0">,</span>
+                      <span class="s4">'link_selected'</span><span class="s1">: self.link_selected_colour</span><span class="s0">,</span>
+                      <span class="s4">'link_normal_underline'</span><span class="s1">: self.link_normal_underline</span><span class="s0">,</span>
+                      <span class="s4">'link_hover_underline'</span><span class="s1">: self.link_hover_underline}</span>
+        <span class="s0">if </span><span class="s1">link_style != self.link_style:</span>
+            <span class="s1">self.link_style = link_style</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+        <span class="s0">return </span><span class="s1">has_any_changed</span>
+
+    <span class="s0">def </span><span class="s1">disable(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Disable the text box. Basically just disables the scroll bar if one exists. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.is_enabled:</span>
+            <span class="s1">self.is_enabled = </span><span class="s0">False</span>
+            <span class="s0">if </span><span class="s1">self.scroll_bar:</span>
+                <span class="s1">self.scroll_bar.disable()</span>
+
+    <span class="s0">def </span><span class="s1">enable(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Enable the text box. Renables the scroll bar if one exists. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if not </span><span class="s1">self.is_enabled:</span>
+            <span class="s1">self.is_enabled = </span><span class="s0">True</span>
+            <span class="s0">if </span><span class="s1">self.scroll_bar:</span>
+                <span class="s1">self.scroll_bar.enable()</span>
+
+    <span class="s0">def </span><span class="s1">show(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        In addition to the base UIElement.show() - call show() of scroll_bar if it exists. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().show()</span>
+
+        <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.scroll_bar.show()</span>
+
+    <span class="s0">def </span><span class="s1">hide(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        In addition to the base UIElement.hide() - call hide() of scroll_bar if it exists. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().hide()</span>
+
+        <span class="s0">if </span><span class="s1">self.scroll_bar </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.scroll_bar.hide()</span>
+</pre>
+</body>
+</html>

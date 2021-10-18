@@ -1,0 +1,1062 @@
+<html>
+<head>
+<title>misc.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6a8759;}
+.s4 { color: #629755; font-style: italic;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+misc.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span>
+
+<span class="s0">import </span><span class="s1">contextlib</span>
+<span class="s0">import </span><span class="s1">errno</span>
+<span class="s0">import </span><span class="s1">io</span>
+<span class="s0">import </span><span class="s1">locale</span>
+<span class="s2"># we have a submodule named 'logging' which would shadow this if we used the</span>
+<span class="s2"># regular name:</span>
+<span class="s0">import </span><span class="s1">logging </span><span class="s0">as </span><span class="s1">std_logging</span>
+<span class="s0">import </span><span class="s1">os</span>
+<span class="s0">import </span><span class="s1">posixpath</span>
+<span class="s0">import </span><span class="s1">re</span>
+<span class="s0">import </span><span class="s1">shutil</span>
+<span class="s0">import </span><span class="s1">stat</span>
+<span class="s0">import </span><span class="s1">subprocess</span>
+<span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">import </span><span class="s1">tarfile</span>
+<span class="s0">import </span><span class="s1">zipfile</span>
+<span class="s0">from </span><span class="s1">collections </span><span class="s0">import </span><span class="s1">deque</span>
+
+<span class="s0">from </span><span class="s1">pip._vendor </span><span class="s0">import </span><span class="s1">pkg_resources</span>
+<span class="s2"># NOTE: retrying is not annotated in typeshed as on 2017-07-17, which is</span>
+<span class="s2">#       why we ignore the type on this import.</span>
+<span class="s0">from </span><span class="s1">pip._vendor.retrying </span><span class="s0">import </span><span class="s1">retry  </span><span class="s2"># type: ignore</span>
+<span class="s0">from </span><span class="s1">pip._vendor.six </span><span class="s0">import </span><span class="s1">PY2</span>
+<span class="s0">from </span><span class="s1">pip._vendor.six.moves </span><span class="s0">import </span><span class="s1">input</span>
+<span class="s0">from </span><span class="s1">pip._vendor.six.moves.urllib </span><span class="s0">import </span><span class="s1">parse </span><span class="s0">as </span><span class="s1">urllib_parse</span>
+<span class="s0">from </span><span class="s1">pip._vendor.six.moves.urllib.parse </span><span class="s0">import </span><span class="s1">unquote </span><span class="s0">as </span><span class="s1">urllib_unquote</span>
+
+<span class="s0">from </span><span class="s1">pip._internal.exceptions </span><span class="s0">import </span><span class="s1">CommandError</span><span class="s0">, </span><span class="s1">InstallationError</span>
+<span class="s0">from </span><span class="s1">pip._internal.locations </span><span class="s0">import </span><span class="s1">(</span>
+    <span class="s1">running_under_virtualenv</span><span class="s0">, </span><span class="s1">site_packages</span><span class="s0">, </span><span class="s1">user_site</span><span class="s0">, </span><span class="s1">virtualenv_no_global</span><span class="s0">,</span>
+    <span class="s1">write_delete_marker_file</span><span class="s0">,</span>
+<span class="s1">)</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.compat </span><span class="s0">import </span><span class="s1">(</span>
+    <span class="s1">WINDOWS</span><span class="s0">, </span><span class="s1">console_to_str</span><span class="s0">, </span><span class="s1">expanduser</span><span class="s0">, </span><span class="s1">stdlib_pkgs</span><span class="s0">,</span>
+<span class="s1">)</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.typing </span><span class="s0">import </span><span class="s1">MYPY_CHECK_RUNNING</span>
+
+<span class="s0">if </span><span class="s1">PY2:</span>
+    <span class="s0">from </span><span class="s1">io </span><span class="s0">import </span><span class="s1">BytesIO </span><span class="s0">as </span><span class="s1">StringIO</span>
+<span class="s0">else</span><span class="s1">:</span>
+    <span class="s0">from </span><span class="s1">io </span><span class="s0">import </span><span class="s1">StringIO</span>
+
+<span class="s0">if </span><span class="s1">MYPY_CHECK_RUNNING:</span>
+    <span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">(  </span><span class="s2"># noqa: F401</span>
+        <span class="s1">Optional</span><span class="s0">, </span><span class="s1">Tuple</span><span class="s0">, </span><span class="s1">Iterable</span><span class="s0">, </span><span class="s1">List</span><span class="s0">, </span><span class="s1">Match</span><span class="s0">, </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Any</span><span class="s0">, </span><span class="s1">Mapping</span><span class="s0">, </span><span class="s1">Text</span><span class="s0">,</span>
+        <span class="s1">AnyStr</span><span class="s0">, </span><span class="s1">Container</span>
+    <span class="s1">)</span>
+    <span class="s0">from </span><span class="s1">pip._vendor.pkg_resources </span><span class="s0">import </span><span class="s1">Distribution  </span><span class="s2"># noqa: F401</span>
+    <span class="s0">from </span><span class="s1">pip._internal.models.link </span><span class="s0">import </span><span class="s1">Link  </span><span class="s2"># noqa: F401</span>
+    <span class="s0">from </span><span class="s1">pip._internal.utils.ui </span><span class="s0">import </span><span class="s1">SpinnerInterface  </span><span class="s2"># noqa: F401</span>
+
+
+<span class="s1">__all__ = [</span><span class="s3">'rmtree'</span><span class="s0">, </span><span class="s3">'display_path'</span><span class="s0">, </span><span class="s3">'backup_dir'</span><span class="s0">,</span>
+           <span class="s3">'ask'</span><span class="s0">, </span><span class="s3">'splitext'</span><span class="s0">,</span>
+           <span class="s3">'format_size'</span><span class="s0">, </span><span class="s3">'is_installable_dir'</span><span class="s0">,</span>
+           <span class="s3">'is_svn_page'</span><span class="s0">, </span><span class="s3">'file_contents'</span><span class="s0">,</span>
+           <span class="s3">'split_leading_dir'</span><span class="s0">, </span><span class="s3">'has_leading_dir'</span><span class="s0">,</span>
+           <span class="s3">'normalize_path'</span><span class="s0">,</span>
+           <span class="s3">'renames'</span><span class="s0">, </span><span class="s3">'get_prog'</span><span class="s0">,</span>
+           <span class="s3">'unzip_file'</span><span class="s0">, </span><span class="s3">'untar_file'</span><span class="s0">, </span><span class="s3">'unpack_file'</span><span class="s0">, </span><span class="s3">'call_subprocess'</span><span class="s0">,</span>
+           <span class="s3">'captured_stdout'</span><span class="s0">, </span><span class="s3">'ensure_dir'</span><span class="s0">,</span>
+           <span class="s3">'ARCHIVE_EXTENSIONS'</span><span class="s0">, </span><span class="s3">'SUPPORTED_EXTENSIONS'</span><span class="s0">, </span><span class="s3">'WHEEL_EXTENSION'</span><span class="s0">,</span>
+           <span class="s3">'get_installed_version'</span><span class="s0">, </span><span class="s3">'remove_auth_from_url'</span><span class="s1">]</span>
+
+
+<span class="s1">logger = std_logging.getLogger(__name__)</span>
+
+<span class="s1">WHEEL_EXTENSION = </span><span class="s3">'.whl'</span>
+<span class="s1">BZ2_EXTENSIONS = (</span><span class="s3">'.tar.bz2'</span><span class="s0">, </span><span class="s3">'.tbz'</span><span class="s1">)</span>
+<span class="s1">XZ_EXTENSIONS = (</span><span class="s3">'.tar.xz'</span><span class="s0">, </span><span class="s3">'.txz'</span><span class="s0">, </span><span class="s3">'.tlz'</span><span class="s0">, </span><span class="s3">'.tar.lz'</span><span class="s0">, </span><span class="s3">'.tar.lzma'</span><span class="s1">)</span>
+<span class="s1">ZIP_EXTENSIONS = (</span><span class="s3">'.zip'</span><span class="s0">, </span><span class="s1">WHEEL_EXTENSION)</span>
+<span class="s1">TAR_EXTENSIONS = (</span><span class="s3">'.tar.gz'</span><span class="s0">, </span><span class="s3">'.tgz'</span><span class="s0">, </span><span class="s3">'.tar'</span><span class="s1">)</span>
+<span class="s1">ARCHIVE_EXTENSIONS = (</span>
+    <span class="s1">ZIP_EXTENSIONS + BZ2_EXTENSIONS + TAR_EXTENSIONS + XZ_EXTENSIONS)</span>
+<span class="s1">SUPPORTED_EXTENSIONS = ZIP_EXTENSIONS + TAR_EXTENSIONS</span>
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s0">import </span><span class="s1">bz2  </span><span class="s2"># noqa</span>
+    <span class="s1">SUPPORTED_EXTENSIONS += BZ2_EXTENSIONS</span>
+<span class="s0">except </span><span class="s1">ImportError:</span>
+    <span class="s1">logger.debug(</span><span class="s3">'bz2 module is not available'</span><span class="s1">)</span>
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s2"># Only for Python 3.3+</span>
+    <span class="s0">import </span><span class="s1">lzma  </span><span class="s2"># noqa</span>
+    <span class="s1">SUPPORTED_EXTENSIONS += XZ_EXTENSIONS</span>
+<span class="s0">except </span><span class="s1">ImportError:</span>
+    <span class="s1">logger.debug(</span><span class="s3">'lzma module is not available'</span><span class="s1">)</span>
+
+
+<span class="s0">def </span><span class="s1">ensure_dir(path):</span>
+    <span class="s2"># type: (AnyStr) -&gt; None</span>
+    <span class="s4">&quot;&quot;&quot;os.path.makedirs without EEXIST.&quot;&quot;&quot;</span>
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s1">os.makedirs(path)</span>
+    <span class="s0">except </span><span class="s1">OSError </span><span class="s0">as </span><span class="s1">e:</span>
+        <span class="s0">if </span><span class="s1">e.errno != errno.EEXIST:</span>
+            <span class="s0">raise</span>
+
+
+<span class="s0">def </span><span class="s1">get_prog():</span>
+    <span class="s2"># type: () -&gt; str</span>
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s1">prog = os.path.basename(sys.argv[</span><span class="s5">0</span><span class="s1">])</span>
+        <span class="s0">if </span><span class="s1">prog </span><span class="s0">in </span><span class="s1">(</span><span class="s3">'__main__.py'</span><span class="s0">, </span><span class="s3">'-c'</span><span class="s1">):</span>
+            <span class="s0">return </span><span class="s3">&quot;%s -m pip&quot; </span><span class="s1">% sys.executable</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">prog</span>
+    <span class="s0">except </span><span class="s1">(AttributeError</span><span class="s0">, </span><span class="s1">TypeError</span><span class="s0">, </span><span class="s1">IndexError):</span>
+        <span class="s0">pass</span>
+    <span class="s0">return </span><span class="s3">'pip'</span>
+
+
+<span class="s2"># Retry every half second for up to 3 seconds</span>
+<span class="s1">@retry(stop_max_delay=</span><span class="s5">3000</span><span class="s0">, </span><span class="s1">wait_fixed=</span><span class="s5">500</span><span class="s1">)</span>
+<span class="s0">def </span><span class="s1">rmtree(dir</span><span class="s0">, </span><span class="s1">ignore_errors=</span><span class="s0">False</span><span class="s1">):</span>
+    <span class="s2"># type: (str, bool) -&gt; None</span>
+    <span class="s1">shutil.rmtree(dir</span><span class="s0">, </span><span class="s1">ignore_errors=ignore_errors</span><span class="s0">,</span>
+                  <span class="s1">onerror=rmtree_errorhandler)</span>
+
+
+<span class="s0">def </span><span class="s1">rmtree_errorhandler(func</span><span class="s0">, </span><span class="s1">path</span><span class="s0">, </span><span class="s1">exc_info):</span>
+    <span class="s4">&quot;&quot;&quot;On Windows, the files in .svn are read-only, so when rmtree() tries to 
+    remove them, an exception is thrown.  We catch that here, remove the 
+    read-only attribute, and hopefully continue without problems.&quot;&quot;&quot;</span>
+    <span class="s2"># if file type currently read only</span>
+    <span class="s0">if </span><span class="s1">os.stat(path).st_mode &amp; stat.S_IREAD:</span>
+        <span class="s2"># convert to read/write</span>
+        <span class="s1">os.chmod(path</span><span class="s0">, </span><span class="s1">stat.S_IWRITE)</span>
+        <span class="s2"># use the original function to repeat the operation</span>
+        <span class="s1">func(path)</span>
+        <span class="s0">return</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">raise</span>
+
+
+<span class="s0">def </span><span class="s1">display_path(path):</span>
+    <span class="s2"># type: (Union[str, Text]) -&gt; str</span>
+    <span class="s4">&quot;&quot;&quot;Gives the display value for a given path, making it relative to cwd 
+    if possible.&quot;&quot;&quot;</span>
+    <span class="s1">path = os.path.normcase(os.path.abspath(path))</span>
+    <span class="s0">if </span><span class="s1">sys.version_info[</span><span class="s5">0</span><span class="s1">] == </span><span class="s5">2</span><span class="s1">:</span>
+        <span class="s1">path = path.decode(sys.getfilesystemencoding()</span><span class="s0">, </span><span class="s3">'replace'</span><span class="s1">)</span>
+        <span class="s1">path = path.encode(sys.getdefaultencoding()</span><span class="s0">, </span><span class="s3">'replace'</span><span class="s1">)</span>
+    <span class="s0">if </span><span class="s1">path.startswith(os.getcwd() + os.path.sep):</span>
+        <span class="s1">path = </span><span class="s3">'.' </span><span class="s1">+ path[len(os.getcwd()):]</span>
+    <span class="s0">return </span><span class="s1">path</span>
+
+
+<span class="s0">def </span><span class="s1">backup_dir(dir</span><span class="s0">, </span><span class="s1">ext=</span><span class="s3">'.bak'</span><span class="s1">):</span>
+    <span class="s2"># type: (str, str) -&gt; str</span>
+    <span class="s4">&quot;&quot;&quot;Figure out the name of a directory to back up the given dir to 
+    (adding .bak, .bak2, etc)&quot;&quot;&quot;</span>
+    <span class="s1">n = </span><span class="s5">1</span>
+    <span class="s1">extension = ext</span>
+    <span class="s0">while </span><span class="s1">os.path.exists(dir + extension):</span>
+        <span class="s1">n += </span><span class="s5">1</span>
+        <span class="s1">extension = ext + str(n)</span>
+    <span class="s0">return </span><span class="s1">dir + extension</span>
+
+
+<span class="s0">def </span><span class="s1">ask_path_exists(message</span><span class="s0">, </span><span class="s1">options):</span>
+    <span class="s2"># type: (str, Iterable[str]) -&gt; str</span>
+    <span class="s0">for </span><span class="s1">action </span><span class="s0">in </span><span class="s1">os.environ.get(</span><span class="s3">'PIP_EXISTS_ACTION'</span><span class="s0">, </span><span class="s3">''</span><span class="s1">).split():</span>
+        <span class="s0">if </span><span class="s1">action </span><span class="s0">in </span><span class="s1">options:</span>
+            <span class="s0">return </span><span class="s1">action</span>
+    <span class="s0">return </span><span class="s1">ask(message</span><span class="s0">, </span><span class="s1">options)</span>
+
+
+<span class="s0">def </span><span class="s1">ask(message</span><span class="s0">, </span><span class="s1">options):</span>
+    <span class="s2"># type: (str, Iterable[str]) -&gt; str</span>
+    <span class="s4">&quot;&quot;&quot;Ask the message interactively, with the given possible responses&quot;&quot;&quot;</span>
+    <span class="s0">while </span><span class="s5">1</span><span class="s1">:</span>
+        <span class="s0">if </span><span class="s1">os.environ.get(</span><span class="s3">'PIP_NO_INPUT'</span><span class="s1">):</span>
+            <span class="s0">raise </span><span class="s1">Exception(</span>
+                <span class="s3">'No input was expected ($PIP_NO_INPUT set); question: %s' </span><span class="s1">%</span>
+                <span class="s1">message</span>
+            <span class="s1">)</span>
+        <span class="s1">response = input(message)</span>
+        <span class="s1">response = response.strip().lower()</span>
+        <span class="s0">if </span><span class="s1">response </span><span class="s0">not in </span><span class="s1">options:</span>
+            <span class="s1">print(</span>
+                <span class="s3">'Your response (%r) was not one of the expected responses: '</span>
+                <span class="s3">'%s' </span><span class="s1">% (response</span><span class="s0">, </span><span class="s3">', '</span><span class="s1">.join(options))</span>
+            <span class="s1">)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">response</span>
+
+
+<span class="s0">def </span><span class="s1">format_size(bytes):</span>
+    <span class="s2"># type: (float) -&gt; str</span>
+    <span class="s0">if </span><span class="s1">bytes &gt; </span><span class="s5">1000 </span><span class="s1">* </span><span class="s5">1000</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s3">'%.1fMB' </span><span class="s1">% (bytes / </span><span class="s5">1000.0 </span><span class="s1">/ </span><span class="s5">1000</span><span class="s1">)</span>
+    <span class="s0">elif </span><span class="s1">bytes &gt; </span><span class="s5">10 </span><span class="s1">* </span><span class="s5">1000</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s3">'%ikB' </span><span class="s1">% (bytes / </span><span class="s5">1000</span><span class="s1">)</span>
+    <span class="s0">elif </span><span class="s1">bytes &gt; </span><span class="s5">1000</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s3">'%.1fkB' </span><span class="s1">% (bytes / </span><span class="s5">1000.0</span><span class="s1">)</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s3">'%ibytes' </span><span class="s1">% bytes</span>
+
+
+<span class="s0">def </span><span class="s1">is_installable_dir(path):</span>
+    <span class="s2"># type: (str) -&gt; bool</span>
+    <span class="s4">&quot;&quot;&quot;Is path is a directory containing setup.py or pyproject.toml? 
+    &quot;&quot;&quot;</span>
+    <span class="s0">if not </span><span class="s1">os.path.isdir(path):</span>
+        <span class="s0">return False</span>
+    <span class="s1">setup_py = os.path.join(path</span><span class="s0">, </span><span class="s3">'setup.py'</span><span class="s1">)</span>
+    <span class="s0">if </span><span class="s1">os.path.isfile(setup_py):</span>
+        <span class="s0">return True</span>
+    <span class="s1">pyproject_toml = os.path.join(path</span><span class="s0">, </span><span class="s3">'pyproject.toml'</span><span class="s1">)</span>
+    <span class="s0">if </span><span class="s1">os.path.isfile(pyproject_toml):</span>
+        <span class="s0">return True</span>
+    <span class="s0">return False</span>
+
+
+<span class="s0">def </span><span class="s1">is_svn_page(html):</span>
+    <span class="s2"># type: (Union[str, Text]) -&gt; Optional[Match[Union[str, Text]]]</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Returns true if the page appears to be the index page of an svn repository 
+    &quot;&quot;&quot;</span>
+    <span class="s0">return </span><span class="s1">(re.search(</span><span class="s3">r'&lt;title&gt;[^&lt;]*Revision \d+:'</span><span class="s0">, </span><span class="s1">html) </span><span class="s0">and</span>
+            <span class="s1">re.search(</span><span class="s3">r'Powered by (?:&lt;a[^&gt;]*?&gt;)?Subversion'</span><span class="s0">, </span><span class="s1">html</span><span class="s0">, </span><span class="s1">re.I))</span>
+
+
+<span class="s0">def </span><span class="s1">file_contents(filename):</span>
+    <span class="s2"># type: (str) -&gt; Text</span>
+    <span class="s0">with </span><span class="s1">open(filename</span><span class="s0">, </span><span class="s3">'rb'</span><span class="s1">) </span><span class="s0">as </span><span class="s1">fp:</span>
+        <span class="s0">return </span><span class="s1">fp.read().decode(</span><span class="s3">'utf-8'</span><span class="s1">)</span>
+
+
+<span class="s0">def </span><span class="s1">read_chunks(file</span><span class="s0">, </span><span class="s1">size=io.DEFAULT_BUFFER_SIZE):</span>
+    <span class="s4">&quot;&quot;&quot;Yield pieces of data from a file-like object until EOF.&quot;&quot;&quot;</span>
+    <span class="s0">while True</span><span class="s1">:</span>
+        <span class="s1">chunk = file.read(size)</span>
+        <span class="s0">if not </span><span class="s1">chunk:</span>
+            <span class="s0">break</span>
+        <span class="s0">yield </span><span class="s1">chunk</span>
+
+
+<span class="s0">def </span><span class="s1">split_leading_dir(path):</span>
+    <span class="s2"># type: (Union[str, Text]) -&gt; List[Union[str, Text]]</span>
+    <span class="s1">path = path.lstrip(</span><span class="s3">'/'</span><span class="s1">).lstrip(</span><span class="s3">'</span><span class="s0">\\</span><span class="s3">'</span><span class="s1">)</span>
+    <span class="s0">if </span><span class="s3">'/' </span><span class="s0">in </span><span class="s1">path </span><span class="s0">and </span><span class="s1">((</span><span class="s3">'</span><span class="s0">\\</span><span class="s3">' </span><span class="s0">in </span><span class="s1">path </span><span class="s0">and </span><span class="s1">path.find(</span><span class="s3">'/'</span><span class="s1">) &lt; path.find(</span><span class="s3">'</span><span class="s0">\\</span><span class="s3">'</span><span class="s1">)) </span><span class="s0">or</span>
+                        <span class="s3">'</span><span class="s0">\\</span><span class="s3">' </span><span class="s0">not in </span><span class="s1">path):</span>
+        <span class="s0">return </span><span class="s1">path.split(</span><span class="s3">'/'</span><span class="s0">, </span><span class="s5">1</span><span class="s1">)</span>
+    <span class="s0">elif </span><span class="s3">'</span><span class="s0">\\</span><span class="s3">' </span><span class="s0">in </span><span class="s1">path:</span>
+        <span class="s0">return </span><span class="s1">path.split(</span><span class="s3">'</span><span class="s0">\\</span><span class="s3">'</span><span class="s0">, </span><span class="s5">1</span><span class="s1">)</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s1">[path</span><span class="s0">, </span><span class="s3">''</span><span class="s1">]</span>
+
+
+<span class="s0">def </span><span class="s1">has_leading_dir(paths):</span>
+    <span class="s2"># type: (Iterable[Union[str, Text]]) -&gt; bool</span>
+    <span class="s4">&quot;&quot;&quot;Returns true if all the paths have the same leading path name 
+    (i.e., everything is in one subdirectory in an archive)&quot;&quot;&quot;</span>
+    <span class="s1">common_prefix = </span><span class="s0">None</span>
+    <span class="s0">for </span><span class="s1">path </span><span class="s0">in </span><span class="s1">paths:</span>
+        <span class="s1">prefix</span><span class="s0">, </span><span class="s1">rest = split_leading_dir(path)</span>
+        <span class="s0">if not </span><span class="s1">prefix:</span>
+            <span class="s0">return False</span>
+        <span class="s0">elif </span><span class="s1">common_prefix </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">common_prefix = prefix</span>
+        <span class="s0">elif </span><span class="s1">prefix != common_prefix:</span>
+            <span class="s0">return False</span>
+    <span class="s0">return True</span>
+
+
+<span class="s0">def </span><span class="s1">normalize_path(path</span><span class="s0">, </span><span class="s1">resolve_symlinks=</span><span class="s0">True</span><span class="s1">):</span>
+    <span class="s2"># type: (str, bool) -&gt; str</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Convert a path to its canonical, case-normalized, absolute version. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s1">path = expanduser(path)</span>
+    <span class="s0">if </span><span class="s1">resolve_symlinks:</span>
+        <span class="s1">path = os.path.realpath(path)</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s1">path = os.path.abspath(path)</span>
+    <span class="s0">return </span><span class="s1">os.path.normcase(path)</span>
+
+
+<span class="s0">def </span><span class="s1">splitext(path):</span>
+    <span class="s2"># type: (str) -&gt; Tuple[str, str]</span>
+    <span class="s4">&quot;&quot;&quot;Like os.path.splitext, but take off .tar too&quot;&quot;&quot;</span>
+    <span class="s1">base</span><span class="s0">, </span><span class="s1">ext = posixpath.splitext(path)</span>
+    <span class="s0">if </span><span class="s1">base.lower().endswith(</span><span class="s3">'.tar'</span><span class="s1">):</span>
+        <span class="s1">ext = base[-</span><span class="s5">4</span><span class="s1">:] + ext</span>
+        <span class="s1">base = base[:-</span><span class="s5">4</span><span class="s1">]</span>
+    <span class="s0">return </span><span class="s1">base</span><span class="s0">, </span><span class="s1">ext</span>
+
+
+<span class="s0">def </span><span class="s1">renames(old</span><span class="s0">, </span><span class="s1">new):</span>
+    <span class="s2"># type: (str, str) -&gt; None</span>
+    <span class="s4">&quot;&quot;&quot;Like os.renames(), but handles renaming across devices.&quot;&quot;&quot;</span>
+    <span class="s2"># Implementation borrowed from os.renames().</span>
+    <span class="s1">head</span><span class="s0">, </span><span class="s1">tail = os.path.split(new)</span>
+    <span class="s0">if </span><span class="s1">head </span><span class="s0">and </span><span class="s1">tail </span><span class="s0">and not </span><span class="s1">os.path.exists(head):</span>
+        <span class="s1">os.makedirs(head)</span>
+
+    <span class="s1">shutil.move(old</span><span class="s0">, </span><span class="s1">new)</span>
+
+    <span class="s1">head</span><span class="s0">, </span><span class="s1">tail = os.path.split(old)</span>
+    <span class="s0">if </span><span class="s1">head </span><span class="s0">and </span><span class="s1">tail:</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">os.removedirs(head)</span>
+        <span class="s0">except </span><span class="s1">OSError:</span>
+            <span class="s0">pass</span>
+
+
+<span class="s0">def </span><span class="s1">is_local(path):</span>
+    <span class="s2"># type: (str) -&gt; bool</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Return True if path is within sys.prefix, if we're running in a virtualenv. 
+ 
+    If we're not in a virtualenv, all paths are considered &quot;local.&quot; 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s0">if not </span><span class="s1">running_under_virtualenv():</span>
+        <span class="s0">return True</span>
+    <span class="s0">return </span><span class="s1">normalize_path(path).startswith(normalize_path(sys.prefix))</span>
+
+
+<span class="s0">def </span><span class="s1">dist_is_local(dist):</span>
+    <span class="s2"># type: (Distribution) -&gt; bool</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Return True if given Distribution object is installed locally 
+    (i.e. within current virtualenv). 
+ 
+    Always True if we're not in a virtualenv. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s0">return </span><span class="s1">is_local(dist_location(dist))</span>
+
+
+<span class="s0">def </span><span class="s1">dist_in_usersite(dist):</span>
+    <span class="s2"># type: (Distribution) -&gt; bool</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Return True if given Distribution is installed in user site. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">norm_path = normalize_path(dist_location(dist))</span>
+    <span class="s0">return </span><span class="s1">norm_path.startswith(normalize_path(user_site))</span>
+
+
+<span class="s0">def </span><span class="s1">dist_in_site_packages(dist):</span>
+    <span class="s2"># type: (Distribution) -&gt; bool</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Return True if given Distribution is installed in 
+    sysconfig.get_python_lib(). 
+    &quot;&quot;&quot;</span>
+    <span class="s0">return </span><span class="s1">normalize_path(</span>
+        <span class="s1">dist_location(dist)</span>
+    <span class="s1">).startswith(normalize_path(site_packages))</span>
+
+
+<span class="s0">def </span><span class="s1">dist_is_editable(dist):</span>
+    <span class="s2"># type: (Distribution) -&gt; bool</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Return True if given Distribution is an editable install. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">for </span><span class="s1">path_item </span><span class="s0">in </span><span class="s1">sys.path:</span>
+        <span class="s1">egg_link = os.path.join(path_item</span><span class="s0">, </span><span class="s1">dist.project_name + </span><span class="s3">'.egg-link'</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">os.path.isfile(egg_link):</span>
+            <span class="s0">return True</span>
+    <span class="s0">return False</span>
+
+
+<span class="s0">def </span><span class="s1">get_installed_distributions(local_only=</span><span class="s0">True,</span>
+                                <span class="s1">skip=stdlib_pkgs</span><span class="s0">,</span>
+                                <span class="s1">include_editables=</span><span class="s0">True,</span>
+                                <span class="s1">editables_only=</span><span class="s0">False,</span>
+                                <span class="s1">user_only=</span><span class="s0">False</span><span class="s1">):</span>
+    <span class="s2"># type: (bool, Container[str], bool, bool, bool) -&gt; List[Distribution]</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Return a list of installed Distribution objects. 
+ 
+    If ``local_only`` is True (default), only return installations 
+    local to the current virtualenv, if in a virtualenv. 
+ 
+    ``skip`` argument is an iterable of lower-case project names to 
+    ignore; defaults to stdlib_pkgs 
+ 
+    If ``include_editables`` is False, don't report editables. 
+ 
+    If ``editables_only`` is True , only report editables. 
+ 
+    If ``user_only`` is True , only report installations in the user 
+    site directory. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s0">if </span><span class="s1">local_only:</span>
+        <span class="s1">local_test = dist_is_local</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">def </span><span class="s1">local_test(d):</span>
+            <span class="s0">return True</span>
+
+    <span class="s0">if </span><span class="s1">include_editables:</span>
+        <span class="s0">def </span><span class="s1">editable_test(d):</span>
+            <span class="s0">return True</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">def </span><span class="s1">editable_test(d):</span>
+            <span class="s0">return not </span><span class="s1">dist_is_editable(d)</span>
+
+    <span class="s0">if </span><span class="s1">editables_only:</span>
+        <span class="s0">def </span><span class="s1">editables_only_test(d):</span>
+            <span class="s0">return </span><span class="s1">dist_is_editable(d)</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">def </span><span class="s1">editables_only_test(d):</span>
+            <span class="s0">return True</span>
+
+    <span class="s0">if </span><span class="s1">user_only:</span>
+        <span class="s1">user_test = dist_in_usersite</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">def </span><span class="s1">user_test(d):</span>
+            <span class="s0">return True</span>
+
+    <span class="s2"># because of pkg_resources vendoring, mypy cannot find stub in typeshed</span>
+    <span class="s0">return </span><span class="s1">[d </span><span class="s0">for </span><span class="s1">d </span><span class="s0">in </span><span class="s1">pkg_resources.working_set  </span><span class="s2"># type: ignore</span>
+            <span class="s0">if </span><span class="s1">local_test(d) </span><span class="s0">and</span>
+            <span class="s1">d.key </span><span class="s0">not in </span><span class="s1">skip </span><span class="s0">and</span>
+            <span class="s1">editable_test(d) </span><span class="s0">and</span>
+            <span class="s1">editables_only_test(d) </span><span class="s0">and</span>
+            <span class="s1">user_test(d)</span>
+            <span class="s1">]</span>
+
+
+<span class="s0">def </span><span class="s1">egg_link_path(dist):</span>
+    <span class="s2"># type: (Distribution) -&gt; Optional[str]</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Return the path for the .egg-link file if it exists, otherwise, None. 
+ 
+    There's 3 scenarios: 
+    1) not in a virtualenv 
+       try to find in site.USER_SITE, then site_packages 
+    2) in a no-global virtualenv 
+       try to find in site_packages 
+    3) in a yes-global virtualenv 
+       try to find in site_packages, then site.USER_SITE 
+       (don't look in global location) 
+ 
+    For #1 and #3, there could be odd cases, where there's an egg-link in 2 
+    locations. 
+ 
+    This method will just return the first one found. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">sites = []</span>
+    <span class="s0">if </span><span class="s1">running_under_virtualenv():</span>
+        <span class="s0">if </span><span class="s1">virtualenv_no_global():</span>
+            <span class="s1">sites.append(site_packages)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">sites.append(site_packages)</span>
+            <span class="s0">if </span><span class="s1">user_site:</span>
+                <span class="s1">sites.append(user_site)</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">if </span><span class="s1">user_site:</span>
+            <span class="s1">sites.append(user_site)</span>
+        <span class="s1">sites.append(site_packages)</span>
+
+    <span class="s0">for </span><span class="s1">site </span><span class="s0">in </span><span class="s1">sites:</span>
+        <span class="s1">egglink = os.path.join(site</span><span class="s0">, </span><span class="s1">dist.project_name) + </span><span class="s3">'.egg-link'</span>
+        <span class="s0">if </span><span class="s1">os.path.isfile(egglink):</span>
+            <span class="s0">return </span><span class="s1">egglink</span>
+    <span class="s0">return None</span>
+
+
+<span class="s0">def </span><span class="s1">dist_location(dist):</span>
+    <span class="s2"># type: (Distribution) -&gt; str</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Get the site-packages location of this distribution. Generally 
+    this is dist.location, except in the case of develop-installed 
+    packages, where dist.location is the source code location, and we 
+    want to know where the egg-link file is. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s1">egg_link = egg_link_path(dist)</span>
+    <span class="s0">if </span><span class="s1">egg_link:</span>
+        <span class="s0">return </span><span class="s1">egg_link</span>
+    <span class="s0">return </span><span class="s1">dist.location</span>
+
+
+<span class="s0">def </span><span class="s1">current_umask():</span>
+    <span class="s4">&quot;&quot;&quot;Get the current umask which involves having to set it temporarily.&quot;&quot;&quot;</span>
+    <span class="s1">mask = os.umask(</span><span class="s5">0</span><span class="s1">)</span>
+    <span class="s1">os.umask(mask)</span>
+    <span class="s0">return </span><span class="s1">mask</span>
+
+
+<span class="s0">def </span><span class="s1">unzip_file(filename</span><span class="s0">, </span><span class="s1">location</span><span class="s0">, </span><span class="s1">flatten=</span><span class="s0">True</span><span class="s1">):</span>
+    <span class="s2"># type: (str, str, bool) -&gt; None</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Unzip the file (with path `filename`) to the destination `location`.  All 
+    files are written based on system defaults and umask (i.e. permissions are 
+    not preserved), except that regular file members with any execute 
+    permissions (user, group, or world) have &quot;chmod +x&quot; applied after being 
+    written. Note that for windows, any execute changes using os.chmod are 
+    no-ops per the python docs. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">ensure_dir(location)</span>
+    <span class="s1">zipfp = open(filename</span><span class="s0">, </span><span class="s3">'rb'</span><span class="s1">)</span>
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s1">zip = zipfile.ZipFile(zipfp</span><span class="s0">, </span><span class="s1">allowZip64=</span><span class="s0">True</span><span class="s1">)</span>
+        <span class="s1">leading = has_leading_dir(zip.namelist()) </span><span class="s0">and </span><span class="s1">flatten</span>
+        <span class="s0">for </span><span class="s1">info </span><span class="s0">in </span><span class="s1">zip.infolist():</span>
+            <span class="s1">name = info.filename</span>
+            <span class="s1">fn = name</span>
+            <span class="s0">if </span><span class="s1">leading:</span>
+                <span class="s1">fn = split_leading_dir(name)[</span><span class="s5">1</span><span class="s1">]</span>
+            <span class="s1">fn = os.path.join(location</span><span class="s0">, </span><span class="s1">fn)</span>
+            <span class="s1">dir = os.path.dirname(fn)</span>
+            <span class="s0">if </span><span class="s1">fn.endswith(</span><span class="s3">'/'</span><span class="s1">) </span><span class="s0">or </span><span class="s1">fn.endswith(</span><span class="s3">'</span><span class="s0">\\</span><span class="s3">'</span><span class="s1">):</span>
+                <span class="s2"># A directory</span>
+                <span class="s1">ensure_dir(fn)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">ensure_dir(dir)</span>
+                <span class="s2"># Don't use read() to avoid allocating an arbitrarily large</span>
+                <span class="s2"># chunk of memory for the file's content</span>
+                <span class="s1">fp = zip.open(name)</span>
+                <span class="s0">try</span><span class="s1">:</span>
+                    <span class="s0">with </span><span class="s1">open(fn</span><span class="s0">, </span><span class="s3">'wb'</span><span class="s1">) </span><span class="s0">as </span><span class="s1">destfp:</span>
+                        <span class="s1">shutil.copyfileobj(fp</span><span class="s0">, </span><span class="s1">destfp)</span>
+                <span class="s0">finally</span><span class="s1">:</span>
+                    <span class="s1">fp.close()</span>
+                    <span class="s1">mode = info.external_attr &gt;&gt; </span><span class="s5">16</span>
+                    <span class="s2"># if mode and regular file and any execute permissions for</span>
+                    <span class="s2"># user/group/world?</span>
+                    <span class="s0">if </span><span class="s1">mode </span><span class="s0">and </span><span class="s1">stat.S_ISREG(mode) </span><span class="s0">and </span><span class="s1">mode &amp; </span><span class="s5">0o111</span><span class="s1">:</span>
+                        <span class="s2"># make dest file have execute for user/group/world</span>
+                        <span class="s2"># (chmod +x) no-op on windows per python docs</span>
+                        <span class="s1">os.chmod(fn</span><span class="s0">, </span><span class="s1">(</span><span class="s5">0o777 </span><span class="s1">- current_umask() | </span><span class="s5">0o111</span><span class="s1">))</span>
+    <span class="s0">finally</span><span class="s1">:</span>
+        <span class="s1">zipfp.close()</span>
+
+
+<span class="s0">def </span><span class="s1">untar_file(filename</span><span class="s0">, </span><span class="s1">location):</span>
+    <span class="s2"># type: (str, str) -&gt; None</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Untar the file (with path `filename`) to the destination `location`. 
+    All files are written based on system defaults and umask (i.e. permissions 
+    are not preserved), except that regular file members with any execute 
+    permissions (user, group, or world) have &quot;chmod +x&quot; applied after being 
+    written.  Note that for windows, any execute changes using os.chmod are 
+    no-ops per the python docs. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">ensure_dir(location)</span>
+    <span class="s0">if </span><span class="s1">filename.lower().endswith(</span><span class="s3">'.gz'</span><span class="s1">) </span><span class="s0">or </span><span class="s1">filename.lower().endswith(</span><span class="s3">'.tgz'</span><span class="s1">):</span>
+        <span class="s1">mode = </span><span class="s3">'r:gz'</span>
+    <span class="s0">elif </span><span class="s1">filename.lower().endswith(BZ2_EXTENSIONS):</span>
+        <span class="s1">mode = </span><span class="s3">'r:bz2'</span>
+    <span class="s0">elif </span><span class="s1">filename.lower().endswith(XZ_EXTENSIONS):</span>
+        <span class="s1">mode = </span><span class="s3">'r:xz'</span>
+    <span class="s0">elif </span><span class="s1">filename.lower().endswith(</span><span class="s3">'.tar'</span><span class="s1">):</span>
+        <span class="s1">mode = </span><span class="s3">'r'</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s1">logger.warning(</span>
+            <span class="s3">'Cannot determine compression type for file %s'</span><span class="s0">, </span><span class="s1">filename</span><span class="s0">,</span>
+        <span class="s1">)</span>
+        <span class="s1">mode = </span><span class="s3">'r:*'</span>
+    <span class="s1">tar = tarfile.open(filename</span><span class="s0">, </span><span class="s1">mode)</span>
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s1">leading = has_leading_dir([</span>
+            <span class="s1">member.name </span><span class="s0">for </span><span class="s1">member </span><span class="s0">in </span><span class="s1">tar.getmembers()</span>
+        <span class="s1">])</span>
+        <span class="s0">for </span><span class="s1">member </span><span class="s0">in </span><span class="s1">tar.getmembers():</span>
+            <span class="s1">fn = member.name</span>
+            <span class="s0">if </span><span class="s1">leading:</span>
+                <span class="s2"># https://github.com/python/mypy/issues/1174</span>
+                <span class="s1">fn = split_leading_dir(fn)[</span><span class="s5">1</span><span class="s1">]  </span><span class="s2"># type: ignore</span>
+            <span class="s1">path = os.path.join(location</span><span class="s0">, </span><span class="s1">fn)</span>
+            <span class="s0">if </span><span class="s1">member.isdir():</span>
+                <span class="s1">ensure_dir(path)</span>
+            <span class="s0">elif </span><span class="s1">member.issym():</span>
+                <span class="s0">try</span><span class="s1">:</span>
+                    <span class="s2"># https://github.com/python/typeshed/issues/2673</span>
+                    <span class="s1">tar._extract_member(member</span><span class="s0">, </span><span class="s1">path)  </span><span class="s2"># type: ignore</span>
+                <span class="s0">except </span><span class="s1">Exception </span><span class="s0">as </span><span class="s1">exc:</span>
+                    <span class="s2"># Some corrupt tar files seem to produce this</span>
+                    <span class="s2"># (specifically bad symlinks)</span>
+                    <span class="s1">logger.warning(</span>
+                        <span class="s3">'In the tar file %s the member %s is invalid: %s'</span><span class="s0">,</span>
+                        <span class="s1">filename</span><span class="s0">, </span><span class="s1">member.name</span><span class="s0">, </span><span class="s1">exc</span><span class="s0">,</span>
+                    <span class="s1">)</span>
+                    <span class="s0">continue</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s0">try</span><span class="s1">:</span>
+                    <span class="s1">fp = tar.extractfile(member)</span>
+                <span class="s0">except </span><span class="s1">(KeyError</span><span class="s0">, </span><span class="s1">AttributeError) </span><span class="s0">as </span><span class="s1">exc:</span>
+                    <span class="s2"># Some corrupt tar files seem to produce this</span>
+                    <span class="s2"># (specifically bad symlinks)</span>
+                    <span class="s1">logger.warning(</span>
+                        <span class="s3">'In the tar file %s the member %s is invalid: %s'</span><span class="s0">,</span>
+                        <span class="s1">filename</span><span class="s0">, </span><span class="s1">member.name</span><span class="s0">, </span><span class="s1">exc</span><span class="s0">,</span>
+                    <span class="s1">)</span>
+                    <span class="s0">continue</span>
+                <span class="s1">ensure_dir(os.path.dirname(path))</span>
+                <span class="s0">with </span><span class="s1">open(path</span><span class="s0">, </span><span class="s3">'wb'</span><span class="s1">) </span><span class="s0">as </span><span class="s1">destfp:</span>
+                    <span class="s1">shutil.copyfileobj(fp</span><span class="s0">, </span><span class="s1">destfp)</span>
+                <span class="s1">fp.close()</span>
+                <span class="s2"># Update the timestamp (useful for cython compiled files)</span>
+                <span class="s2"># https://github.com/python/typeshed/issues/2673</span>
+                <span class="s1">tar.utime(member</span><span class="s0">, </span><span class="s1">path)  </span><span class="s2"># type: ignore</span>
+                <span class="s2"># member have any execute permissions for user/group/world?</span>
+                <span class="s0">if </span><span class="s1">member.mode &amp; </span><span class="s5">0o111</span><span class="s1">:</span>
+                    <span class="s2"># make dest file have execute for user/group/world</span>
+                    <span class="s2"># no-op on windows per python docs</span>
+                    <span class="s1">os.chmod(path</span><span class="s0">, </span><span class="s1">(</span><span class="s5">0o777 </span><span class="s1">- current_umask() | </span><span class="s5">0o111</span><span class="s1">))</span>
+    <span class="s0">finally</span><span class="s1">:</span>
+        <span class="s1">tar.close()</span>
+
+
+<span class="s0">def </span><span class="s1">unpack_file(</span>
+    <span class="s1">filename</span><span class="s0">,  </span><span class="s2"># type: str</span>
+    <span class="s1">location</span><span class="s0">,  </span><span class="s2"># type: str</span>
+    <span class="s1">content_type</span><span class="s0">,  </span><span class="s2"># type: Optional[str]</span>
+    <span class="s1">link  </span><span class="s2"># type: Optional[Link]</span>
+<span class="s1">):</span>
+    <span class="s2"># type: (...) -&gt; None</span>
+    <span class="s1">filename = os.path.realpath(filename)</span>
+    <span class="s0">if </span><span class="s1">(content_type == </span><span class="s3">'application/zip' </span><span class="s0">or</span>
+            <span class="s1">filename.lower().endswith(ZIP_EXTENSIONS) </span><span class="s0">or</span>
+            <span class="s1">zipfile.is_zipfile(filename)):</span>
+        <span class="s1">unzip_file(</span>
+            <span class="s1">filename</span><span class="s0">,</span>
+            <span class="s1">location</span><span class="s0">,</span>
+            <span class="s1">flatten=</span><span class="s0">not </span><span class="s1">filename.endswith(</span><span class="s3">'.whl'</span><span class="s1">)</span>
+        <span class="s1">)</span>
+    <span class="s0">elif </span><span class="s1">(content_type == </span><span class="s3">'application/x-gzip' </span><span class="s0">or</span>
+            <span class="s1">tarfile.is_tarfile(filename) </span><span class="s0">or</span>
+            <span class="s1">filename.lower().endswith(</span>
+                <span class="s1">TAR_EXTENSIONS + BZ2_EXTENSIONS + XZ_EXTENSIONS)):</span>
+        <span class="s1">untar_file(filename</span><span class="s0">, </span><span class="s1">location)</span>
+    <span class="s0">elif </span><span class="s1">(content_type </span><span class="s0">and </span><span class="s1">content_type.startswith(</span><span class="s3">'text/html'</span><span class="s1">) </span><span class="s0">and</span>
+            <span class="s1">is_svn_page(file_contents(filename))):</span>
+        <span class="s2"># We don't really care about this</span>
+        <span class="s0">from </span><span class="s1">pip._internal.vcs.subversion </span><span class="s0">import </span><span class="s1">Subversion</span>
+        <span class="s1">Subversion(</span><span class="s3">'svn+' </span><span class="s1">+ link.url).unpack(location)</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s2"># FIXME: handle?</span>
+        <span class="s2"># FIXME: magic signatures?</span>
+        <span class="s1">logger.critical(</span>
+            <span class="s3">'Cannot unpack file %s (downloaded from %s, content-type: %s); '</span>
+            <span class="s3">'cannot detect archive format'</span><span class="s0">,</span>
+            <span class="s1">filename</span><span class="s0">, </span><span class="s1">location</span><span class="s0">, </span><span class="s1">content_type</span><span class="s0">,</span>
+        <span class="s1">)</span>
+        <span class="s0">raise </span><span class="s1">InstallationError(</span>
+            <span class="s3">'Cannot determine archive format of %s' </span><span class="s1">% location</span>
+        <span class="s1">)</span>
+
+
+<span class="s0">def </span><span class="s1">call_subprocess(</span>
+    <span class="s1">cmd</span><span class="s0">,  </span><span class="s2"># type: List[str]</span>
+    <span class="s1">show_stdout=</span><span class="s0">True,  </span><span class="s2"># type: bool</span>
+    <span class="s1">cwd=</span><span class="s0">None,  </span><span class="s2"># type: Optional[str]</span>
+    <span class="s1">on_returncode=</span><span class="s3">'raise'</span><span class="s0">,  </span><span class="s2"># type: str</span>
+    <span class="s1">extra_ok_returncodes=</span><span class="s0">None,  </span><span class="s2"># type: Optional[Iterable[int]]</span>
+    <span class="s1">command_desc=</span><span class="s0">None,  </span><span class="s2"># type: Optional[str]</span>
+    <span class="s1">extra_environ=</span><span class="s0">None,  </span><span class="s2"># type: Optional[Mapping[str, Any]]</span>
+    <span class="s1">unset_environ=</span><span class="s0">None,  </span><span class="s2"># type: Optional[Iterable[str]]</span>
+    <span class="s1">spinner=</span><span class="s0">None  </span><span class="s2"># type: Optional[SpinnerInterface]</span>
+<span class="s1">):</span>
+    <span class="s2"># type: (...) -&gt; Optional[Text]</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Args: 
+      extra_ok_returncodes: an iterable of integer return codes that are 
+        acceptable, in addition to 0. Defaults to None, which means []. 
+      unset_environ: an iterable of environment variable names to unset 
+        prior to calling subprocess.Popen(). 
+    &quot;&quot;&quot;</span>
+    <span class="s0">if </span><span class="s1">extra_ok_returncodes </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s1">extra_ok_returncodes = []</span>
+    <span class="s0">if </span><span class="s1">unset_environ </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s1">unset_environ = []</span>
+    <span class="s2"># This function's handling of subprocess output is confusing and I</span>
+    <span class="s2"># previously broke it terribly, so as penance I will write a long comment</span>
+    <span class="s2"># explaining things.</span>
+    <span class="s2">#</span>
+    <span class="s2"># The obvious thing that affects output is the show_stdout=</span>
+    <span class="s2"># kwarg. show_stdout=True means, let the subprocess write directly to our</span>
+    <span class="s2"># stdout. Even though it is nominally the default, it is almost never used</span>
+    <span class="s2"># inside pip (and should not be used in new code without a very good</span>
+    <span class="s2"># reason); as of 2016-02-22 it is only used in a few places inside the VCS</span>
+    <span class="s2"># wrapper code. Ideally we should get rid of it entirely, because it</span>
+    <span class="s2"># creates a lot of complexity here for a rarely used feature.</span>
+    <span class="s2">#</span>
+    <span class="s2"># Most places in pip set show_stdout=False. What this means is:</span>
+    <span class="s2"># - We connect the child stdout to a pipe, which we read.</span>
+    <span class="s2"># - By default, we hide the output but show a spinner -- unless the</span>
+    <span class="s2">#   subprocess exits with an error, in which case we show the output.</span>
+    <span class="s2"># - If the --verbose option was passed (= loglevel is DEBUG), then we show</span>
+    <span class="s2">#   the output unconditionally. (But in this case we don't want to show</span>
+    <span class="s2">#   the output a second time if it turns out that there was an error.)</span>
+    <span class="s2">#</span>
+    <span class="s2"># stderr is always merged with stdout (even if show_stdout=True).</span>
+    <span class="s0">if </span><span class="s1">show_stdout:</span>
+        <span class="s1">stdout = </span><span class="s0">None</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s1">stdout = subprocess.PIPE</span>
+    <span class="s0">if </span><span class="s1">command_desc </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s1">cmd_parts = []</span>
+        <span class="s0">for </span><span class="s1">part </span><span class="s0">in </span><span class="s1">cmd:</span>
+            <span class="s0">if </span><span class="s3">' ' </span><span class="s0">in </span><span class="s1">part </span><span class="s0">or </span><span class="s3">'</span><span class="s0">\n</span><span class="s3">' </span><span class="s0">in </span><span class="s1">part </span><span class="s0">or </span><span class="s3">'&quot;' </span><span class="s0">in </span><span class="s1">part </span><span class="s0">or </span><span class="s3">&quot;'&quot; </span><span class="s0">in </span><span class="s1">part:</span>
+                <span class="s1">part = </span><span class="s3">'&quot;%s&quot;' </span><span class="s1">% part.replace(</span><span class="s3">'&quot;'</span><span class="s0">, </span><span class="s3">'</span><span class="s0">\\</span><span class="s3">&quot;'</span><span class="s1">)</span>
+            <span class="s1">cmd_parts.append(part)</span>
+        <span class="s1">command_desc = </span><span class="s3">' '</span><span class="s1">.join(cmd_parts)</span>
+    <span class="s1">logger.debug(</span><span class="s3">&quot;Running command %s&quot;</span><span class="s0">, </span><span class="s1">command_desc)</span>
+    <span class="s1">env = os.environ.copy()</span>
+    <span class="s0">if </span><span class="s1">extra_environ:</span>
+        <span class="s1">env.update(extra_environ)</span>
+    <span class="s0">for </span><span class="s1">name </span><span class="s0">in </span><span class="s1">unset_environ:</span>
+        <span class="s1">env.pop(name</span><span class="s0">, None</span><span class="s1">)</span>
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s1">proc = subprocess.Popen(</span>
+            <span class="s1">cmd</span><span class="s0">, </span><span class="s1">stderr=subprocess.STDOUT</span><span class="s0">, </span><span class="s1">stdin=subprocess.PIPE</span><span class="s0">,</span>
+            <span class="s1">stdout=stdout</span><span class="s0">, </span><span class="s1">cwd=cwd</span><span class="s0">, </span><span class="s1">env=env</span><span class="s0">,</span>
+        <span class="s1">)</span>
+        <span class="s1">proc.stdin.close()</span>
+    <span class="s0">except </span><span class="s1">Exception </span><span class="s0">as </span><span class="s1">exc:</span>
+        <span class="s1">logger.critical(</span>
+            <span class="s3">&quot;Error %s while executing command %s&quot;</span><span class="s0">, </span><span class="s1">exc</span><span class="s0">, </span><span class="s1">command_desc</span><span class="s0">,</span>
+        <span class="s1">)</span>
+        <span class="s0">raise</span>
+    <span class="s1">all_output = []</span>
+    <span class="s0">if </span><span class="s1">stdout </span><span class="s0">is not None</span><span class="s1">:</span>
+        <span class="s0">while True</span><span class="s1">:</span>
+            <span class="s1">line = console_to_str(proc.stdout.readline())</span>
+            <span class="s0">if not </span><span class="s1">line:</span>
+                <span class="s0">break</span>
+            <span class="s1">line = line.rstrip()</span>
+            <span class="s1">all_output.append(line + </span><span class="s3">'</span><span class="s0">\n</span><span class="s3">'</span><span class="s1">)</span>
+            <span class="s0">if </span><span class="s1">logger.getEffectiveLevel() &lt;= std_logging.DEBUG:</span>
+                <span class="s2"># Show the line immediately</span>
+                <span class="s1">logger.debug(line)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s2"># Update the spinner</span>
+                <span class="s0">if </span><span class="s1">spinner </span><span class="s0">is not None</span><span class="s1">:</span>
+                    <span class="s1">spinner.spin()</span>
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s1">proc.wait()</span>
+    <span class="s0">finally</span><span class="s1">:</span>
+        <span class="s0">if </span><span class="s1">proc.stdout:</span>
+            <span class="s1">proc.stdout.close()</span>
+    <span class="s0">if </span><span class="s1">spinner </span><span class="s0">is not None</span><span class="s1">:</span>
+        <span class="s0">if </span><span class="s1">proc.returncode:</span>
+            <span class="s1">spinner.finish(</span><span class="s3">&quot;error&quot;</span><span class="s1">)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">spinner.finish(</span><span class="s3">&quot;done&quot;</span><span class="s1">)</span>
+    <span class="s0">if </span><span class="s1">proc.returncode </span><span class="s0">and </span><span class="s1">proc.returncode </span><span class="s0">not in </span><span class="s1">extra_ok_returncodes:</span>
+        <span class="s0">if </span><span class="s1">on_returncode == </span><span class="s3">'raise'</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">(logger.getEffectiveLevel() &gt; std_logging.DEBUG </span><span class="s0">and</span>
+                    <span class="s0">not </span><span class="s1">show_stdout):</span>
+                <span class="s1">logger.info(</span>
+                    <span class="s3">'Complete output from command %s:'</span><span class="s0">, </span><span class="s1">command_desc</span><span class="s0">,</span>
+                <span class="s1">)</span>
+                <span class="s1">logger.info(</span>
+                    <span class="s3">''</span><span class="s1">.join(all_output) +</span>
+                    <span class="s3">'</span><span class="s0">\n</span><span class="s3">----------------------------------------'</span>
+                <span class="s1">)</span>
+            <span class="s0">raise </span><span class="s1">InstallationError(</span>
+                <span class="s3">'Command &quot;%s&quot; failed with error code %s in %s'</span>
+                <span class="s1">% (command_desc</span><span class="s0">, </span><span class="s1">proc.returncode</span><span class="s0">, </span><span class="s1">cwd))</span>
+        <span class="s0">elif </span><span class="s1">on_returncode == </span><span class="s3">'warn'</span><span class="s1">:</span>
+            <span class="s1">logger.warning(</span>
+                <span class="s3">'Command &quot;%s&quot; had error code %s in %s'</span><span class="s0">,</span>
+                <span class="s1">command_desc</span><span class="s0">, </span><span class="s1">proc.returncode</span><span class="s0">, </span><span class="s1">cwd</span><span class="s0">,</span>
+            <span class="s1">)</span>
+        <span class="s0">elif </span><span class="s1">on_returncode == </span><span class="s3">'ignore'</span><span class="s1">:</span>
+            <span class="s0">pass</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">raise </span><span class="s1">ValueError(</span><span class="s3">'Invalid value: on_returncode=%s' </span><span class="s1">%</span>
+                             <span class="s1">repr(on_returncode))</span>
+    <span class="s0">if not </span><span class="s1">show_stdout:</span>
+        <span class="s0">return </span><span class="s3">''</span><span class="s1">.join(all_output)</span>
+    <span class="s0">return None</span>
+
+
+<span class="s0">def </span><span class="s1">read_text_file(filename):</span>
+    <span class="s2"># type: (str) -&gt; str</span>
+    <span class="s4">&quot;&quot;&quot;Return the contents of *filename*. 
+ 
+    Try to decode the file contents with utf-8, the preferred system encoding 
+    (e.g., cp1252 on some Windows machines), and latin1, in that order. 
+    Decoding a byte string with latin1 will never raise an error. In the worst 
+    case, the returned string will contain some garbage characters. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s0">with </span><span class="s1">open(filename</span><span class="s0">, </span><span class="s3">'rb'</span><span class="s1">) </span><span class="s0">as </span><span class="s1">fp:</span>
+        <span class="s1">data = fp.read()</span>
+
+    <span class="s1">encodings = [</span><span class="s3">'utf-8'</span><span class="s0">, </span><span class="s1">locale.getpreferredencoding(</span><span class="s0">False</span><span class="s1">)</span><span class="s0">, </span><span class="s3">'latin1'</span><span class="s1">]</span>
+    <span class="s0">for </span><span class="s1">enc </span><span class="s0">in </span><span class="s1">encodings:</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s2"># https://github.com/python/mypy/issues/1174</span>
+            <span class="s1">data = data.decode(enc)  </span><span class="s2"># type: ignore</span>
+        <span class="s0">except </span><span class="s1">UnicodeDecodeError:</span>
+            <span class="s0">continue</span>
+        <span class="s0">break</span>
+
+    <span class="s0">assert not </span><span class="s1">isinstance(data</span><span class="s0">, </span><span class="s1">bytes)  </span><span class="s2"># Latin1 should have worked.</span>
+    <span class="s0">return </span><span class="s1">data</span>
+
+
+<span class="s0">def </span><span class="s1">_make_build_dir(build_dir):</span>
+    <span class="s1">os.makedirs(build_dir)</span>
+    <span class="s1">write_delete_marker_file(build_dir)</span>
+
+
+<span class="s0">class </span><span class="s1">FakeFile(object):</span>
+    <span class="s4">&quot;&quot;&quot;Wrap a list of lines in an object with readline() to make 
+    ConfigParser happy.&quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">lines):</span>
+        <span class="s1">self._gen = (l </span><span class="s0">for </span><span class="s1">l </span><span class="s0">in </span><span class="s1">lines)</span>
+
+    <span class="s0">def </span><span class="s1">readline(self):</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s0">return </span><span class="s1">next(self._gen)</span>
+            <span class="s0">except </span><span class="s1">NameError:</span>
+                <span class="s0">return </span><span class="s1">self._gen.next()</span>
+        <span class="s0">except </span><span class="s1">StopIteration:</span>
+            <span class="s0">return </span><span class="s3">''</span>
+
+    <span class="s0">def </span><span class="s1">__iter__(self):</span>
+        <span class="s0">return </span><span class="s1">self._gen</span>
+
+
+<span class="s0">class </span><span class="s1">StreamWrapper(StringIO):</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">from_stream(cls</span><span class="s0">, </span><span class="s1">orig_stream):</span>
+        <span class="s1">cls.orig_stream = orig_stream</span>
+        <span class="s0">return </span><span class="s1">cls()</span>
+
+    <span class="s2"># compileall.compile_dir() needs stdout.encoding to print to stdout</span>
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">encoding(self):</span>
+        <span class="s0">return </span><span class="s1">self.orig_stream.encoding</span>
+
+
+<span class="s1">@contextlib.contextmanager</span>
+<span class="s0">def </span><span class="s1">captured_output(stream_name):</span>
+    <span class="s4">&quot;&quot;&quot;Return a context manager used by captured_stdout/stdin/stderr 
+    that temporarily replaces the sys stream *stream_name* with a StringIO. 
+ 
+    Taken from Lib/support/__init__.py in the CPython repo. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">orig_stdout = getattr(sys</span><span class="s0">, </span><span class="s1">stream_name)</span>
+    <span class="s1">setattr(sys</span><span class="s0">, </span><span class="s1">stream_name</span><span class="s0">, </span><span class="s1">StreamWrapper.from_stream(orig_stdout))</span>
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s0">yield </span><span class="s1">getattr(sys</span><span class="s0">, </span><span class="s1">stream_name)</span>
+    <span class="s0">finally</span><span class="s1">:</span>
+        <span class="s1">setattr(sys</span><span class="s0">, </span><span class="s1">stream_name</span><span class="s0">, </span><span class="s1">orig_stdout)</span>
+
+
+<span class="s0">def </span><span class="s1">captured_stdout():</span>
+    <span class="s4">&quot;&quot;&quot;Capture the output of sys.stdout: 
+ 
+       with captured_stdout() as stdout: 
+           print('hello') 
+       self.assertEqual(stdout.getvalue(), 'hello\n') 
+ 
+    Taken from Lib/support/__init__.py in the CPython repo. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">return </span><span class="s1">captured_output(</span><span class="s3">'stdout'</span><span class="s1">)</span>
+
+
+<span class="s0">def </span><span class="s1">captured_stderr():</span>
+    <span class="s4">&quot;&quot;&quot; 
+    See captured_stdout(). 
+    &quot;&quot;&quot;</span>
+    <span class="s0">return </span><span class="s1">captured_output(</span><span class="s3">'stderr'</span><span class="s1">)</span>
+
+
+<span class="s0">class </span><span class="s1">cached_property(object):</span>
+    <span class="s4">&quot;&quot;&quot;A property that is only computed once per instance and then replaces 
+       itself with an ordinary attribute. Deleting the attribute resets the 
+       property. 
+ 
+       Source: https://github.com/bottlepy/bottle/blob/0.11.5/bottle.py#L175 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">func):</span>
+        <span class="s1">self.__doc__ = getattr(func</span><span class="s0">, </span><span class="s3">'__doc__'</span><span class="s1">)</span>
+        <span class="s1">self.func = func</span>
+
+    <span class="s0">def </span><span class="s1">__get__(self</span><span class="s0">, </span><span class="s1">obj</span><span class="s0">, </span><span class="s1">cls):</span>
+        <span class="s0">if </span><span class="s1">obj </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s2"># We're being accessed from the class itself, not from an object</span>
+            <span class="s0">return </span><span class="s1">self</span>
+        <span class="s1">value = obj.__dict__[self.func.__name__] = self.func(obj)</span>
+        <span class="s0">return </span><span class="s1">value</span>
+
+
+<span class="s0">def </span><span class="s1">get_installed_version(dist_name</span><span class="s0">, </span><span class="s1">working_set=</span><span class="s0">None</span><span class="s1">):</span>
+    <span class="s4">&quot;&quot;&quot;Get the installed version of dist_name avoiding pkg_resources cache&quot;&quot;&quot;</span>
+    <span class="s2"># Create a requirement that we'll look for inside of setuptools.</span>
+    <span class="s1">req = pkg_resources.Requirement.parse(dist_name)</span>
+
+    <span class="s0">if </span><span class="s1">working_set </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s2"># We want to avoid having this cached, so we need to construct a new</span>
+        <span class="s2"># working set each time.</span>
+        <span class="s1">working_set = pkg_resources.WorkingSet()</span>
+
+    <span class="s2"># Get the installed distribution from our working set</span>
+    <span class="s1">dist = working_set.find(req)</span>
+
+    <span class="s2"># Check to see if we got an installed distribution or not, if we did</span>
+    <span class="s2"># we want to return it's version.</span>
+    <span class="s0">return </span><span class="s1">dist.version </span><span class="s0">if </span><span class="s1">dist </span><span class="s0">else None</span>
+
+
+<span class="s0">def </span><span class="s1">consume(iterator):</span>
+    <span class="s4">&quot;&quot;&quot;Consume an iterable at C speed.&quot;&quot;&quot;</span>
+    <span class="s1">deque(iterator</span><span class="s0">, </span><span class="s1">maxlen=</span><span class="s5">0</span><span class="s1">)</span>
+
+
+<span class="s2"># Simulates an enum</span>
+<span class="s0">def </span><span class="s1">enum(*sequential</span><span class="s0">, </span><span class="s1">**named):</span>
+    <span class="s1">enums = dict(zip(sequential</span><span class="s0">, </span><span class="s1">range(len(sequential)))</span><span class="s0">, </span><span class="s1">**named)</span>
+    <span class="s1">reverse = {value: key </span><span class="s0">for </span><span class="s1">key</span><span class="s0">, </span><span class="s1">value </span><span class="s0">in </span><span class="s1">enums.items()}</span>
+    <span class="s1">enums[</span><span class="s3">'reverse_mapping'</span><span class="s1">] = reverse</span>
+    <span class="s0">return </span><span class="s1">type(</span><span class="s3">'Enum'</span><span class="s0">, </span><span class="s1">()</span><span class="s0">, </span><span class="s1">enums)</span>
+
+
+<span class="s0">def </span><span class="s1">make_vcs_requirement_url(repo_url</span><span class="s0">, </span><span class="s1">rev</span><span class="s0">, </span><span class="s1">project_name</span><span class="s0">, </span><span class="s1">subdir=</span><span class="s0">None</span><span class="s1">):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Return the URL for a VCS requirement. 
+ 
+    Args: 
+      repo_url: the remote VCS url, with any needed VCS prefix (e.g. &quot;git+&quot;). 
+      project_name: the (unescaped) project name. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">egg_project_name = pkg_resources.to_filename(project_name)</span>
+    <span class="s1">req = </span><span class="s3">'{}@{}#egg={}'</span><span class="s1">.format(repo_url</span><span class="s0">, </span><span class="s1">rev</span><span class="s0">, </span><span class="s1">egg_project_name)</span>
+    <span class="s0">if </span><span class="s1">subdir:</span>
+        <span class="s1">req += </span><span class="s3">'&amp;subdirectory={}'</span><span class="s1">.format(subdir)</span>
+
+    <span class="s0">return </span><span class="s1">req</span>
+
+
+<span class="s0">def </span><span class="s1">split_auth_from_netloc(netloc):</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Parse out and remove the auth information from a netloc. 
+ 
+    Returns: (netloc, (username, password)). 
+    &quot;&quot;&quot;</span>
+    <span class="s0">if </span><span class="s3">'@' </span><span class="s0">not in </span><span class="s1">netloc:</span>
+        <span class="s0">return </span><span class="s1">netloc</span><span class="s0">, </span><span class="s1">(</span><span class="s0">None, None</span><span class="s1">)</span>
+
+    <span class="s2"># Split from the right because that's how urllib.parse.urlsplit()</span>
+    <span class="s2"># behaves if more than one @ is present (which can be checked using</span>
+    <span class="s2"># the password attribute of urlsplit()'s return value).</span>
+    <span class="s1">auth</span><span class="s0">, </span><span class="s1">netloc = netloc.rsplit(</span><span class="s3">'@'</span><span class="s0">, </span><span class="s5">1</span><span class="s1">)</span>
+    <span class="s0">if </span><span class="s3">':' </span><span class="s0">in </span><span class="s1">auth:</span>
+        <span class="s2"># Split from the left because that's how urllib.parse.urlsplit()</span>
+        <span class="s2"># behaves if more than one : is present (which again can be checked</span>
+        <span class="s2"># using the password attribute of the return value)</span>
+        <span class="s1">user_pass = auth.split(</span><span class="s3">':'</span><span class="s0">, </span><span class="s5">1</span><span class="s1">)</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s1">user_pass = auth</span><span class="s0">, None</span>
+
+    <span class="s1">user_pass = tuple(</span>
+        <span class="s0">None if </span><span class="s1">x </span><span class="s0">is None else </span><span class="s1">urllib_unquote(x) </span><span class="s0">for </span><span class="s1">x </span><span class="s0">in </span><span class="s1">user_pass</span>
+    <span class="s1">)</span>
+
+    <span class="s0">return </span><span class="s1">netloc</span><span class="s0">, </span><span class="s1">user_pass</span>
+
+
+<span class="s0">def </span><span class="s1">redact_netloc(netloc):</span>
+    <span class="s2"># type: (str) -&gt; str</span>
+    <span class="s4">&quot;&quot;&quot; 
+    Replace the password in a netloc with &quot;****&quot;, if it exists. 
+ 
+    For example, &quot;user:pass@example.com&quot; returns &quot;user:****@example.com&quot;. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">netloc</span><span class="s0">, </span><span class="s1">(user</span><span class="s0">, </span><span class="s1">password) = split_auth_from_netloc(netloc)</span>
+    <span class="s0">if </span><span class="s1">user </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s1">netloc</span>
+    <span class="s1">password = </span><span class="s3">'' </span><span class="s0">if </span><span class="s1">password </span><span class="s0">is None else </span><span class="s3">':****'</span>
+    <span class="s0">return </span><span class="s3">'{user}{password}@{netloc}'</span><span class="s1">.format(user=urllib_parse.quote(user)</span><span class="s0">,</span>
+                                              <span class="s1">password=password</span><span class="s0">,</span>
+                                              <span class="s1">netloc=netloc)</span>
+
+
+<span class="s0">def </span><span class="s1">_transform_url(url</span><span class="s0">, </span><span class="s1">transform_netloc):</span>
+    <span class="s1">purl = urllib_parse.urlsplit(url)</span>
+    <span class="s1">netloc = transform_netloc(purl.netloc)</span>
+    <span class="s2"># stripped url</span>
+    <span class="s1">url_pieces = (</span>
+        <span class="s1">purl.scheme</span><span class="s0">, </span><span class="s1">netloc</span><span class="s0">, </span><span class="s1">purl.path</span><span class="s0">, </span><span class="s1">purl.query</span><span class="s0">, </span><span class="s1">purl.fragment</span>
+    <span class="s1">)</span>
+    <span class="s1">surl = urllib_parse.urlunsplit(url_pieces)</span>
+    <span class="s0">return </span><span class="s1">surl</span>
+
+
+<span class="s0">def </span><span class="s1">_get_netloc(netloc):</span>
+    <span class="s0">return </span><span class="s1">split_auth_from_netloc(netloc)[</span><span class="s5">0</span><span class="s1">]</span>
+
+
+<span class="s0">def </span><span class="s1">remove_auth_from_url(url):</span>
+    <span class="s2"># type: (str) -&gt; str</span>
+    <span class="s2"># Return a copy of url with 'username:password@' removed.</span>
+    <span class="s2"># username/pass params are passed to subversion through flags</span>
+    <span class="s2"># and are not recognized in the url.</span>
+    <span class="s0">return </span><span class="s1">_transform_url(url</span><span class="s0">, </span><span class="s1">_get_netloc)</span>
+
+
+<span class="s0">def </span><span class="s1">redact_password_from_url(url):</span>
+    <span class="s2"># type: (str) -&gt; str</span>
+    <span class="s4">&quot;&quot;&quot;Replace the password in a given url with ****.&quot;&quot;&quot;</span>
+    <span class="s0">return </span><span class="s1">_transform_url(url</span><span class="s0">, </span><span class="s1">redact_netloc)</span>
+
+
+<span class="s0">def </span><span class="s1">protect_pip_from_modification_on_windows(modifying_pip):</span>
+    <span class="s4">&quot;&quot;&quot;Protection of pip.exe from modification on Windows 
+ 
+    On Windows, any operation modifying pip should be run as: 
+        python -m pip ... 
+    &quot;&quot;&quot;</span>
+    <span class="s1">pip_names = [</span>
+        <span class="s3">&quot;pip.exe&quot;</span><span class="s0">,</span>
+        <span class="s3">&quot;pip{}.exe&quot;</span><span class="s1">.format(sys.version_info[</span><span class="s5">0</span><span class="s1">])</span><span class="s0">,</span>
+        <span class="s3">&quot;pip{}.{}.exe&quot;</span><span class="s1">.format(*sys.version_info[:</span><span class="s5">2</span><span class="s1">])</span>
+    <span class="s1">]</span>
+
+    <span class="s2"># See https://github.com/pypa/pip/issues/1299 for more discussion</span>
+    <span class="s1">should_show_use_python_msg = (</span>
+        <span class="s1">modifying_pip </span><span class="s0">and</span>
+        <span class="s1">WINDOWS </span><span class="s0">and</span>
+        <span class="s1">os.path.basename(sys.argv[</span><span class="s5">0</span><span class="s1">]) </span><span class="s0">in </span><span class="s1">pip_names</span>
+    <span class="s1">)</span>
+
+    <span class="s0">if </span><span class="s1">should_show_use_python_msg:</span>
+        <span class="s1">new_command = [</span>
+            <span class="s1">sys.executable</span><span class="s0">, </span><span class="s3">&quot;-m&quot;</span><span class="s0">, </span><span class="s3">&quot;pip&quot;</span>
+        <span class="s1">] + sys.argv[</span><span class="s5">1</span><span class="s1">:]</span>
+        <span class="s0">raise </span><span class="s1">CommandError(</span>
+            <span class="s3">'To modify pip, please run the following command:</span><span class="s0">\n</span><span class="s3">{}'</span>
+            <span class="s1">.format(</span><span class="s3">&quot; &quot;</span><span class="s1">.join(new_command))</span>
+        <span class="s1">)</span>
+</pre>
+</body>
+</html>

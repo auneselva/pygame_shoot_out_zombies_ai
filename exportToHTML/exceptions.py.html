@@ -1,0 +1,296 @@
+<html>
+<head>
+<title>exceptions.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #808080;}
+.s4 { color: #6a8759;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+exceptions.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Exceptions used throughout package&quot;&quot;&quot;</span>
+<span class="s2">from </span><span class="s1">__future__ </span><span class="s2">import </span><span class="s1">absolute_import</span>
+
+<span class="s2">from </span><span class="s1">itertools </span><span class="s2">import </span><span class="s1">chain</span><span class="s2">, </span><span class="s1">groupby</span><span class="s2">, </span><span class="s1">repeat</span>
+
+<span class="s2">from </span><span class="s1">pip._vendor.six </span><span class="s2">import </span><span class="s1">iteritems</span>
+
+<span class="s2">from </span><span class="s1">pip._internal.utils.typing </span><span class="s2">import </span><span class="s1">MYPY_CHECK_RUNNING</span>
+
+<span class="s2">if </span><span class="s1">MYPY_CHECK_RUNNING:</span>
+    <span class="s2">from </span><span class="s1">typing </span><span class="s2">import </span><span class="s1">Optional  </span><span class="s3"># noqa: F401</span>
+    <span class="s2">from </span><span class="s1">pip._internal.req.req_install </span><span class="s2">import </span><span class="s1">InstallRequirement  </span><span class="s3"># noqa: F401</span>
+
+
+<span class="s2">class </span><span class="s1">PipError(Exception):</span>
+    <span class="s0">&quot;&quot;&quot;Base pip exception&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">ConfigurationError(PipError):</span>
+    <span class="s0">&quot;&quot;&quot;General exception in configuration&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">InstallationError(PipError):</span>
+    <span class="s0">&quot;&quot;&quot;General exception during installation&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">UninstallationError(PipError):</span>
+    <span class="s0">&quot;&quot;&quot;General exception during uninstallation&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">DistributionNotFound(InstallationError):</span>
+    <span class="s0">&quot;&quot;&quot;Raised when a distribution cannot be found to satisfy a requirement&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">RequirementsFileParseError(InstallationError):</span>
+    <span class="s0">&quot;&quot;&quot;Raised when a general error occurs parsing a requirements file line.&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">BestVersionAlreadyInstalled(PipError):</span>
+    <span class="s0">&quot;&quot;&quot;Raised when the most up-to-date version of a package is already 
+    installed.&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">BadCommand(PipError):</span>
+    <span class="s0">&quot;&quot;&quot;Raised when virtualenv or a command is not found&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">CommandError(PipError):</span>
+    <span class="s0">&quot;&quot;&quot;Raised when there is an error in command-line arguments&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">PreviousBuildDirError(PipError):</span>
+    <span class="s0">&quot;&quot;&quot;Raised when there's a previous conflicting build directory&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">InvalidWheelFilename(InstallationError):</span>
+    <span class="s0">&quot;&quot;&quot;Invalid wheel filename.&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">UnsupportedWheel(InstallationError):</span>
+    <span class="s0">&quot;&quot;&quot;Unsupported wheel.&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">HashErrors(InstallationError):</span>
+    <span class="s0">&quot;&quot;&quot;Multiple HashError instances rolled into one for reporting&quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self):</span>
+        <span class="s1">self.errors = []</span>
+
+    <span class="s2">def </span><span class="s1">append(self</span><span class="s2">, </span><span class="s1">error):</span>
+        <span class="s1">self.errors.append(error)</span>
+
+    <span class="s2">def </span><span class="s1">__str__(self):</span>
+        <span class="s1">lines = []</span>
+        <span class="s1">self.errors.sort(key=</span><span class="s2">lambda </span><span class="s1">e: e.order)</span>
+        <span class="s2">for </span><span class="s1">cls</span><span class="s2">, </span><span class="s1">errors_of_cls </span><span class="s2">in </span><span class="s1">groupby(self.errors</span><span class="s2">, lambda </span><span class="s1">e: e.__class__):</span>
+            <span class="s1">lines.append(cls.head)</span>
+            <span class="s1">lines.extend(e.body() </span><span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">errors_of_cls)</span>
+        <span class="s2">if </span><span class="s1">lines:</span>
+            <span class="s2">return </span><span class="s4">'</span><span class="s2">\n</span><span class="s4">'</span><span class="s1">.join(lines)</span>
+
+    <span class="s2">def </span><span class="s1">__nonzero__(self):</span>
+        <span class="s2">return </span><span class="s1">bool(self.errors)</span>
+
+    <span class="s2">def </span><span class="s1">__bool__(self):</span>
+        <span class="s2">return </span><span class="s1">self.__nonzero__()</span>
+
+
+<span class="s2">class </span><span class="s1">HashError(InstallationError):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    A failure to verify a package against known-good hashes 
+ 
+    :cvar order: An int sorting hash exception classes by difficulty of 
+        recovery (lower being harder), so the user doesn't bother fretting 
+        about unpinned packages when he has deeper issues, like VCS 
+        dependencies, to deal with. Also keeps error reports in a 
+        deterministic order. 
+    :cvar head: A section heading for display above potentially many 
+        exceptions of this kind 
+    :ivar req: The InstallRequirement that triggered this error. This is 
+        pasted on after the exception is instantiated, because it's not 
+        typically available earlier. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s1">req = </span><span class="s2">None  </span><span class="s3"># type: Optional[InstallRequirement]</span>
+    <span class="s1">head = </span><span class="s4">''</span>
+
+    <span class="s2">def </span><span class="s1">body(self):</span>
+        <span class="s0">&quot;&quot;&quot;Return a summary of me for display under the heading. 
+ 
+        This default implementation simply prints a description of the 
+        triggering requirement. 
+ 
+        :param req: The InstallRequirement that provoked this error, with 
+            populate_link() having already been called 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s4">'    %s' </span><span class="s1">% self._requirement_name()</span>
+
+    <span class="s2">def </span><span class="s1">__str__(self):</span>
+        <span class="s2">return </span><span class="s4">'%s</span><span class="s2">\n</span><span class="s4">%s' </span><span class="s1">% (self.head</span><span class="s2">, </span><span class="s1">self.body())</span>
+
+    <span class="s2">def </span><span class="s1">_requirement_name(self):</span>
+        <span class="s0">&quot;&quot;&quot;Return a description of the requirement that triggered me. 
+ 
+        This default implementation returns long description of the req, with 
+        line numbers 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">str(self.req) </span><span class="s2">if </span><span class="s1">self.req </span><span class="s2">else </span><span class="s4">'unknown package'</span>
+
+
+<span class="s2">class </span><span class="s1">VcsHashUnsupported(HashError):</span>
+    <span class="s0">&quot;&quot;&quot;A hash was provided for a version-control-system-based requirement, but 
+    we don't have a method for hashing those.&quot;&quot;&quot;</span>
+
+    <span class="s1">order = </span><span class="s5">0</span>
+    <span class="s1">head = (</span><span class="s4">&quot;Can't verify hashes for these requirements because we don't &quot;</span>
+            <span class="s4">&quot;have a way to hash version control repositories:&quot;</span><span class="s1">)</span>
+
+
+<span class="s2">class </span><span class="s1">DirectoryUrlHashUnsupported(HashError):</span>
+    <span class="s0">&quot;&quot;&quot;A hash was provided for a version-control-system-based requirement, but 
+    we don't have a method for hashing those.&quot;&quot;&quot;</span>
+
+    <span class="s1">order = </span><span class="s5">1</span>
+    <span class="s1">head = (</span><span class="s4">&quot;Can't verify hashes for these file:// requirements because they &quot;</span>
+            <span class="s4">&quot;point to directories:&quot;</span><span class="s1">)</span>
+
+
+<span class="s2">class </span><span class="s1">HashMissing(HashError):</span>
+    <span class="s0">&quot;&quot;&quot;A hash was needed for a requirement but is absent.&quot;&quot;&quot;</span>
+
+    <span class="s1">order = </span><span class="s5">2</span>
+    <span class="s1">head = (</span><span class="s4">'Hashes are required in --require-hashes mode, but they are '</span>
+            <span class="s4">'missing from some requirements. Here is a list of those '</span>
+            <span class="s4">'requirements along with the hashes their downloaded archives '</span>
+            <span class="s4">'actually had. Add lines like these to your requirements files to '</span>
+            <span class="s4">'prevent tampering. (If you did not enable --require-hashes '</span>
+            <span class="s4">'manually, note that it turns on automatically when any package '</span>
+            <span class="s4">'has a hash.)'</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">gotten_hash):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        :param gotten_hash: The hash of the (possibly malicious) archive we 
+            just downloaded 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.gotten_hash = gotten_hash</span>
+
+    <span class="s2">def </span><span class="s1">body(self):</span>
+        <span class="s3"># Dodge circular import.</span>
+        <span class="s2">from </span><span class="s1">pip._internal.utils.hashes </span><span class="s2">import </span><span class="s1">FAVORITE_HASH</span>
+
+        <span class="s1">package = </span><span class="s2">None</span>
+        <span class="s2">if </span><span class="s1">self.req:</span>
+            <span class="s3"># In the case of URL-based requirements, display the original URL</span>
+            <span class="s3"># seen in the requirements file rather than the package name,</span>
+            <span class="s3"># so the output can be directly copied into the requirements file.</span>
+            <span class="s1">package = (self.req.original_link </span><span class="s2">if </span><span class="s1">self.req.original_link</span>
+                       <span class="s3"># In case someone feeds something downright stupid</span>
+                       <span class="s3"># to InstallRequirement's constructor.</span>
+                       <span class="s2">else </span><span class="s1">getattr(self.req</span><span class="s2">, </span><span class="s4">'req'</span><span class="s2">, None</span><span class="s1">))</span>
+        <span class="s2">return </span><span class="s4">'    %s --hash=%s:%s' </span><span class="s1">% (package </span><span class="s2">or </span><span class="s4">'unknown package'</span><span class="s2">,</span>
+                                        <span class="s1">FAVORITE_HASH</span><span class="s2">,</span>
+                                        <span class="s1">self.gotten_hash)</span>
+
+
+<span class="s2">class </span><span class="s1">HashUnpinned(HashError):</span>
+    <span class="s0">&quot;&quot;&quot;A requirement had a hash specified but was not pinned to a specific 
+    version.&quot;&quot;&quot;</span>
+
+    <span class="s1">order = </span><span class="s5">3</span>
+    <span class="s1">head = (</span><span class="s4">'In --require-hashes mode, all requirements must have their '</span>
+            <span class="s4">'versions pinned with ==. These do not:'</span><span class="s1">)</span>
+
+
+<span class="s2">class </span><span class="s1">HashMismatch(HashError):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Distribution file hash values don't match. 
+ 
+    :ivar package_name: The name of the package that triggered the hash 
+        mismatch. Feel free to write to this after the exception is raise to 
+        improve its error message. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s1">order = </span><span class="s5">4</span>
+    <span class="s1">head = (</span><span class="s4">'THESE PACKAGES DO NOT MATCH THE HASHES FROM THE REQUIREMENTS '</span>
+            <span class="s4">'FILE. If you have updated the package versions, please update '</span>
+            <span class="s4">'the hashes. Otherwise, examine the package contents carefully; '</span>
+            <span class="s4">'someone may have tampered with them.'</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">allowed</span><span class="s2">, </span><span class="s1">gots):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        :param allowed: A dict of algorithm names pointing to lists of allowed 
+            hex digests 
+        :param gots: A dict of algorithm names pointing to hashes we 
+            actually got from the files under suspicion 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.allowed = allowed</span>
+        <span class="s1">self.gots = gots</span>
+
+    <span class="s2">def </span><span class="s1">body(self):</span>
+        <span class="s2">return </span><span class="s4">'    %s:</span><span class="s2">\n</span><span class="s4">%s' </span><span class="s1">% (self._requirement_name()</span><span class="s2">,</span>
+                                <span class="s1">self._hash_comparison())</span>
+
+    <span class="s2">def </span><span class="s1">_hash_comparison(self):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        Return a comparison of actual and expected hash values. 
+ 
+        Example:: 
+ 
+               Expected sha256 abcdeabcdeabcdeabcdeabcdeabcdeabcdeabcdeabcde 
+                            or 123451234512345123451234512345123451234512345 
+                    Got        bcdefbcdefbcdefbcdefbcdefbcdefbcdefbcdefbcdef 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s2">def </span><span class="s1">hash_then_or(hash_name):</span>
+            <span class="s3"># For now, all the decent hashes have 6-char names, so we can get</span>
+            <span class="s3"># away with hard-coding space literals.</span>
+            <span class="s2">return </span><span class="s1">chain([hash_name]</span><span class="s2">, </span><span class="s1">repeat(</span><span class="s4">'    or'</span><span class="s1">))</span>
+
+        <span class="s1">lines = []</span>
+        <span class="s2">for </span><span class="s1">hash_name</span><span class="s2">, </span><span class="s1">expecteds </span><span class="s2">in </span><span class="s1">iteritems(self.allowed):</span>
+            <span class="s1">prefix = hash_then_or(hash_name)</span>
+            <span class="s1">lines.extend((</span><span class="s4">'        Expected %s %s' </span><span class="s1">% (next(prefix)</span><span class="s2">, </span><span class="s1">e))</span>
+                         <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">expecteds)</span>
+            <span class="s1">lines.append(</span><span class="s4">'             Got        %s</span><span class="s2">\n</span><span class="s4">' </span><span class="s1">%</span>
+                         <span class="s1">self.gots[hash_name].hexdigest())</span>
+            <span class="s1">prefix = </span><span class="s4">'    or'</span>
+        <span class="s2">return </span><span class="s4">'</span><span class="s2">\n</span><span class="s4">'</span><span class="s1">.join(lines)</span>
+
+
+<span class="s2">class </span><span class="s1">UnsupportedPythonVersion(InstallationError):</span>
+    <span class="s0">&quot;&quot;&quot;Unsupported python version according to Requires-Python package 
+    metadata.&quot;&quot;&quot;</span>
+
+
+<span class="s2">class </span><span class="s1">ConfigurationFileCouldNotBeLoaded(ConfigurationError):</span>
+    <span class="s0">&quot;&quot;&quot;When there are errors while loading a configuration file 
+    &quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">reason=</span><span class="s4">&quot;could not be loaded&quot;</span><span class="s2">, </span><span class="s1">fname=</span><span class="s2">None, </span><span class="s1">error=</span><span class="s2">None</span><span class="s1">):</span>
+        <span class="s1">super(ConfigurationFileCouldNotBeLoaded</span><span class="s2">, </span><span class="s1">self).__init__(error)</span>
+        <span class="s1">self.reason = reason</span>
+        <span class="s1">self.fname = fname</span>
+        <span class="s1">self.error = error</span>
+
+    <span class="s2">def </span><span class="s1">__str__(self):</span>
+        <span class="s2">if </span><span class="s1">self.fname </span><span class="s2">is not None</span><span class="s1">:</span>
+            <span class="s1">message_part = </span><span class="s4">&quot; in {}.&quot;</span><span class="s1">.format(self.fname)</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">assert </span><span class="s1">self.error </span><span class="s2">is not None</span>
+            <span class="s1">message_part = </span><span class="s4">&quot;.</span><span class="s2">\n</span><span class="s4">{}</span><span class="s2">\n</span><span class="s4">&quot;</span><span class="s1">.format(self.error.message)</span>
+        <span class="s2">return </span><span class="s4">&quot;Configuration file {}{}&quot;</span><span class="s1">.format(self.reason</span><span class="s2">, </span><span class="s1">message_part)</span>
+</pre>
+</body>
+</html>

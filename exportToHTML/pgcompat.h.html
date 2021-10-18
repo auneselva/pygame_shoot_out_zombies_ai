@@ -1,0 +1,217 @@
+<html>
+<head>
+<title>pgcompat.h</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #0f9795;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+pgcompat.h</font>
+</center></td></tr></table>
+<pre><span class="s0">/* Python 2.x/3.x compitibility tools 
+ */</span>
+
+<span class="s2">#if </span><span class="s1">!defined(PGCOMPAT_H)</span>
+<span class="s2">#define </span><span class="s1">PGCOMPAT_H</span>
+
+<span class="s2">#if </span><span class="s1">PY_MAJOR_VERSION &gt;= </span><span class="s3">3</span>
+
+<span class="s2">#define </span><span class="s1">PY3 </span><span class="s3">1</span>
+
+<span class="s0">/* Define some aliases for the removed PyInt_* functions */</span>
+<span class="s2">#define </span><span class="s1">PyInt_Check(op) PyLong_Check(op)</span>
+<span class="s2">#define </span><span class="s1">PyInt_FromString PyLong_FromString</span>
+<span class="s2">#define </span><span class="s1">PyInt_FromUnicode PyLong_FromUnicode</span>
+<span class="s2">#define </span><span class="s1">PyInt_FromLong PyLong_FromLong</span>
+<span class="s2">#define </span><span class="s1">PyInt_FromSize_t PyLong_FromSize_t</span>
+<span class="s2">#define </span><span class="s1">PyInt_FromSsize_t PyLong_FromSsize_t</span>
+<span class="s2">#define </span><span class="s1">PyInt_AsLong PyLong_AsLong</span>
+<span class="s2">#define </span><span class="s1">PyInt_AsSsize_t PyLong_AsSsize_t</span>
+<span class="s2">#define </span><span class="s1">PyInt_AsUnsignedLongMask PyLong_AsUnsignedLongMask</span>
+<span class="s2">#define </span><span class="s1">PyInt_AsUnsignedLongLongMask PyLong_AsUnsignedLongLongMask</span>
+<span class="s2">#define </span><span class="s1">PyInt_AS_LONG PyLong_AS_LONG</span>
+<span class="s2">#define </span><span class="s1">PyNumber_Int PyNumber_Long</span>
+
+<span class="s0">/* Weakrefs flags changed in 3.x */</span>
+<span class="s2">#define </span><span class="s1">Py_TPFLAGS_HAVE_WEAKREFS </span><span class="s3">0</span>
+
+<span class="s0">/* Module init function returns new module instance. */</span>
+<span class="s2">#define </span><span class="s1">MODINIT_RETURN(x) </span><span class="s2">return </span><span class="s1">x</span>
+<span class="s2">#define </span><span class="s1">MODINIT_DEFINE(mod_name) PyMODINIT_FUNC PyInit_##mod_name (</span><span class="s2">void</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">DECREF_MOD(mod) Py_DECREF (mod)</span>
+
+<span class="s0">/* Type header differs. */</span>
+<span class="s2">#define </span><span class="s1">TYPE_HEAD(x,y) PyVarObject_HEAD_INIT(x,y)</span>
+
+<span class="s0">/* Text interface. Use unicode strings. */</span>
+<span class="s2">#define </span><span class="s1">Text_Type PyUnicode_Type</span>
+<span class="s2">#define </span><span class="s1">Text_Check PyUnicode_Check</span>
+
+<span class="s2">#ifndef </span><span class="s1">PYPY_VERSION</span>
+<span class="s2">#define </span><span class="s1">Text_FromLocale(s) PyUnicode_DecodeLocale((s), </span><span class="s4">&quot;strict&quot;</span><span class="s1">)</span>
+<span class="s2">#else </span><span class="s0">/* PYPY_VERSION */</span>
+<span class="s0">/* workaround: missing function for pypy */</span>
+<span class="s2">#define </span><span class="s1">Text_FromLocale PyUnicode_FromString</span>
+<span class="s2">#endif </span><span class="s0">/* PYPY_VERSION */</span>
+
+<span class="s2">#define </span><span class="s1">Text_FromUTF8 PyUnicode_FromString</span>
+<span class="s2">#define </span><span class="s1">Text_FromUTF8AndSize PyUnicode_FromStringAndSize</span>
+<span class="s2">#define </span><span class="s1">Text_FromFormat PyUnicode_FromFormat</span>
+<span class="s2">#define </span><span class="s1">Text_GetSize PyUnicode_GetSize</span>
+<span class="s2">#define </span><span class="s1">Text_GET_SIZE PyUnicode_GET_SIZE</span>
+
+<span class="s0">/* Binary interface. Use bytes. */</span>
+<span class="s2">#define </span><span class="s1">Bytes_Type PyBytes_Type</span>
+<span class="s2">#define </span><span class="s1">Bytes_Check PyBytes_Check</span>
+<span class="s2">#define </span><span class="s1">Bytes_Size PyBytes_Size</span>
+<span class="s2">#define </span><span class="s1">Bytes_AsString PyBytes_AsString</span>
+<span class="s2">#define </span><span class="s1">Bytes_AsStringAndSize PyBytes_AsStringAndSize</span>
+<span class="s2">#define </span><span class="s1">Bytes_FromStringAndSize PyBytes_FromStringAndSize</span>
+<span class="s2">#define </span><span class="s1">Bytes_FromFormat PyBytes_FromFormat</span>
+<span class="s2">#define </span><span class="s1">Bytes_AS_STRING PyBytes_AS_STRING</span>
+<span class="s2">#define </span><span class="s1">Bytes_GET_SIZE PyBytes_GET_SIZE</span>
+<span class="s2">#define </span><span class="s1">Bytes_AsDecodeObject PyBytes_AsDecodedObject</span>
+
+<span class="s2">#define </span><span class="s1">Object_Unicode PyObject_Str</span>
+
+<span class="s2">#define </span><span class="s1">IsTextObj(x) (PyUnicode_Check(x) || PyBytes_Check(x))</span>
+
+<span class="s0">/* Renamed builtins */</span>
+<span class="s2">#define </span><span class="s1">BUILTINS_MODULE </span><span class="s4">&quot;builtins&quot;</span>
+<span class="s2">#define </span><span class="s1">BUILTINS_UNICODE </span><span class="s4">&quot;str&quot;</span>
+<span class="s2">#define </span><span class="s1">BUILTINS_UNICHR </span><span class="s4">&quot;chr&quot;</span>
+
+<span class="s0">/* Defaults for unicode file path encoding */</span>
+<span class="s2">#define </span><span class="s1">UNICODE_DEF_FS_CODEC Py_FileSystemDefaultEncoding</span>
+<span class="s2">#if </span><span class="s1">defined(MS_WIN32)</span>
+<span class="s2">#define </span><span class="s1">UNICODE_DEF_FS_ERROR </span><span class="s4">&quot;replace&quot;</span>
+<span class="s2">#else</span>
+<span class="s2">#define </span><span class="s1">UNICODE_DEF_FS_ERROR </span><span class="s4">&quot;surrogateescape&quot;</span>
+<span class="s2">#endif</span>
+
+<span class="s2">#else </span><span class="s0">/* #if PY_MAJOR_VERSION &gt;= 3 */</span>
+
+<span class="s2">#define </span><span class="s1">PY3 </span><span class="s3">0</span>
+
+<span class="s0">/* Module init function returns nothing. */</span>
+<span class="s2">#define </span><span class="s1">MODINIT_RETURN(x) </span><span class="s2">return</span>
+<span class="s2">#define </span><span class="s1">MODINIT_DEFINE(mod_name) PyMODINIT_FUNC init##mod_name (</span><span class="s2">void</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">DECREF_MOD(mod)</span>
+
+<span class="s0">/* Type header differs. */</span>
+<span class="s2">#define </span><span class="s1">TYPE_HEAD(x,y)                          \</span>
+    <span class="s1">PyObject_HEAD_INIT(x)                       \</span>
+    <span class="s3">0</span><span class="s1">,</span>
+
+<span class="s0">/* Text interface. Use ascii strings. */</span>
+<span class="s2">#define </span><span class="s1">Text_Type PyString_Type</span>
+<span class="s2">#define </span><span class="s1">Text_Check PyString_Check</span>
+<span class="s2">#define </span><span class="s1">Text_FromLocale PyString_FromString</span>
+<span class="s2">#define </span><span class="s1">Text_FromUTF8 PyString_FromString</span>
+<span class="s2">#define </span><span class="s1">Text_FromUTF8AndSize PyString_FromStringAndSize</span>
+<span class="s2">#define </span><span class="s1">Text_FromFormat PyString_FromFormat</span>
+<span class="s2">#define </span><span class="s1">Text_GetSize PyString_GetSize</span>
+<span class="s2">#define </span><span class="s1">Text_GET_SIZE PyString_GET_SIZE</span>
+
+<span class="s0">/* Binary interface. Use ascii strings. */</span>
+<span class="s2">#define </span><span class="s1">Bytes_Type PyString_Type</span>
+<span class="s2">#define </span><span class="s1">Bytes_Check PyString_Check</span>
+<span class="s2">#define </span><span class="s1">Bytes_Size PyString_Size</span>
+<span class="s2">#define </span><span class="s1">Bytes_AsString PyString_AsString</span>
+<span class="s2">#define </span><span class="s1">Bytes_AsStringAndSize PyString_AsStringAndSize</span>
+<span class="s2">#define </span><span class="s1">Bytes_FromStringAndSize PyString_FromStringAndSize</span>
+<span class="s2">#define </span><span class="s1">Bytes_FromFormat PyString_FromFormat</span>
+<span class="s2">#define </span><span class="s1">Bytes_AS_STRING PyString_AS_STRING</span>
+<span class="s2">#define </span><span class="s1">Bytes_GET_SIZE PyString_GET_SIZE</span>
+<span class="s2">#define </span><span class="s1">Bytes_AsDecodedObject PyString_AsDecodedObject</span>
+
+<span class="s2">#define </span><span class="s1">Object_Unicode PyObject_Unicode</span>
+
+<span class="s0">/* Renamed builtins */</span>
+<span class="s2">#define </span><span class="s1">BUILTINS_MODULE </span><span class="s4">&quot;__builtin__&quot;</span>
+<span class="s2">#define </span><span class="s1">BUILTINS_UNICODE </span><span class="s4">&quot;unicode&quot;</span>
+<span class="s2">#define </span><span class="s1">BUILTINS_UNICHR </span><span class="s4">&quot;unichr&quot;</span>
+
+<span class="s0">/* Defaults for unicode file path encoding */</span>
+<span class="s2">#define </span><span class="s1">UNICODE_DEF_FS_CODEC Py_FileSystemDefaultEncoding</span>
+<span class="s2">#define </span><span class="s1">UNICODE_DEF_FS_ERROR </span><span class="s4">&quot;strict&quot;</span>
+
+<span class="s2">#endif </span><span class="s0">/* #if PY_MAJOR_VERSION &gt;= 3 */</span>
+
+<span class="s2">#define </span><span class="s1">PY2 (!PY3)</span>
+
+<span class="s2">#define </span><span class="s1">MODINIT_ERROR MODINIT_RETURN (NULL)</span>
+
+<span class="s0">/* Module state. These macros are used to define per-module macros. 
+ * v - global state variable (Python 2.x) 
+ * s - global state structure (Python 3.x) 
+ */</span>
+<span class="s2">#define </span><span class="s1">PY2_GETSTATE(v) (&amp;(v))</span>
+<span class="s2">#define </span><span class="s1">PY3_GETSTATE(s, m) ((</span><span class="s2">struct </span><span class="s1">s *) PyModule_GetState (m))</span>
+
+<span class="s0">/* Pep 3123: Making PyObject_HEAD conform to standard C */</span>
+<span class="s2">#if </span><span class="s1">!defined(Py_TYPE)</span>
+<span class="s2">#define </span><span class="s1">Py_TYPE(o)    (((PyObject *)(o))</span><span class="s5">-&gt;</span><span class="s1">ob_type)</span>
+<span class="s2">#define </span><span class="s1">Py_REFCNT(o)  (((PyObject *)(o))</span><span class="s5">-&gt;</span><span class="s1">ob_refcnt)</span>
+<span class="s2">#define </span><span class="s1">Py_SIZE(o)    (((PyVarObject *)(o))</span><span class="s5">-&gt;</span><span class="s1">ob_size)</span>
+<span class="s2">#endif</span>
+
+<span class="s0">/* Encode a unicode file path */</span>
+<span class="s2">#define </span><span class="s1">Unicode_AsEncodedPath(u) \</span>
+    <span class="s1">PyUnicode_AsEncodedString ((u), UNICODE_DEF_FS_CODEC, UNICODE_DEF_FS_ERROR)</span>
+
+<span class="s2">#define </span><span class="s1">RELATIVE_MODULE(m) (</span><span class="s4">&quot;.&quot; </span><span class="s1">m)</span>
+
+<span class="s2">#define </span><span class="s1">HAVE_OLD_BUFPROTO PY2</span>
+
+<span class="s2">#if </span><span class="s1">!defined(PG_ENABLE_OLDBUF)  </span><span class="s0">/* allow for command line override */</span>
+<span class="s2">#if </span><span class="s1">HAVE_OLD_BUFPROTO</span>
+<span class="s2">#define </span><span class="s1">PG_ENABLE_OLDBUF </span><span class="s3">1</span>
+<span class="s2">#else</span>
+<span class="s2">#define </span><span class="s1">PG_ENABLE_OLDBUF </span><span class="s3">0</span>
+<span class="s2">#endif</span>
+<span class="s2">#endif</span>
+
+<span class="s2">#ifndef </span><span class="s1">Py_TPFLAGS_HAVE_NEWBUFFER</span>
+<span class="s2">#define </span><span class="s1">Py_TPFLAGS_HAVE_NEWBUFFER </span><span class="s3">0</span>
+<span class="s2">#endif</span>
+
+<span class="s2">#ifndef </span><span class="s1">Py_TPFLAGS_HAVE_CLASS</span>
+<span class="s2">#define </span><span class="s1">Py_TPFLAGS_HAVE_CLASS </span><span class="s3">0</span>
+<span class="s2">#endif</span>
+
+<span class="s2">#ifndef </span><span class="s1">Py_TPFLAGS_CHECKTYPES</span>
+<span class="s2">#define </span><span class="s1">Py_TPFLAGS_CHECKTYPES </span><span class="s3">0</span>
+<span class="s2">#endif</span>
+
+<span class="s2">#if </span><span class="s1">PY_VERSION_HEX &gt;= </span><span class="s3">0x03020000</span>
+<span class="s2">#define </span><span class="s1">Slice_GET_INDICES_EX(slice, length, start, stop, step, slicelength) \</span>
+    <span class="s1">PySlice_GetIndicesEx(slice, length, start, stop, step, slicelength)</span>
+<span class="s2">#else</span>
+<span class="s2">#define </span><span class="s1">Slice_GET_INDICES_EX(slice, length, start, stop, step, slicelength) \</span>
+    <span class="s1">PySlice_GetIndicesEx((PySliceObject *)(slice), length, \</span>
+                         <span class="s1">start, stop, step, slicelength)</span>
+<span class="s2">#endif</span>
+
+<span class="s0">/* Support new buffer protocol? */</span>
+<span class="s2">#if </span><span class="s1">!defined(PG_ENABLE_NEWBUF)  </span><span class="s0">/* allow for command line override */</span>
+<span class="s2">#if </span><span class="s1">!defined(PYPY_VERSION)</span>
+<span class="s2">#define </span><span class="s1">PG_ENABLE_NEWBUF </span><span class="s3">1</span>
+<span class="s2">#else</span>
+<span class="s2">#define </span><span class="s1">PG_ENABLE_NEWBUF </span><span class="s3">0</span>
+<span class="s2">#endif</span>
+<span class="s2">#endif</span>
+
+<span class="s2">#endif </span><span class="s0">/* #if !defined(PGCOMPAT_H) */</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,1270 @@
+<html>
+<head>
+<title>sprite_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+sprite_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">#################################### IMPORTS ###################################</span>
+<span class="s0"># -*- encoding: utf-8 -*-</span>
+
+
+<span class="s2">import </span><span class="s1">unittest</span>
+
+<span class="s2">import </span><span class="s1">pygame</span>
+<span class="s2">from </span><span class="s1">pygame </span><span class="s2">import </span><span class="s1">sprite</span>
+
+
+<span class="s0">################################# MODULE LEVEL #################################</span>
+
+<span class="s2">class </span><span class="s1">SpriteModuleTest( unittest.TestCase ):</span>
+    <span class="s2">pass</span>
+
+<span class="s0">######################### SPRITECOLLIDE FUNCTIONS TEST #########################</span>
+
+<span class="s2">class </span><span class="s1">SpriteCollideTest( unittest.TestCase ):</span>
+
+    <span class="s2">def </span><span class="s1">setUp(self):</span>
+        <span class="s1">self.ag = sprite.AbstractGroup()</span>
+        <span class="s1">self.ag2 = sprite.AbstractGroup()</span>
+        <span class="s1">self.s1 = sprite.Sprite(self.ag)</span>
+        <span class="s1">self.s2 = sprite.Sprite(self.ag2)</span>
+        <span class="s1">self.s3 = sprite.Sprite(self.ag2)</span>
+
+        <span class="s1">self.s1.image = pygame.Surface((</span><span class="s3">50</span><span class="s2">,</span><span class="s3">10</span><span class="s1">)</span><span class="s2">, </span><span class="s1">pygame.SRCALPHA</span><span class="s2">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">self.s2.image = pygame.Surface((</span><span class="s3">10</span><span class="s2">,</span><span class="s3">10</span><span class="s1">)</span><span class="s2">, </span><span class="s1">pygame.SRCALPHA</span><span class="s2">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">self.s3.image = pygame.Surface((</span><span class="s3">10</span><span class="s2">,</span><span class="s3">10</span><span class="s1">)</span><span class="s2">, </span><span class="s1">pygame.SRCALPHA</span><span class="s2">, </span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s1">self.s1.rect = self.s1.image.get_rect()</span>
+        <span class="s1">self.s2.rect = self.s2.image.get_rect()</span>
+        <span class="s1">self.s3.rect = self.s3.image.get_rect()</span>
+        <span class="s1">self.s2.rect.move_ip(</span><span class="s3">40</span><span class="s2">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.s3.rect.move_ip(</span><span class="s3">100</span><span class="s2">, </span><span class="s3">100</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_spritecollide__works_if_collided_cb_is_None(self):</span>
+        <span class="s0"># Test that sprites collide without collided function.</span>
+        <span class="s1">self.assertEqual (</span>
+            <span class="s1">sprite.spritecollide (</span>
+                <span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill = </span><span class="s2">False, </span><span class="s1">collided = </span><span class="s2">None</span>
+            <span class="s1">)</span><span class="s2">,</span>
+            <span class="s1">[self.s2]</span>
+        <span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_spritecollide__works_if_collided_cb_not_passed(self):</span>
+        <span class="s0"># Should also work when collided function isn't passed at all.</span>
+        <span class="s1">self.assertEqual(sprite.spritecollide (</span>
+            <span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill = </span><span class="s2">False</span><span class="s1">)</span><span class="s2">,</span>
+            <span class="s1">[self.s2]</span>
+        <span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_spritecollide__collided_must_be_a_callable(self):</span>
+        <span class="s0"># Need to pass a callable.</span>
+        <span class="s1">self.assertRaises (</span>
+            <span class="s1">TypeError</span><span class="s2">,</span>
+            <span class="s1">sprite.spritecollide</span><span class="s2">, </span><span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill = </span><span class="s2">False, </span><span class="s1">collided = </span><span class="s3">1</span>
+        <span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_spritecollide__collided_defaults_to_collide_rect(self):</span>
+        <span class="s0"># collide_rect should behave the same as default.</span>
+        <span class="s1">self.assertEqual (</span>
+            <span class="s1">sprite.spritecollide (</span>
+                <span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill = </span><span class="s2">False, </span><span class="s1">collided = sprite.collide_rect</span>
+            <span class="s1">)</span><span class="s2">,</span>
+            <span class="s1">[self.s2]</span>
+        <span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_collide_rect_ratio__ratio_of_one_like_default(self):</span>
+        <span class="s0"># collide_rect_ratio should behave the same as default at a 1.0 ratio.</span>
+        <span class="s1">self.assertEqual (</span>
+            <span class="s1">sprite.spritecollide (</span>
+                <span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill = </span><span class="s2">False,</span>
+                <span class="s1">collided = sprite.collide_rect_ratio(</span><span class="s3">1.0</span><span class="s1">)</span>
+            <span class="s1">)</span><span class="s2">,</span>
+            <span class="s1">[self.s2]</span>
+        <span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_collide_rect_ratio__collides_all_at_ratio_of_twenty(self):</span>
+        <span class="s0"># collide_rect_ratio should collide all at a 20.0 ratio.</span>
+        <span class="s1">collided_func = sprite.collide_rect_ratio(</span><span class="s3">20.0</span><span class="s1">)</span>
+        <span class="s1">expected_sprites = sorted(self.ag2.sprites()</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">collided_sprites = sorted(sprite.spritecollide(</span>
+            <span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill=</span><span class="s2">False, </span><span class="s1">collided=collided_func)</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">self.assertListEqual(collided_sprites</span><span class="s2">, </span><span class="s1">expected_sprites)</span>
+
+    <span class="s2">def </span><span class="s1">test_collide_circle__no_radius_set(self):</span>
+        <span class="s0"># collide_circle with no radius set.</span>
+        <span class="s1">self.assertEqual (</span>
+            <span class="s1">sprite.spritecollide (</span>
+                <span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill = </span><span class="s2">False, </span><span class="s1">collided = sprite.collide_circle</span>
+            <span class="s1">)</span><span class="s2">,</span>
+            <span class="s1">[self.s2]</span>
+        <span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_collide_circle_ratio__no_radius_and_ratio_of_one(self):</span>
+        <span class="s0"># collide_circle_ratio with no radius set, at a 1.0 ratio.</span>
+        <span class="s1">self.assertEqual (</span>
+            <span class="s1">sprite.spritecollide (</span>
+                <span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill = </span><span class="s2">False,</span>
+                <span class="s1">collided = sprite.collide_circle_ratio(</span><span class="s3">1.0</span><span class="s1">)</span>
+            <span class="s1">)</span><span class="s2">,</span>
+            <span class="s1">[self.s2]</span>
+        <span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_collide_circle_ratio__no_radius_and_ratio_of_twenty(self):</span>
+        <span class="s0"># collide_circle_ratio with no radius set, at a 20.0 ratio.</span>
+        <span class="s1">collided_func = sprite.collide_circle_ratio(</span><span class="s3">20.0</span><span class="s1">)</span>
+        <span class="s1">expected_sprites = sorted(self.ag2.sprites()</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">collided_sprites = sorted(sprite.spritecollide(</span>
+            <span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill=</span><span class="s2">False, </span><span class="s1">collided=collided_func)</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">self.assertListEqual(expected_sprites</span><span class="s2">, </span><span class="s1">collided_sprites)</span>
+
+    <span class="s2">def </span><span class="s1">test_collide_circle__with_radii_set(self):</span>
+        <span class="s0"># collide_circle with a radius set.</span>
+        <span class="s1">self.s1.radius = </span><span class="s3">50</span>
+        <span class="s1">self.s2.radius = </span><span class="s3">10</span>
+        <span class="s1">self.s3.radius = </span><span class="s3">400</span>
+        <span class="s1">collided_func = sprite.collide_circle</span>
+        <span class="s1">expected_sprites = sorted(self.ag2.sprites()</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">collided_sprites = sorted(</span>
+            <span class="s1">sprite.spritecollide(self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill=</span><span class="s2">False,</span>
+                                 <span class="s1">collided=collided_func)</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">self.assertListEqual(expected_sprites</span><span class="s2">, </span><span class="s1">collided_sprites)</span>
+
+    <span class="s2">def </span><span class="s1">test_collide_circle_ratio__with_radii_set(self):</span>
+        <span class="s0"># collide_circle_ratio with a radius set.</span>
+        <span class="s1">self.s1.radius = </span><span class="s3">50</span>
+        <span class="s1">self.s2.radius = </span><span class="s3">10</span>
+        <span class="s1">self.s3.radius = </span><span class="s3">400</span>
+        <span class="s1">collided_func = sprite.collide_circle_ratio(</span><span class="s3">0.5</span><span class="s1">)</span>
+        <span class="s1">expected_sprites = sorted(self.ag2.sprites()</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">collided_sprites = sorted(sprite.spritecollide(</span>
+            <span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill=</span><span class="s2">False, </span><span class="s1">collided=collided_func)</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">self.assertListEqual(expected_sprites</span><span class="s2">, </span><span class="s1">collided_sprites)</span>
+
+    <span class="s2">def </span><span class="s1">test_collide_mask__opaque(self):</span>
+        <span class="s0"># make some fully opaque sprites that will collide with masks.</span>
+        <span class="s1">self.s1.image.fill((</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">self.s2.image.fill((</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">self.s3.image.fill((</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s1">))</span>
+
+        <span class="s0"># masks should be autogenerated from image if they don't exist.</span>
+        <span class="s1">self.assertEqual (</span>
+            <span class="s1">sprite.spritecollide (</span>
+                <span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill = </span><span class="s2">False,</span>
+                <span class="s1">collided = sprite.collide_mask</span>
+            <span class="s1">)</span><span class="s2">,</span>
+            <span class="s1">[self.s2]</span>
+        <span class="s1">)</span>
+
+        <span class="s1">self.s1.mask = pygame.mask.from_surface(self.s1.image)</span>
+        <span class="s1">self.s2.mask = pygame.mask.from_surface(self.s2.image)</span>
+        <span class="s1">self.s3.mask = pygame.mask.from_surface(self.s3.image)</span>
+
+        <span class="s0"># with set masks.</span>
+        <span class="s1">self.assertEqual (</span>
+            <span class="s1">sprite.spritecollide (</span>
+                <span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill = </span><span class="s2">False,</span>
+                <span class="s1">collided = sprite.collide_mask</span>
+            <span class="s1">)</span><span class="s2">,</span>
+            <span class="s1">[self.s2]</span>
+        <span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_collide_mask__transparent(self):</span>
+        <span class="s0"># make some sprites that are fully transparent, so they won't collide.</span>
+        <span class="s1">self.s1.image.fill((</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s2">,</span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">self.s2.image.fill((</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s2">,</span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">self.s3.image.fill((</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s2">,</span><span class="s3">255</span><span class="s2">,</span><span class="s3">0</span><span class="s1">))</span>
+
+        <span class="s1">self.s1.mask = pygame.mask.from_surface(self.s1.image</span><span class="s2">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">self.s2.mask = pygame.mask.from_surface(self.s2.image</span><span class="s2">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">self.s3.mask = pygame.mask.from_surface(self.s3.image</span><span class="s2">, </span><span class="s3">255</span><span class="s1">)</span>
+
+        <span class="s1">self.assertFalse (</span>
+            <span class="s1">sprite.spritecollide (</span>
+                <span class="s1">self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, </span><span class="s1">dokill = </span><span class="s2">False, </span><span class="s1">collided = sprite.collide_mask</span>
+            <span class="s1">)</span>
+        <span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_spritecollideany__without_collided_callback(self):</span>
+
+        <span class="s0"># pygame.sprite.spritecollideany(sprite, group) -&gt; sprite</span>
+        <span class="s0"># finds any sprites that collide</span>
+
+        <span class="s0"># if collided is not passed, all</span>
+        <span class="s0"># sprites must have a &quot;rect&quot; value, which is a</span>
+        <span class="s0"># rectangle of the sprite area, which will be used</span>
+        <span class="s0"># to calculate the collision.</span>
+
+        <span class="s0"># s2 in, s3 out</span>
+        <span class="s1">expected_sprite = self.s2</span>
+        <span class="s1">collided_sprite = sprite.spritecollideany(self.s1</span><span class="s2">, </span><span class="s1">self.ag2)</span>
+
+        <span class="s1">self.assertEqual(collided_sprite</span><span class="s2">, </span><span class="s1">expected_sprite)</span>
+
+        <span class="s0"># s2 and s3 out</span>
+        <span class="s1">self.s2.rect.move_ip(</span><span class="s3">0</span><span class="s2">, </span><span class="s3">10</span><span class="s1">)</span>
+        <span class="s1">collided_sprite = sprite.spritecollideany(self.s1</span><span class="s2">, </span><span class="s1">self.ag2)</span>
+
+        <span class="s1">self.assertIsNone(collided_sprite)</span>
+
+        <span class="s0"># s2 out, s3 in</span>
+        <span class="s1">self.s3.rect.move_ip(-</span><span class="s3">105</span><span class="s2">, </span><span class="s1">-</span><span class="s3">105</span><span class="s1">)</span>
+        <span class="s1">expected_sprite = self.s3</span>
+        <span class="s1">collided_sprite = sprite.spritecollideany(self.s1</span><span class="s2">, </span><span class="s1">self.ag2)</span>
+
+        <span class="s1">self.assertEqual(collided_sprite</span><span class="s2">, </span><span class="s1">expected_sprite)</span>
+
+        <span class="s0"># s2 and s3 in</span>
+        <span class="s1">self.s2.rect.move_ip(</span><span class="s3">0</span><span class="s2">, </span><span class="s1">-</span><span class="s3">10</span><span class="s1">)</span>
+        <span class="s1">expected_sprite_choices = self.ag2.sprites()</span>
+        <span class="s1">collided_sprite = sprite.spritecollideany(self.s1</span><span class="s2">, </span><span class="s1">self.ag2)</span>
+
+        <span class="s1">self.assertIn(collided_sprite</span><span class="s2">, </span><span class="s1">expected_sprite_choices)</span>
+
+    <span class="s2">def </span><span class="s1">test_spritecollideany__with_collided_callback(self):</span>
+
+        <span class="s0"># pygame.sprite.spritecollideany(sprite, group) -&gt; sprite</span>
+        <span class="s0"># finds any sprites that collide</span>
+
+        <span class="s0"># collided is a callback function used to calculate if</span>
+        <span class="s0"># two sprites are colliding. it should take two sprites</span>
+        <span class="s0"># as values, and return a bool value indicating if</span>
+        <span class="s0"># they are colliding.</span>
+
+        <span class="s0"># This collision test can be faster than pygame.sprite.spritecollide()</span>
+        <span class="s0"># since it has less work to do.</span>
+
+        <span class="s1">arg_dict_a = {}</span>
+        <span class="s1">arg_dict_b = {}</span>
+        <span class="s1">return_container = [</span><span class="s2">True</span><span class="s1">]</span>
+
+        <span class="s0"># This function is configurable using the mutable default arguments!</span>
+        <span class="s2">def </span><span class="s1">collided_callback(spr_a</span><span class="s2">, </span><span class="s1">spr_b</span><span class="s2">,</span>
+                              <span class="s1">arg_dict_a=arg_dict_a</span><span class="s2">, </span><span class="s1">arg_dict_b=arg_dict_b</span><span class="s2">,</span>
+                              <span class="s1">return_container=return_container):</span>
+
+            <span class="s1">count = arg_dict_a.get(spr_a</span><span class="s2">, </span><span class="s3">0</span><span class="s1">)</span>
+            <span class="s1">arg_dict_a[spr_a] = </span><span class="s3">1 </span><span class="s1">+ count</span>
+
+            <span class="s1">count = arg_dict_b.get(spr_b</span><span class="s2">, </span><span class="s3">0</span><span class="s1">)</span>
+            <span class="s1">arg_dict_b[spr_b] = </span><span class="s3">1 </span><span class="s1">+ count</span>
+
+            <span class="s2">return </span><span class="s1">return_container[</span><span class="s3">0</span><span class="s1">]</span>
+
+        <span class="s0"># This should return a sprite from self.ag2 because the callback</span>
+        <span class="s0"># function (collided_callback()) currently returns True.</span>
+        <span class="s1">expected_sprite_choices = self.ag2.sprites()</span>
+        <span class="s1">collided_sprite = sprite.spritecollideany(self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">,</span>
+                                                  <span class="s1">collided_callback)</span>
+
+        <span class="s1">self.assertIn(collided_sprite</span><span class="s2">, </span><span class="s1">expected_sprite_choices)</span>
+
+        <span class="s0"># The callback function should have been called only once, so self.s1</span>
+        <span class="s0"># should have only been passed as an argument once</span>
+        <span class="s1">self.assertEqual(len(arg_dict_a)</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(arg_dict_a[self.s1]</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+
+        <span class="s0"># The callback function should have been called only once, so self.s2</span>
+        <span class="s0"># exclusive-or self.s3 should have only been passed as an argument</span>
+        <span class="s0"># once</span>
+        <span class="s1">self.assertEqual(len(arg_dict_b)</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(list(arg_dict_b.values())[</span><span class="s3">0</span><span class="s1">]</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(self.s2 </span><span class="s2">in </span><span class="s1">arg_dict_b </span><span class="s2">or </span><span class="s1">self.s3 </span><span class="s2">in </span><span class="s1">arg_dict_b)</span>
+
+        <span class="s1">arg_dict_a.clear()</span>
+        <span class="s1">arg_dict_b.clear()</span>
+        <span class="s1">return_container[</span><span class="s3">0</span><span class="s1">] = </span><span class="s2">False</span>
+
+        <span class="s0"># This should return None because the callback function</span>
+        <span class="s0"># (collided_callback()) currently returns False.</span>
+        <span class="s1">collided_sprite = sprite.spritecollideany(self.s1</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">,</span>
+                                                  <span class="s1">collided_callback)</span>
+
+        <span class="s1">self.assertIsNone(collided_sprite)</span>
+
+        <span class="s0"># The callback function should have been called as many times as</span>
+        <span class="s0"># there are sprites in self.ag2</span>
+        <span class="s1">self.assertEqual(len(arg_dict_a)</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(arg_dict_a[self.s1]</span><span class="s2">, </span><span class="s1">len(self.ag2))</span>
+        <span class="s1">self.assertEqual(len(arg_dict_b)</span><span class="s2">, </span><span class="s1">len(self.ag2))</span>
+
+        <span class="s0"># Each sprite in self.ag2 should be called once.</span>
+        <span class="s2">for </span><span class="s1">s </span><span class="s2">in </span><span class="s1">self.ag2:</span>
+            <span class="s1">self.assertEqual(arg_dict_b[s]</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_groupcollide__without_collided_callback(self):</span>
+
+        <span class="s0"># pygame.sprite.groupcollide(groupa, groupb, dokilla, dokillb) -&gt; dict</span>
+        <span class="s0"># collision detection between group and group</span>
+
+        <span class="s0"># test no kill</span>
+        <span class="s1">expected_dict = {self.s1: [self.s2]}</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, False, False</span><span class="s1">)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, False, False</span><span class="s1">)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s0"># Test dokill2=True (kill colliding sprites in second group).</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, False, True</span><span class="s1">)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s1">expected_dict = {}</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, False, False</span><span class="s1">)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s0"># Test dokill1=True (kill colliding sprites in first group).</span>
+        <span class="s1">self.s3.rect.move_ip(-</span><span class="s3">100</span><span class="s2">, </span><span class="s1">-</span><span class="s3">100</span><span class="s1">)</span>
+        <span class="s1">expected_dict = {self.s1: [self.s3]}</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, True, False</span><span class="s1">)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s1">expected_dict = {}</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, False, False</span><span class="s1">)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+    <span class="s2">def </span><span class="s1">test_groupcollide__with_collided_callback(self):</span>
+
+        <span class="s1">collided_callback_true = </span><span class="s2">lambda </span><span class="s1">spr_a</span><span class="s2">, </span><span class="s1">spr_b: </span><span class="s2">True</span>
+        <span class="s1">collided_callback_false = </span><span class="s2">lambda </span><span class="s1">spr_a</span><span class="s2">, </span><span class="s1">spr_b: </span><span class="s2">False</span>
+
+        <span class="s0"># test no kill</span>
+        <span class="s1">expected_dict = {}</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, False, False,</span>
+                                             <span class="s1">collided_callback_false)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s1">expected_dict = {self.s1: sorted(self.ag2.sprites()</span><span class="s2">, </span><span class="s1">key=id)}</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, False, False,</span>
+                                             <span class="s1">collided_callback_true)</span>
+        <span class="s2">for </span><span class="s1">value </span><span class="s2">in </span><span class="s1">crashed.values():</span>
+            <span class="s1">value.sort(key=id)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s0"># expected_dict is the same again for this collide</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, False, False,</span>
+                                             <span class="s1">collided_callback_true)</span>
+        <span class="s2">for </span><span class="s1">value </span><span class="s2">in </span><span class="s1">crashed.values():</span>
+            <span class="s1">value.sort(key=id)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s0"># Test dokill2=True (kill colliding sprites in second group).</span>
+        <span class="s1">expected_dict = {}</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, False, True,</span>
+                                             <span class="s1">collided_callback_false)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s1">expected_dict = {self.s1: sorted(self.ag2.sprites()</span><span class="s2">, </span><span class="s1">key=id)}</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, False, True,</span>
+                                             <span class="s1">collided_callback_true)</span>
+        <span class="s2">for </span><span class="s1">value </span><span class="s2">in </span><span class="s1">crashed.values():</span>
+            <span class="s1">value.sort(key=id)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s1">expected_dict = {}</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, False, True,</span>
+                                             <span class="s1">collided_callback_true)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s0"># Test dokill1=True (kill colliding sprites in first group).</span>
+        <span class="s1">self.ag.add(self.s2)</span>
+        <span class="s1">self.ag2.add(self.s3)</span>
+        <span class="s1">expected_dict = {}</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, True, False,</span>
+                                             <span class="s1">collided_callback_false)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s1">expected_dict = {self.s1: [self.s3]</span><span class="s2">, </span><span class="s1">self.s2: [self.s3]}</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, True, False,</span>
+                                             <span class="s1">collided_callback_true)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+        <span class="s1">expected_dict = {}</span>
+        <span class="s1">crashed = pygame.sprite.groupcollide(self.ag</span><span class="s2">, </span><span class="s1">self.ag2</span><span class="s2">, True, False,</span>
+                                             <span class="s1">collided_callback_true)</span>
+
+        <span class="s1">self.assertDictEqual(expected_dict</span><span class="s2">, </span><span class="s1">crashed)</span>
+
+    <span class="s2">def </span><span class="s1">test_collide_rect(self):</span>
+        <span class="s0"># Test colliding - some edges touching</span>
+        <span class="s1">self.assertTrue(pygame.sprite.collide_rect(self.s1</span><span class="s2">, </span><span class="s1">self.s2))</span>
+        <span class="s1">self.assertTrue(pygame.sprite.collide_rect(self.s2</span><span class="s2">, </span><span class="s1">self.s1))</span>
+
+        <span class="s0"># Test colliding - all edges touching</span>
+        <span class="s1">self.s2.rect.center = self.s3.rect.center</span>
+
+        <span class="s1">self.assertTrue(pygame.sprite.collide_rect(self.s2</span><span class="s2">, </span><span class="s1">self.s3))</span>
+        <span class="s1">self.assertTrue(pygame.sprite.collide_rect(self.s3</span><span class="s2">, </span><span class="s1">self.s2))</span>
+
+        <span class="s0"># Test colliding - no edges touching</span>
+        <span class="s1">self.s2.rect.inflate_ip(</span><span class="s3">10</span><span class="s2">, </span><span class="s3">10</span><span class="s1">)</span>
+
+        <span class="s1">self.assertTrue(pygame.sprite.collide_rect(self.s2</span><span class="s2">, </span><span class="s1">self.s3))</span>
+        <span class="s1">self.assertTrue(pygame.sprite.collide_rect(self.s3</span><span class="s2">, </span><span class="s1">self.s2))</span>
+
+        <span class="s0"># Test colliding - some edges intersecting</span>
+        <span class="s1">self.s2.rect.center = (self.s1.rect.right</span><span class="s2">, </span><span class="s1">self.s1.rect.bottom)</span>
+
+        <span class="s1">self.assertTrue(pygame.sprite.collide_rect(self.s1</span><span class="s2">, </span><span class="s1">self.s2))</span>
+        <span class="s1">self.assertTrue(pygame.sprite.collide_rect(self.s2</span><span class="s2">, </span><span class="s1">self.s1))</span>
+
+        <span class="s0"># Test not colliding</span>
+        <span class="s1">self.assertFalse(pygame.sprite.collide_rect(self.s1</span><span class="s2">, </span><span class="s1">self.s3))</span>
+        <span class="s1">self.assertFalse(pygame.sprite.collide_rect(self.s3</span><span class="s2">, </span><span class="s1">self.s1))</span>
+
+
+<span class="s0">################################################################################</span>
+
+<span class="s2">class </span><span class="s1">AbstractGroupTypeTest( unittest.TestCase ):</span>
+    <span class="s2">def </span><span class="s1">setUp(self):</span>
+        <span class="s1">self.ag = sprite.AbstractGroup()</span>
+        <span class="s1">self.ag2 = sprite.AbstractGroup()</span>
+        <span class="s1">self.s1 = sprite.Sprite(self.ag)</span>
+        <span class="s1">self.s2 = sprite.Sprite(self.ag)</span>
+        <span class="s1">self.s3 = sprite.Sprite(self.ag2)</span>
+        <span class="s1">self.s4 = sprite.Sprite(self.ag2)</span>
+
+        <span class="s1">self.s1.image = pygame.Surface((</span><span class="s3">10</span><span class="s2">, </span><span class="s3">10</span><span class="s1">))</span>
+        <span class="s1">self.s1.image.fill(pygame.Color(</span><span class="s4">'red'</span><span class="s1">))</span>
+        <span class="s1">self.s1.rect = self.s1.image.get_rect()</span>
+
+        <span class="s1">self.s2.image = pygame.Surface((</span><span class="s3">10</span><span class="s2">, </span><span class="s3">10</span><span class="s1">))</span>
+        <span class="s1">self.s2.image.fill(pygame.Color(</span><span class="s4">'green'</span><span class="s1">))</span>
+        <span class="s1">self.s2.rect = self.s2.image.get_rect()</span>
+        <span class="s1">self.s2.rect.left = </span><span class="s3">10</span>
+
+        <span class="s1">self.s3.image = pygame.Surface((</span><span class="s3">10</span><span class="s2">, </span><span class="s3">10</span><span class="s1">))</span>
+        <span class="s1">self.s3.image.fill(pygame.Color(</span><span class="s4">'blue'</span><span class="s1">))</span>
+        <span class="s1">self.s3.rect = self.s3.image.get_rect()</span>
+        <span class="s1">self.s3.rect.top = </span><span class="s3">10</span>
+
+        <span class="s1">self.s4.image = pygame.Surface((</span><span class="s3">10</span><span class="s2">, </span><span class="s3">10</span><span class="s1">))</span>
+        <span class="s1">self.s4.image.fill(pygame.Color(</span><span class="s4">'white'</span><span class="s1">))</span>
+        <span class="s1">self.s4.rect = self.s4.image.get_rect()</span>
+        <span class="s1">self.s4.rect.left = </span><span class="s3">10</span>
+        <span class="s1">self.s4.rect.top = </span><span class="s3">10</span>
+
+        <span class="s1">self.bg = pygame.Surface((</span><span class="s3">20</span><span class="s2">, </span><span class="s3">20</span><span class="s1">))</span>
+        <span class="s1">self.scr = pygame.Surface((</span><span class="s3">20</span><span class="s2">, </span><span class="s3">20</span><span class="s1">))</span>
+        <span class="s1">self.scr.fill(pygame.Color(</span><span class="s4">'grey'</span><span class="s1">))</span>
+
+    <span class="s2">def </span><span class="s1">test_has( self ):</span>
+        <span class="s5">&quot; See if AbstractGroup.has() works as expected. &quot;</span>
+
+        <span class="s1">self.assertEqual(</span><span class="s2">True, </span><span class="s1">self.s1 </span><span class="s2">in </span><span class="s1">self.ag)</span>
+
+        <span class="s1">self.assertEqual(</span><span class="s2">True, </span><span class="s1">self.ag.has(self.s1))</span>
+
+        <span class="s1">self.assertEqual(</span><span class="s2">True, </span><span class="s1">self.ag.has([self.s1</span><span class="s2">, </span><span class="s1">self.s2]))</span>
+
+        <span class="s0"># see if one of them not being in there.</span>
+        <span class="s1">self.assertNotEqual(</span><span class="s2">True, </span><span class="s1">self.ag.has([self.s1</span><span class="s2">, </span><span class="s1">self.s2</span><span class="s2">, </span><span class="s1">self.s3]))</span>
+        <span class="s1">self.assertNotEqual(</span><span class="s2">True, </span><span class="s1">self.ag.has(self.s1</span><span class="s2">, </span><span class="s1">self.s2</span><span class="s2">, </span><span class="s1">self.s3))</span>
+        <span class="s1">self.assertNotEqual(</span><span class="s2">True, </span><span class="s1">self.ag.has(self.s1</span><span class="s2">,</span>
+                                              <span class="s1">sprite.Group(self.s2</span><span class="s2">, </span><span class="s1">self.s3)))</span>
+        <span class="s1">self.assertNotEqual(</span><span class="s2">True, </span><span class="s1">self.ag.has(self.s1</span><span class="s2">, </span><span class="s1">[self.s2</span><span class="s2">, </span><span class="s1">self.s3]))</span>
+
+        <span class="s0"># test empty list processing</span>
+        <span class="s1">self.assertFalse(self.ag.has(*[]))</span>
+        <span class="s1">self.assertFalse(self.ag.has([]))</span>
+        <span class="s1">self.assertFalse(self.ag.has([[]]))</span>
+
+        <span class="s0"># see if a second AbstractGroup works.</span>
+        <span class="s1">self.assertEqual(</span><span class="s2">True, </span><span class="s1">self.ag2.has(self.s3))</span>
+
+    <span class="s2">def </span><span class="s1">test_add(self):</span>
+        <span class="s1">ag3 = sprite.AbstractGroup()</span>
+        <span class="s1">sprites = (self.s1</span><span class="s2">, </span><span class="s1">self.s2</span><span class="s2">, </span><span class="s1">self.s3</span><span class="s2">, </span><span class="s1">self.s4)</span>
+
+        <span class="s2">for </span><span class="s1">s </span><span class="s2">in </span><span class="s1">sprites:</span>
+            <span class="s1">self.assertNotIn(s</span><span class="s2">, </span><span class="s1">ag3)</span>
+
+        <span class="s1">ag3.add(self.s1</span><span class="s2">, </span><span class="s1">[self.s2]</span><span class="s2">, </span><span class="s1">self.ag2)</span>
+
+        <span class="s2">for </span><span class="s1">s </span><span class="s2">in </span><span class="s1">sprites:</span>
+            <span class="s1">self.assertIn(s</span><span class="s2">, </span><span class="s1">ag3)</span>
+
+    <span class="s2">def </span><span class="s1">test_add_internal(self):</span>
+        <span class="s1">self.assertNotIn(self.s1</span><span class="s2">, </span><span class="s1">self.ag2)</span>
+
+        <span class="s1">self.ag2.add_internal(self.s1)</span>
+
+        <span class="s1">self.assertIn(self.s1</span><span class="s2">, </span><span class="s1">self.ag2)</span>
+
+    <span class="s2">def </span><span class="s1">test_clear(self):</span>
+
+        <span class="s1">self.ag.draw(self.scr)</span>
+        <span class="s1">self.ag.clear(self.scr</span><span class="s2">, </span><span class="s1">self.bg)</span>
+        <span class="s1">self.assertEqual((</span><span class="s3">0</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">255</span><span class="s1">)</span><span class="s2">,</span>
+                         <span class="s1">self.scr.get_at((</span><span class="s3">5</span><span class="s2">, </span><span class="s3">5</span><span class="s1">)))</span>
+        <span class="s1">self.assertEqual((</span><span class="s3">0</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">255</span><span class="s1">)</span><span class="s2">,</span>
+                         <span class="s1">self.scr.get_at((</span><span class="s3">15</span><span class="s2">, </span><span class="s3">5</span><span class="s1">)))</span>
+
+    <span class="s2">def </span><span class="s1">test_draw(self):</span>
+
+        <span class="s1">self.ag.draw(self.scr)</span>
+        <span class="s1">self.assertEqual((</span><span class="s3">255</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">255</span><span class="s1">)</span><span class="s2">,</span>
+                         <span class="s1">self.scr.get_at((</span><span class="s3">5</span><span class="s2">, </span><span class="s3">5</span><span class="s1">)))</span>
+        <span class="s1">self.assertEqual((</span><span class="s3">0</span><span class="s2">, </span><span class="s3">255</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">255</span><span class="s1">)</span><span class="s2">,</span>
+                         <span class="s1">self.scr.get_at((</span><span class="s3">15</span><span class="s2">, </span><span class="s3">5</span><span class="s1">)))</span>
+
+    <span class="s2">def </span><span class="s1">test_empty(self):</span>
+
+        <span class="s1">self.ag.empty()</span>
+        <span class="s1">self.assertFalse(self.s1 </span><span class="s2">in </span><span class="s1">self.ag)</span>
+        <span class="s1">self.assertFalse(self.s2 </span><span class="s2">in </span><span class="s1">self.ag)</span>
+
+    <span class="s2">def </span><span class="s1">test_has_internal(self):</span>
+        <span class="s1">self.assertTrue(self.ag.has_internal(self.s1))</span>
+        <span class="s1">self.assertFalse(self.ag.has_internal(self.s3))</span>
+
+    <span class="s2">def </span><span class="s1">test_remove(self):</span>
+
+        <span class="s0"># Test removal of 1 sprite</span>
+        <span class="s1">self.ag.remove(self.s1)</span>
+        <span class="s1">self.assertFalse(self.ag </span><span class="s2">in </span><span class="s1">self.s1.groups())</span>
+        <span class="s1">self.assertFalse(self.ag.has(self.s1))</span>
+
+        <span class="s0"># Test removal of 2 sprites as 2 arguments</span>
+        <span class="s1">self.ag2.remove(self.s3</span><span class="s2">, </span><span class="s1">self.s4)</span>
+        <span class="s1">self.assertFalse(self.ag2 </span><span class="s2">in </span><span class="s1">self.s3.groups())</span>
+        <span class="s1">self.assertFalse(self.ag2 </span><span class="s2">in </span><span class="s1">self.s4.groups())</span>
+        <span class="s1">self.assertFalse(self.ag2.has(self.s3</span><span class="s2">, </span><span class="s1">self.s4))</span>
+
+        <span class="s0"># Test removal of 4 sprites as a list containing a sprite and a group</span>
+        <span class="s0"># containing a sprite and another group containing 2 sprites.</span>
+        <span class="s1">self.ag.add(self.s1</span><span class="s2">, </span><span class="s1">self.s3</span><span class="s2">, </span><span class="s1">self.s4)</span>
+        <span class="s1">self.ag2.add(self.s3</span><span class="s2">, </span><span class="s1">self.s4)</span>
+        <span class="s1">g = sprite.Group(self.s2)</span>
+        <span class="s1">self.ag.remove([self.s1</span><span class="s2">, </span><span class="s1">g]</span><span class="s2">, </span><span class="s1">self.ag2)</span>
+        <span class="s1">self.assertFalse(self.ag </span><span class="s2">in </span><span class="s1">self.s1.groups())</span>
+        <span class="s1">self.assertFalse(self.ag </span><span class="s2">in </span><span class="s1">self.s2.groups())</span>
+        <span class="s1">self.assertFalse(self.ag </span><span class="s2">in </span><span class="s1">self.s3.groups())</span>
+        <span class="s1">self.assertFalse(self.ag </span><span class="s2">in </span><span class="s1">self.s4.groups())</span>
+        <span class="s1">self.assertFalse(self.ag.has(self.s1</span><span class="s2">, </span><span class="s1">self.s2</span><span class="s2">, </span><span class="s1">self.s3</span><span class="s2">, </span><span class="s1">self.s4))</span>
+
+    <span class="s2">def </span><span class="s1">test_remove_internal(self):</span>
+
+        <span class="s1">self.ag.remove_internal(self.s1)</span>
+        <span class="s1">self.assertFalse(self.ag.has_internal(self.s1))</span>
+
+    <span class="s2">def </span><span class="s1">test_sprites(self):</span>
+        <span class="s1">expected_sprites = sorted((self.s1</span><span class="s2">, </span><span class="s1">self.s2)</span><span class="s2">, </span><span class="s1">key=id)</span>
+        <span class="s1">sprite_list = sorted(self.ag.sprites()</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">self.assertListEqual(sprite_list</span><span class="s2">, </span><span class="s1">expected_sprites)</span>
+
+    <span class="s2">def </span><span class="s1">test_update(self):</span>
+
+        <span class="s2">class </span><span class="s1">test_sprite(pygame.sprite.Sprite):</span>
+            <span class="s1">sink = []</span>
+            <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">*groups):</span>
+                <span class="s1">pygame.sprite.Sprite.__init__(self</span><span class="s2">, </span><span class="s1">*groups)</span>
+            <span class="s2">def </span><span class="s1">update(self</span><span class="s2">, </span><span class="s1">*args):</span>
+                <span class="s1">self.sink += args</span>
+
+        <span class="s1">s = test_sprite(self.ag)</span>
+        <span class="s1">self.ag.update(</span><span class="s3">1</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s1">)</span>
+
+        <span class="s1">self.assertEqual(test_sprite.sink</span><span class="s2">, </span><span class="s1">[</span><span class="s3">1</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s1">])</span>
+
+
+<span class="s0">################################################################################</span>
+
+<span class="s0"># A base class to share tests between similar classes</span>
+
+<span class="s2">class </span><span class="s1">LayeredGroupBase:</span>
+    <span class="s2">def </span><span class="s1">test_get_layer_of_sprite(self):</span>
+        <span class="s1">expected_layer = </span><span class="s3">666</span>
+        <span class="s1">spr = self.sprite()</span>
+        <span class="s1">self.LG.add(spr</span><span class="s2">, </span><span class="s1">layer=expected_layer)</span>
+        <span class="s1">layer = self.LG.get_layer_of_sprite(spr)</span>
+
+        <span class="s1">self.assertEqual(len(self.LG._spritelist)</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">self.LG.get_layer_of_sprite(spr))</span>
+        <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+        <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">self.LG._spritelayers[spr])</span>
+
+    <span class="s2">def </span><span class="s1">test_add(self):</span>
+        <span class="s1">expected_layer = self.LG._default_layer</span>
+        <span class="s1">spr = self.sprite()</span>
+        <span class="s1">self.LG.add(spr)</span>
+        <span class="s1">layer = self.LG.get_layer_of_sprite(spr)</span>
+
+        <span class="s1">self.assertEqual(len(self.LG._spritelist)</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__sprite_with_layer_attribute(self):</span>
+        <span class="s1">expected_layer = </span><span class="s3">100</span>
+        <span class="s1">spr = self.sprite()</span>
+        <span class="s1">spr._layer = expected_layer</span>
+        <span class="s1">self.LG.add(spr)</span>
+        <span class="s1">layer = self.LG.get_layer_of_sprite(spr)</span>
+
+        <span class="s1">self.assertEqual(len(self.LG._spritelist)</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__passing_layer_keyword(self):</span>
+        <span class="s1">expected_layer = </span><span class="s3">100</span>
+        <span class="s1">spr = self.sprite()</span>
+        <span class="s1">self.LG.add(spr</span><span class="s2">, </span><span class="s1">layer=expected_layer)</span>
+        <span class="s1">layer = self.LG.get_layer_of_sprite(spr)</span>
+
+        <span class="s1">self.assertEqual(len(self.LG._spritelist)</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__overriding_sprite_layer_attr(self):</span>
+        <span class="s1">expected_layer = </span><span class="s3">200</span>
+        <span class="s1">spr = self.sprite()</span>
+        <span class="s1">spr._layer = </span><span class="s3">100</span>
+        <span class="s1">self.LG.add(spr</span><span class="s2">, </span><span class="s1">layer=expected_layer)</span>
+        <span class="s1">layer = self.LG.get_layer_of_sprite(spr)</span>
+
+        <span class="s1">self.assertEqual(len(self.LG._spritelist)</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__adding_sprite_on_init(self):</span>
+        <span class="s1">spr = self.sprite()</span>
+        <span class="s1">lrg2 = sprite.LayeredUpdates(spr)</span>
+        <span class="s1">expected_layer = lrg2._default_layer</span>
+        <span class="s1">layer = lrg2._spritelayers[spr]</span>
+
+        <span class="s1">self.assertEqual(len(lrg2._spritelist)</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__sprite_init_layer_attr(self):</span>
+        <span class="s1">expected_layer = </span><span class="s3">20</span>
+        <span class="s1">spr = self.sprite()</span>
+        <span class="s1">spr._layer = expected_layer</span>
+        <span class="s1">lrg2 = sprite.LayeredUpdates(spr)</span>
+        <span class="s1">layer = lrg2._spritelayers[spr]</span>
+
+        <span class="s1">self.assertEqual(len(lrg2._spritelist)</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__sprite_init_passing_layer(self):</span>
+        <span class="s1">expected_layer = </span><span class="s3">33</span>
+        <span class="s1">spr = self.sprite()</span>
+        <span class="s1">lrg2 = sprite.LayeredUpdates(spr</span><span class="s2">, </span><span class="s1">layer=expected_layer)</span>
+        <span class="s1">layer = lrg2._spritelayers[spr]</span>
+
+        <span class="s1">self.assertEqual(len(lrg2._spritelist)</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__sprite_init_overiding_layer(self):</span>
+        <span class="s1">expected_layer = </span><span class="s3">33</span>
+        <span class="s1">spr = self.sprite()</span>
+        <span class="s1">spr._layer = </span><span class="s3">55</span>
+        <span class="s1">lrg2 = sprite.LayeredUpdates(spr</span><span class="s2">, </span><span class="s1">layer=expected_layer)</span>
+        <span class="s1">layer = lrg2._spritelayers[spr]</span>
+
+        <span class="s1">self.assertEqual(len(lrg2._spritelist)</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__spritelist(self):</span>
+        <span class="s1">expected_layer = self.LG._default_layer</span>
+        <span class="s1">sprite_count = </span><span class="s3">10</span>
+        <span class="s1">sprites = [self.sprite() </span><span class="s2">for </span><span class="s1">_ </span><span class="s2">in </span><span class="s1">range(sprite_count)]</span>
+
+        <span class="s1">self.LG.add(sprites)</span>
+
+        <span class="s1">self.assertEqual(len(self.LG._spritelist)</span><span class="s2">, </span><span class="s1">sprite_count)</span>
+
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(sprite_count):</span>
+            <span class="s1">layer = self.LG.get_layer_of_sprite(sprites[i])</span>
+
+            <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__spritelist_with_layer_attr(self):</span>
+        <span class="s1">sprites = []</span>
+        <span class="s1">sprite_and_layer_count = </span><span class="s3">10</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(sprite_and_layer_count):</span>
+            <span class="s1">sprites.append(self.sprite())</span>
+            <span class="s1">sprites[-</span><span class="s3">1</span><span class="s1">]._layer = i</span>
+
+        <span class="s1">self.LG.add(sprites)</span>
+
+        <span class="s1">self.assertEqual(len(self.LG._spritelist)</span><span class="s2">, </span><span class="s1">sprite_and_layer_count)</span>
+
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(sprite_and_layer_count):</span>
+            <span class="s1">layer = self.LG.get_layer_of_sprite(sprites[i])</span>
+
+            <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">i)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__spritelist_passing_layer(self):</span>
+        <span class="s1">expected_layer = </span><span class="s3">33</span>
+        <span class="s1">sprite_count = </span><span class="s3">10</span>
+        <span class="s1">sprites = [self.sprite() </span><span class="s2">for </span><span class="s1">_ </span><span class="s2">in </span><span class="s1">range(sprite_count)]</span>
+
+        <span class="s1">self.LG.add(sprites</span><span class="s2">, </span><span class="s1">layer=expected_layer)</span>
+
+        <span class="s1">self.assertEqual(len(self.LG._spritelist)</span><span class="s2">, </span><span class="s1">sprite_count)</span>
+
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(sprite_count):</span>
+            <span class="s1">layer = self.LG.get_layer_of_sprite(sprites[i])</span>
+
+            <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__spritelist_overriding_layer(self):</span>
+        <span class="s1">expected_layer = </span><span class="s3">33</span>
+        <span class="s1">sprites = []</span>
+        <span class="s1">sprite_and_layer_count = </span><span class="s3">10</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(sprite_and_layer_count):</span>
+            <span class="s1">sprites.append(self.sprite())</span>
+            <span class="s1">sprites[-</span><span class="s3">1</span><span class="s1">].layer = i</span>
+
+        <span class="s1">self.LG.add(sprites</span><span class="s2">, </span><span class="s1">layer=expected_layer)</span>
+
+        <span class="s1">self.assertEqual(len(self.LG._spritelist)</span><span class="s2">, </span><span class="s1">sprite_and_layer_count)</span>
+
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(sprite_and_layer_count):</span>
+            <span class="s1">layer = self.LG.get_layer_of_sprite(sprites[i])</span>
+
+            <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__spritelist_init(self):</span>
+        <span class="s1">sprite_count = </span><span class="s3">10</span>
+        <span class="s1">sprites = [self.sprite() </span><span class="s2">for </span><span class="s1">_ </span><span class="s2">in </span><span class="s1">range(sprite_count)]</span>
+
+        <span class="s1">lrg2 = sprite.LayeredUpdates(sprites)</span>
+        <span class="s1">expected_layer = lrg2._default_layer</span>
+
+        <span class="s1">self.assertEqual(len(lrg2._spritelist)</span><span class="s2">, </span><span class="s1">sprite_count)</span>
+
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(sprite_count):</span>
+            <span class="s1">layer = lrg2.get_layer_of_sprite(sprites[i])</span>
+
+            <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_remove__sprite(self):</span>
+        <span class="s1">sprites = []</span>
+        <span class="s1">sprite_count = </span><span class="s3">10</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(sprite_count):</span>
+            <span class="s1">sprites.append(self.sprite())</span>
+            <span class="s1">sprites[-</span><span class="s3">1</span><span class="s1">].rect = </span><span class="s3">0</span>
+
+        <span class="s1">self.LG.add(sprites)</span>
+
+        <span class="s1">self.assertEqual(len(self.LG._spritelist)</span><span class="s2">, </span><span class="s1">sprite_count)</span>
+
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(sprite_count):</span>
+            <span class="s1">self.LG.remove(sprites[i])</span>
+
+        <span class="s1">self.assertEqual(len(self.LG._spritelist)</span><span class="s2">, </span><span class="s3">0</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_sprites(self):</span>
+        <span class="s1">sprites = []</span>
+        <span class="s1">sprite_and_layer_count = </span><span class="s3">10</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(sprite_and_layer_count</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s1">-</span><span class="s3">1</span><span class="s1">):</span>
+            <span class="s1">sprites.append(self.sprite())</span>
+            <span class="s1">sprites[-</span><span class="s3">1</span><span class="s1">]._layer = i</span>
+
+        <span class="s1">self.LG.add(sprites)</span>
+
+        <span class="s1">self.assertEqual(len(self.LG._spritelist)</span><span class="s2">, </span><span class="s1">sprite_and_layer_count)</span>
+
+        <span class="s0"># Sprites should be ordered based on their layer (bottom to top),</span>
+        <span class="s0"># which is the reverse order of the sprites list.</span>
+        <span class="s1">expected_sprites = list(reversed(sprites))</span>
+        <span class="s1">actual_sprites = self.LG.sprites()</span>
+
+        <span class="s1">self.assertListEqual(actual_sprites</span><span class="s2">, </span><span class="s1">expected_sprites)</span>
+
+    <span class="s2">def </span><span class="s1">test_layers(self):</span>
+        <span class="s1">sprites = []</span>
+        <span class="s1">expected_layers = []</span>
+        <span class="s1">layer_count = </span><span class="s3">10</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(layer_count):</span>
+            <span class="s1">expected_layers.append(i)</span>
+            <span class="s2">for </span><span class="s1">j </span><span class="s2">in </span><span class="s1">range(</span><span class="s3">5</span><span class="s1">):</span>
+                <span class="s1">sprites.append(self.sprite())</span>
+                <span class="s1">sprites[-</span><span class="s3">1</span><span class="s1">]._layer = i</span>
+        <span class="s1">self.LG.add(sprites)</span>
+
+        <span class="s1">layers = self.LG.layers()</span>
+
+        <span class="s1">self.assertListEqual(layers</span><span class="s2">, </span><span class="s1">expected_layers)</span>
+
+    <span class="s2">def </span><span class="s1">test_add__layers_are_correct(self):</span>
+        <span class="s1">layers = [</span><span class="s3">1</span><span class="s2">, </span><span class="s3">4</span><span class="s2">, </span><span class="s3">6</span><span class="s2">, </span><span class="s3">8</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">6</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">6</span><span class="s2">, </span><span class="s3">4</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">6</span><span class="s2">, </span><span class="s3">1</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">9</span><span class="s2">, </span><span class="s3">7</span><span class="s2">, </span><span class="s3">6</span><span class="s2">, </span><span class="s3">54</span><span class="s2">, </span><span class="s3">8</span><span class="s2">, </span><span class="s3">2</span><span class="s2">,</span>
+                  <span class="s3">43</span><span class="s2">, </span><span class="s3">6</span><span class="s2">, </span><span class="s3">1</span><span class="s1">]</span>
+        <span class="s2">for </span><span class="s1">lay </span><span class="s2">in </span><span class="s1">layers:</span>
+            <span class="s1">self.LG.add(self.sprite()</span><span class="s2">, </span><span class="s1">layer=lay)</span>
+        <span class="s1">layers.sort()</span>
+
+        <span class="s2">for </span><span class="s1">idx</span><span class="s2">, </span><span class="s1">spr </span><span class="s2">in </span><span class="s1">enumerate(self.LG.sprites()):</span>
+            <span class="s1">layer = self.LG.get_layer_of_sprite(spr)</span>
+
+            <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">layers[idx])</span>
+
+    <span class="s2">def </span><span class="s1">test_change_layer(self):</span>
+        <span class="s1">expected_layer = </span><span class="s3">99</span>
+        <span class="s1">spr = self.sprite()</span>
+        <span class="s1">self.LG.add(spr</span><span class="s2">, </span><span class="s1">layer=expected_layer)</span>
+
+        <span class="s1">self.assertEqual(self.LG._spritelayers[spr]</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+        <span class="s1">expected_layer = </span><span class="s3">44</span>
+        <span class="s1">self.LG.change_layer(spr</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+        <span class="s1">self.assertEqual(self.LG._spritelayers[spr]</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+        <span class="s1">expected_layer = </span><span class="s3">77</span>
+        <span class="s1">spr2 = self.sprite()</span>
+        <span class="s1">spr2.layer = </span><span class="s3">55</span>
+        <span class="s1">self.LG.add(spr2)</span>
+        <span class="s1">self.LG.change_layer(spr2</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+        <span class="s1">self.assertEqual(spr2.layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_get_top_layer(self):</span>
+        <span class="s1">layers = [</span><span class="s3">1</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">8</span><span class="s2">, </span><span class="s3">4</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">88</span><span class="s2">, </span><span class="s3">23</span><span class="s2">, </span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">layers:</span>
+            <span class="s1">self.LG.add(self.sprite()</span><span class="s2">, </span><span class="s1">layer=i)</span>
+        <span class="s1">top_layer = self.LG.get_top_layer()</span>
+
+        <span class="s1">self.assertEqual(top_layer</span><span class="s2">, </span><span class="s1">self.LG.get_top_layer())</span>
+        <span class="s1">self.assertEqual(top_layer</span><span class="s2">, </span><span class="s1">max(layers))</span>
+        <span class="s1">self.assertEqual(top_layer</span><span class="s2">, </span><span class="s1">max(self.LG._spritelayers.values()))</span>
+        <span class="s1">self.assertEqual(top_layer</span><span class="s2">,</span>
+                         <span class="s1">self.LG._spritelayers[self.LG._spritelist[-</span><span class="s3">1</span><span class="s1">]])</span>
+
+    <span class="s2">def </span><span class="s1">test_get_bottom_layer(self):</span>
+        <span class="s1">layers = [</span><span class="s3">1</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">8</span><span class="s2">, </span><span class="s3">4</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">88</span><span class="s2">, </span><span class="s3">23</span><span class="s2">, </span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">layers:</span>
+            <span class="s1">self.LG.add(self.sprite()</span><span class="s2">, </span><span class="s1">layer=i)</span>
+        <span class="s1">bottom_layer = self.LG.get_bottom_layer()</span>
+
+        <span class="s1">self.assertEqual(bottom_layer</span><span class="s2">, </span><span class="s1">self.LG.get_bottom_layer())</span>
+        <span class="s1">self.assertEqual(bottom_layer</span><span class="s2">, </span><span class="s1">min(layers))</span>
+        <span class="s1">self.assertEqual(bottom_layer</span><span class="s2">, </span><span class="s1">min(self.LG._spritelayers.values()))</span>
+        <span class="s1">self.assertEqual(bottom_layer</span><span class="s2">,</span>
+                         <span class="s1">self.LG._spritelayers[self.LG._spritelist[</span><span class="s3">0</span><span class="s1">]])</span>
+
+    <span class="s2">def </span><span class="s1">test_move_to_front(self):</span>
+        <span class="s1">layers = [</span><span class="s3">1</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">8</span><span class="s2">, </span><span class="s3">4</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">88</span><span class="s2">, </span><span class="s3">23</span><span class="s2">, </span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">layers:</span>
+            <span class="s1">self.LG.add(self.sprite()</span><span class="s2">, </span><span class="s1">layer=i)</span>
+        <span class="s1">spr = self.sprite()</span>
+        <span class="s1">self.LG.add(spr</span><span class="s2">, </span><span class="s1">layer=</span><span class="s3">3</span><span class="s1">)</span>
+
+        <span class="s1">self.assertNotEqual(spr</span><span class="s2">, </span><span class="s1">self.LG._spritelist[-</span><span class="s3">1</span><span class="s1">])</span>
+
+        <span class="s1">self.LG.move_to_front(spr)</span>
+
+        <span class="s1">self.assertEqual(spr</span><span class="s2">, </span><span class="s1">self.LG._spritelist[-</span><span class="s3">1</span><span class="s1">])</span>
+
+    <span class="s2">def </span><span class="s1">test_move_to_back(self):</span>
+        <span class="s1">layers = [</span><span class="s3">1</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">8</span><span class="s2">, </span><span class="s3">4</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">88</span><span class="s2">, </span><span class="s3">23</span><span class="s2">, </span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">layers:</span>
+            <span class="s1">self.LG.add(self.sprite()</span><span class="s2">, </span><span class="s1">layer=i)</span>
+        <span class="s1">spr = self.sprite()</span>
+        <span class="s1">self.LG.add(spr</span><span class="s2">, </span><span class="s1">layer=</span><span class="s3">55</span><span class="s1">)</span>
+
+        <span class="s1">self.assertNotEqual(spr</span><span class="s2">, </span><span class="s1">self.LG._spritelist[</span><span class="s3">0</span><span class="s1">])</span>
+
+        <span class="s1">self.LG.move_to_back(spr)</span>
+
+        <span class="s1">self.assertEqual(spr</span><span class="s2">, </span><span class="s1">self.LG._spritelist[</span><span class="s3">0</span><span class="s1">])</span>
+
+    <span class="s2">def </span><span class="s1">test_get_top_sprite(self):</span>
+        <span class="s1">layers = [</span><span class="s3">1</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">8</span><span class="s2">, </span><span class="s3">4</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">88</span><span class="s2">, </span><span class="s3">23</span><span class="s2">, </span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">layers:</span>
+            <span class="s1">self.LG.add(self.sprite()</span><span class="s2">, </span><span class="s1">layer=i)</span>
+        <span class="s1">expected_layer = self.LG.get_top_layer()</span>
+        <span class="s1">layer = self.LG.get_layer_of_sprite(self.LG.get_top_sprite())</span>
+
+        <span class="s1">self.assertEqual(layer</span><span class="s2">, </span><span class="s1">expected_layer)</span>
+
+    <span class="s2">def </span><span class="s1">test_get_sprites_from_layer(self):</span>
+        <span class="s1">sprites = {}</span>
+        <span class="s1">layers = [</span><span class="s3">1</span><span class="s2">, </span><span class="s3">4</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">6</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">7</span><span class="s2">, </span><span class="s3">8</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">1</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">4</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">6</span><span class="s2">, </span><span class="s3">7</span><span class="s2">, </span><span class="s3">8</span><span class="s2">, </span><span class="s3">9</span><span class="s2">, </span><span class="s3">1</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">4</span><span class="s2">,</span>
+                  <span class="s3">5</span><span class="s2">, </span><span class="s3">6</span><span class="s2">, </span><span class="s3">7</span><span class="s2">, </span><span class="s3">8</span><span class="s2">, </span><span class="s3">9</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">1</span><span class="s2">, </span><span class="s3">6</span><span class="s2">, </span><span class="s3">5</span><span class="s2">, </span><span class="s3">4</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">2</span><span class="s1">]</span>
+        <span class="s2">for </span><span class="s1">lay </span><span class="s2">in </span><span class="s1">layers:</span>
+            <span class="s1">spr = self.sprite()</span>
+            <span class="s1">spr._layer = lay</span>
+            <span class="s1">self.LG.add(spr)</span>
+            <span class="s2">if </span><span class="s1">lay </span><span class="s2">not in </span><span class="s1">sprites:</span>
+                <span class="s1">sprites[lay] = []</span>
+            <span class="s1">sprites[lay].append(spr)</span>
+
+        <span class="s2">for </span><span class="s1">lay </span><span class="s2">in </span><span class="s1">self.LG.layers():</span>
+            <span class="s2">for </span><span class="s1">spr </span><span class="s2">in </span><span class="s1">self.LG.get_sprites_from_layer(lay):</span>
+                <span class="s1">self.assertIn(spr</span><span class="s2">, </span><span class="s1">sprites[lay])</span>
+
+                <span class="s1">sprites[lay].remove(spr)</span>
+                <span class="s2">if </span><span class="s1">len(sprites[lay]) == </span><span class="s3">0</span><span class="s1">:</span>
+                    <span class="s2">del </span><span class="s1">sprites[lay]</span>
+
+        <span class="s1">self.assertEqual(len(sprites.values())</span><span class="s2">, </span><span class="s3">0</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_switch_layer(self):</span>
+        <span class="s1">sprites1 = []</span>
+        <span class="s1">sprites2 = []</span>
+        <span class="s1">layers = [</span><span class="s3">3</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">3</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">2</span><span class="s2">,</span>
+                  <span class="s3">3</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s1">]</span>
+        <span class="s2">for </span><span class="s1">lay </span><span class="s2">in </span><span class="s1">layers:</span>
+            <span class="s1">spr = self.sprite()</span>
+            <span class="s1">spr._layer = lay</span>
+            <span class="s1">self.LG.add(spr)</span>
+            <span class="s2">if </span><span class="s1">lay==</span><span class="s3">2</span><span class="s1">:</span>
+                <span class="s1">sprites1.append(spr)</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s1">sprites2.append(spr)</span>
+
+        <span class="s1">sprites1.sort(key=id)</span>
+        <span class="s1">sprites2.sort(key=id)</span>
+        <span class="s1">layer2_sprites = sorted(self.LG.get_sprites_from_layer(</span><span class="s3">2</span><span class="s1">)</span><span class="s2">, </span><span class="s1">key=id)</span>
+        <span class="s1">layer3_sprites = sorted(self.LG.get_sprites_from_layer(</span><span class="s3">3</span><span class="s1">)</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">self.assertListEqual(sprites1</span><span class="s2">, </span><span class="s1">layer2_sprites)</span>
+        <span class="s1">self.assertListEqual(sprites2</span><span class="s2">, </span><span class="s1">layer3_sprites)</span>
+        <span class="s1">self.assertEqual(len(self.LG)</span><span class="s2">, </span><span class="s1">len(sprites1) + len(sprites2))</span>
+
+        <span class="s1">self.LG.switch_layer(</span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s1">)</span>
+        <span class="s1">layer2_sprites = sorted(self.LG.get_sprites_from_layer(</span><span class="s3">2</span><span class="s1">)</span><span class="s2">, </span><span class="s1">key=id)</span>
+        <span class="s1">layer3_sprites = sorted(self.LG.get_sprites_from_layer(</span><span class="s3">3</span><span class="s1">)</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">self.assertListEqual(sprites1</span><span class="s2">, </span><span class="s1">layer3_sprites)</span>
+        <span class="s1">self.assertListEqual(sprites2</span><span class="s2">, </span><span class="s1">layer2_sprites)</span>
+        <span class="s1">self.assertEqual(len(self.LG)</span><span class="s2">, </span><span class="s1">len(sprites1) + len(sprites2))</span>
+
+    <span class="s2">def </span><span class="s1">test_copy(self):</span>
+        <span class="s1">self.LG.add(self.sprite())</span>
+        <span class="s1">spr = self.LG.sprites()[</span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s1">lg_copy = self.LG.copy()</span>
+
+        <span class="s1">self.assertIsInstance(lg_copy</span><span class="s2">, </span><span class="s1">type(self.LG))</span>
+        <span class="s1">self.assertIn(spr</span><span class="s2">, </span><span class="s1">lg_copy)</span>
+        <span class="s1">self.assertIn(lg_copy</span><span class="s2">, </span><span class="s1">spr.groups())</span>
+
+
+<span class="s0">########################## LAYERED RENDER GROUP TESTS ##########################</span>
+
+<span class="s2">class </span><span class="s1">LayeredUpdatesTypeTest__SpriteTest(LayeredGroupBase</span><span class="s2">, </span><span class="s1">unittest.TestCase):</span>
+    <span class="s1">sprite = sprite.Sprite</span>
+
+    <span class="s2">def </span><span class="s1">setUp(self):</span>
+        <span class="s1">self.LG = sprite.LayeredUpdates()</span>
+
+<span class="s2">class </span><span class="s1">LayeredUpdatesTypeTest__DirtySprite(LayeredGroupBase</span><span class="s2">, </span><span class="s1">unittest.TestCase):</span>
+    <span class="s1">sprite = sprite.DirtySprite</span>
+
+    <span class="s2">def </span><span class="s1">setUp(self):</span>
+        <span class="s1">self.LG = sprite.LayeredUpdates()</span>
+
+<span class="s2">class </span><span class="s1">LayeredDirtyTypeTest__DirtySprite(LayeredGroupBase</span><span class="s2">, </span><span class="s1">unittest.TestCase):</span>
+    <span class="s1">sprite = sprite.DirtySprite</span>
+
+    <span class="s2">def </span><span class="s1">setUp(self):</span>
+        <span class="s1">self.LG = sprite.LayeredDirty()</span>
+
+    <span class="s2">def </span><span class="s1">test_repaint_rect(self):</span>
+        <span class="s1">group = self.LG</span>
+        <span class="s1">surface = pygame.Surface((</span><span class="s3">100</span><span class="s2">, </span><span class="s3">100</span><span class="s1">))</span>
+
+        <span class="s1">group.repaint_rect(pygame.Rect(</span><span class="s3">0</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">100</span><span class="s2">, </span><span class="s3">100</span><span class="s1">))</span>
+        <span class="s1">group.draw(surface)</span>
+
+    <span class="s2">def </span><span class="s1">test_repaint_rect_with_clip(self):</span>
+        <span class="s1">group = self.LG</span>
+        <span class="s1">surface = pygame.Surface((</span><span class="s3">100</span><span class="s2">, </span><span class="s3">100</span><span class="s1">))</span>
+
+        <span class="s1">group.set_clip(pygame.Rect(</span><span class="s3">0</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">100</span><span class="s2">, </span><span class="s3">100</span><span class="s1">))</span>
+        <span class="s1">group.repaint_rect(pygame.Rect(</span><span class="s3">0</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">100</span><span class="s2">, </span><span class="s3">100</span><span class="s1">))</span>
+        <span class="s1">group.draw(surface)</span>
+
+    <span class="s2">def </span><span class="s1">_nondirty_intersections_redrawn(self</span><span class="s2">, </span><span class="s1">use_source_rect=</span><span class="s2">False</span><span class="s1">):</span>
+        <span class="s0"># Helper method to ensure non-dirty sprites are redrawn correctly.</span>
+        <span class="s0">#</span>
+        <span class="s0"># Parameters:</span>
+        <span class="s0">#     use_source_rect - allows non-dirty sprites to be tested</span>
+        <span class="s0">#         with (True) and without (False) a source_rect</span>
+        <span class="s0">#</span>
+        <span class="s0"># This test was written to reproduce the behavior seen in issue #898.</span>
+        <span class="s0"># A non-dirty sprite (using source_rect) was being redrawn incorrectly</span>
+        <span class="s0"># after a dirty sprite intersected with it.</span>
+        <span class="s0">#</span>
+        <span class="s0"># This test does the following.</span>
+        <span class="s0"># 1. Creates a surface filled with white. Also creates an image_source</span>
+        <span class="s0">#    with a default fill color of yellow and adds 2 images to it</span>
+        <span class="s0">#    (red and blue rectangles).</span>
+        <span class="s0"># 2. Creates 2 DirtySprites (red_sprite and blue_sprite) using the</span>
+        <span class="s0">#    image_source and adds them to a LayeredDirty group.</span>
+        <span class="s0"># 3. Moves the red_sprite and calls LayeredDirty.draw(surface) a few</span>
+        <span class="s0">#    times.</span>
+        <span class="s0"># 4. Checks to make sure the sprites were redrawn correctly.</span>
+        <span class="s1">RED = pygame.Color(</span><span class="s4">'red'</span><span class="s1">)</span>
+        <span class="s1">BLUE = pygame.Color(</span><span class="s4">'blue'</span><span class="s1">)</span>
+        <span class="s1">WHITE = pygame.Color(</span><span class="s4">'white'</span><span class="s1">)</span>
+        <span class="s1">YELLOW = pygame.Color(</span><span class="s4">'yellow'</span><span class="s1">)</span>
+
+        <span class="s1">surface = pygame.Surface((</span><span class="s3">60</span><span class="s2">, </span><span class="s3">80</span><span class="s1">))</span>
+        <span class="s1">surface.fill(WHITE)</span>
+        <span class="s1">start_pos = (</span><span class="s3">10</span><span class="s2">, </span><span class="s3">10</span><span class="s1">)</span>
+
+        <span class="s0"># These rects define each sprite's image area in the image_source.</span>
+        <span class="s1">red_sprite_source = pygame.Rect((</span><span class="s3">45</span><span class="s2">, </span><span class="s3">0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">(</span><span class="s3">5</span><span class="s2">, </span><span class="s3">4</span><span class="s1">))</span>
+        <span class="s1">blue_sprite_source = pygame.Rect((</span><span class="s3">0</span><span class="s2">, </span><span class="s3">40</span><span class="s1">)</span><span class="s2">, </span><span class="s1">(</span><span class="s3">20</span><span class="s2">, </span><span class="s3">10</span><span class="s1">))</span>
+
+        <span class="s0"># Create a source image/surface.</span>
+        <span class="s1">image_source = pygame.Surface((</span><span class="s3">50</span><span class="s2">, </span><span class="s3">50</span><span class="s1">))</span>
+        <span class="s1">image_source.fill(YELLOW)</span>
+        <span class="s1">image_source.fill(RED</span><span class="s2">, </span><span class="s1">red_sprite_source)</span>
+        <span class="s1">image_source.fill(BLUE</span><span class="s2">, </span><span class="s1">blue_sprite_source)</span>
+
+        <span class="s0"># The blue_sprite is stationary and will not reset its dirty flag. It</span>
+        <span class="s0"># will be the non-dirty sprite in this test. Its values are dependent</span>
+        <span class="s0"># on the use_source_rect flag.</span>
+        <span class="s1">blue_sprite = pygame.sprite.DirtySprite(self.LG)</span>
+
+        <span class="s2">if </span><span class="s1">use_source_rect:</span>
+            <span class="s1">blue_sprite.image = image_source</span>
+            <span class="s0"># The rect is a bit smaller than the source_rect to make sure</span>
+            <span class="s0"># LayeredDirty.draw() is using the correct dimensions.</span>
+            <span class="s1">blue_sprite.rect = pygame.Rect(start_pos</span><span class="s2">,</span>
+                <span class="s1">(blue_sprite_source.w - </span><span class="s3">7</span><span class="s2">, </span><span class="s1">blue_sprite_source.h - </span><span class="s3">7</span><span class="s1">))</span>
+            <span class="s1">blue_sprite.source_rect = blue_sprite_source</span>
+            <span class="s1">start_x</span><span class="s2">, </span><span class="s1">start_y = blue_sprite.rect.topleft</span>
+            <span class="s1">end_x = start_x + blue_sprite.source_rect.w</span>
+            <span class="s1">end_y = start_y + blue_sprite.source_rect.h</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">blue_sprite.image = image_source.subsurface(blue_sprite_source)</span>
+            <span class="s1">blue_sprite.rect = pygame.Rect(start_pos</span><span class="s2">, </span><span class="s1">blue_sprite_source.size)</span>
+            <span class="s1">start_x</span><span class="s2">, </span><span class="s1">start_y = blue_sprite.rect.topleft</span>
+            <span class="s1">end_x</span><span class="s2">, </span><span class="s1">end_y = blue_sprite.rect.bottomright</span>
+
+        <span class="s0"># The red_sprite is moving and will always be dirty.</span>
+        <span class="s1">red_sprite = pygame.sprite.DirtySprite(self.LG)</span>
+        <span class="s1">red_sprite.image = image_source</span>
+        <span class="s1">red_sprite.rect = pygame.Rect(start_pos</span><span class="s2">, </span><span class="s1">red_sprite_source.size)</span>
+        <span class="s1">red_sprite.source_rect = red_sprite_source</span>
+        <span class="s1">red_sprite.dirty = </span><span class="s3">2</span>
+
+        <span class="s0"># Draw the red_sprite as it moves a few steps.</span>
+        <span class="s2">for </span><span class="s1">_ </span><span class="s2">in </span><span class="s1">range(</span><span class="s3">4</span><span class="s1">):</span>
+            <span class="s1">red_sprite.rect.move_ip(</span><span class="s3">2</span><span class="s2">, </span><span class="s3">1</span><span class="s1">)</span>
+
+            <span class="s0"># This is the method being tested.</span>
+            <span class="s1">self.LG.draw(surface)</span>
+
+        <span class="s0"># Check colors where the blue_sprite is drawn. We expect red where the</span>
+        <span class="s0"># red_sprite is drawn over the blue_sprite, but the rest should be</span>
+        <span class="s0"># blue.</span>
+        <span class="s1">surface.lock()  </span><span class="s0"># Lock surface for possible speed up.</span>
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s2">for </span><span class="s1">y </span><span class="s2">in </span><span class="s1">range(start_y</span><span class="s2">, </span><span class="s1">end_y):</span>
+               <span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">range(start_x</span><span class="s2">, </span><span class="s1">end_x):</span>
+                    <span class="s2">if </span><span class="s1">red_sprite.rect.collidepoint(x</span><span class="s2">, </span><span class="s1">y):</span>
+                        <span class="s1">expected_color = RED</span>
+                    <span class="s2">else</span><span class="s1">:</span>
+                        <span class="s1">expected_color = BLUE</span>
+
+                    <span class="s1">color = surface.get_at((x</span><span class="s2">, </span><span class="s1">y))</span>
+
+                    <span class="s1">self.assertEqual(color</span><span class="s2">, </span><span class="s1">expected_color</span><span class="s2">,</span>
+                                     <span class="s4">'pos=({}, {})'</span><span class="s1">.format(x</span><span class="s2">, </span><span class="s1">y))</span>
+        <span class="s2">finally</span><span class="s1">:</span>
+            <span class="s1">surface.unlock()</span>
+
+    <span class="s2">def </span><span class="s1">test_nondirty_intersections_redrawn(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensure non-dirty sprites are correctly redrawn 
+        when dirty sprites intersect with them. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self._nondirty_intersections_redrawn()</span>
+
+    <span class="s2">def </span><span class="s1">test_nondirty_intersections_redrawn__with_source_rect(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensure non-dirty sprites using source_rects are correctly redrawn 
+        when dirty sprites intersect with them. 
+ 
+        Related to issue #898. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self._nondirty_intersections_redrawn(</span><span class="s2">True</span><span class="s1">)</span>
+
+
+<span class="s0">############################### SPRITE BASE CLASS ##############################</span>
+<span class="s0">#</span>
+<span class="s0"># tests common between sprite classes</span>
+
+<span class="s2">class </span><span class="s1">SpriteBase:</span>
+    <span class="s2">def </span><span class="s1">setUp(self):</span>
+        <span class="s1">self.groups = []</span>
+        <span class="s2">for </span><span class="s1">Group </span><span class="s2">in </span><span class="s1">self.Groups:</span>
+            <span class="s1">self.groups.append(Group())</span>
+
+        <span class="s1">self.sprite = self.Sprite()</span>
+
+    <span class="s2">def </span><span class="s1">test_add_internal(self):</span>
+
+        <span class="s2">for </span><span class="s1">g </span><span class="s2">in </span><span class="s1">self.groups:</span>
+            <span class="s1">self.sprite.add_internal(g)</span>
+
+        <span class="s2">for </span><span class="s1">g </span><span class="s2">in </span><span class="s1">self.groups:</span>
+            <span class="s1">self.assertIn(g</span><span class="s2">, </span><span class="s1">self.sprite.groups())</span>
+
+    <span class="s2">def </span><span class="s1">test_remove_internal(self):</span>
+
+        <span class="s2">for </span><span class="s1">g </span><span class="s2">in </span><span class="s1">self.groups:</span>
+            <span class="s1">self.sprite.add_internal(g)</span>
+
+        <span class="s2">for </span><span class="s1">g </span><span class="s2">in </span><span class="s1">self.groups:</span>
+            <span class="s1">self.sprite.remove_internal(g)</span>
+
+        <span class="s2">for </span><span class="s1">g </span><span class="s2">in </span><span class="s1">self.groups:</span>
+            <span class="s1">self.assertFalse(g </span><span class="s2">in </span><span class="s1">self.sprite.groups())</span>
+
+    <span class="s2">def </span><span class="s1">test_update(self):</span>
+
+        <span class="s2">class </span><span class="s1">test_sprite(pygame.sprite.Sprite):</span>
+            <span class="s1">sink = []</span>
+            <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">*groups):</span>
+                <span class="s1">pygame.sprite.Sprite.__init__(self</span><span class="s2">, </span><span class="s1">*groups)</span>
+            <span class="s2">def </span><span class="s1">update(self</span><span class="s2">, </span><span class="s1">*args):</span>
+                <span class="s1">self.sink += args</span>
+
+        <span class="s1">s = test_sprite()</span>
+        <span class="s1">s.update(</span><span class="s3">1</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s1">)</span>
+
+        <span class="s1">self.assertEqual(test_sprite.sink</span><span class="s2">, </span><span class="s1">[</span><span class="s3">1</span><span class="s2">, </span><span class="s3">2</span><span class="s2">, </span><span class="s3">3</span><span class="s1">])</span>
+
+    <span class="s2">def </span><span class="s1">test___init____added_to_groups_passed(self):</span>
+        <span class="s1">expected_groups = sorted(self.groups</span><span class="s2">, </span><span class="s1">key=id)</span>
+        <span class="s1">sprite = self.Sprite(self.groups)</span>
+        <span class="s1">groups = sorted(sprite.groups()</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">self.assertListEqual(groups</span><span class="s2">, </span><span class="s1">expected_groups)</span>
+
+    <span class="s2">def </span><span class="s1">test_add(self):</span>
+        <span class="s1">expected_groups = sorted(self.groups</span><span class="s2">, </span><span class="s1">key=id)</span>
+        <span class="s1">self.sprite.add(self.groups)</span>
+        <span class="s1">groups = sorted(self.sprite.groups()</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+        <span class="s1">self.assertListEqual(groups</span><span class="s2">, </span><span class="s1">expected_groups)</span>
+
+    <span class="s2">def </span><span class="s1">test_alive(self):</span>
+        <span class="s1">self.assertFalse(self.sprite.alive()</span><span class="s2">,</span>
+                         <span class="s4">&quot;Sprite should not be alive if in no groups&quot;</span><span class="s1">)</span>
+
+        <span class="s1">self.sprite.add(self.groups)</span>
+
+        <span class="s1">self.assertTrue(self.sprite.alive())</span>
+
+    <span class="s2">def </span><span class="s1">test_groups(self):</span>
+        <span class="s2">for </span><span class="s1">i</span><span class="s2">, </span><span class="s1">g </span><span class="s2">in </span><span class="s1">enumerate(self.groups):</span>
+            <span class="s1">expected_groups = sorted(self.groups[:i+</span><span class="s3">1</span><span class="s1">]</span><span class="s2">, </span><span class="s1">key=id)</span>
+            <span class="s1">self.sprite.add(g)</span>
+            <span class="s1">groups = sorted(self.sprite.groups()</span><span class="s2">, </span><span class="s1">key=id)</span>
+
+            <span class="s1">self.assertListEqual(groups</span><span class="s2">, </span><span class="s1">expected_groups)</span>
+
+    <span class="s2">def </span><span class="s1">test_kill(self):</span>
+        <span class="s1">self.sprite.add(self.groups)</span>
+
+        <span class="s1">self.assertTrue(self.sprite.alive())</span>
+
+        <span class="s1">self.sprite.kill()</span>
+
+        <span class="s1">self.assertListEqual(self.sprite.groups()</span><span class="s2">, </span><span class="s1">[])</span>
+        <span class="s1">self.assertFalse(self.sprite.alive())</span>
+
+    <span class="s2">def </span><span class="s1">test_remove(self):</span>
+        <span class="s1">self.sprite.add(self.groups)</span>
+        <span class="s1">self.sprite.remove(self.groups)</span>
+
+        <span class="s1">self.assertListEqual(self.sprite.groups()</span><span class="s2">, </span><span class="s1">[])</span>
+
+
+<span class="s0">############################## SPRITE CLASS TESTS ##############################</span>
+
+<span class="s2">class </span><span class="s1">SpriteTypeTest(SpriteBase</span><span class="s2">, </span><span class="s1">unittest.TestCase):</span>
+    <span class="s1">Sprite = sprite.Sprite</span>
+
+    <span class="s1">Groups = [ sprite.Group</span><span class="s2">,</span>
+               <span class="s1">sprite.LayeredUpdates</span><span class="s2">,</span>
+               <span class="s1">sprite.RenderUpdates</span><span class="s2">,</span>
+               <span class="s1">sprite.OrderedUpdates</span><span class="s2">, </span><span class="s1">]</span>
+
+<span class="s2">class </span><span class="s1">DirtySpriteTypeTest(SpriteBase</span><span class="s2">, </span><span class="s1">unittest.TestCase):</span>
+    <span class="s1">Sprite = sprite.DirtySprite</span>
+
+    <span class="s1">Groups = [ sprite.Group</span><span class="s2">,</span>
+               <span class="s1">sprite.LayeredUpdates</span><span class="s2">,</span>
+               <span class="s1">sprite.RenderUpdates</span><span class="s2">,</span>
+               <span class="s1">sprite.OrderedUpdates</span><span class="s2">,</span>
+               <span class="s1">sprite.LayeredDirty</span><span class="s2">, </span><span class="s1">]</span>
+
+<span class="s0">############################## BUG TESTS #######################################</span>
+
+<span class="s2">class </span><span class="s1">SingleGroupBugsTest(unittest.TestCase):</span>
+    <span class="s2">def </span><span class="s1">test_memoryleak_bug(self):</span>
+        <span class="s0"># For memoryleak bug posted to mailing list by Tobias Steinrücken on 16/11/10.</span>
+        <span class="s0"># Fixed in revision 2953.</span>
+
+        <span class="s2">import </span><span class="s1">weakref</span>
+        <span class="s2">import </span><span class="s1">gc</span>
+
+        <span class="s2">class </span><span class="s1">MySprite(sprite.Sprite):</span>
+            <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">*args</span><span class="s2">, </span><span class="s1">**kwargs):</span>
+                <span class="s1">sprite.Sprite.__init__(self</span><span class="s2">, </span><span class="s1">*args</span><span class="s2">, </span><span class="s1">**kwargs)</span>
+                <span class="s1">self.image = pygame.Surface( (</span><span class="s3">2</span><span class="s2">, </span><span class="s3">4</span><span class="s1">)</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">24 </span><span class="s1">)</span>
+                <span class="s1">self.rect = self.image.get_rect()</span>
+
+        <span class="s1">g = sprite.GroupSingle()</span>
+        <span class="s1">screen = pygame.Surface((</span><span class="s3">4</span><span class="s2">, </span><span class="s3">8</span><span class="s1">)</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s3">24</span><span class="s1">)</span>
+        <span class="s1">s = MySprite()</span>
+        <span class="s1">r = weakref.ref(s)</span>
+        <span class="s1">g.sprite = s</span>
+        <span class="s2">del </span><span class="s1">s</span>
+        <span class="s1">gc.collect()</span>
+
+        <span class="s1">self.assertIsNotNone(r())</span>
+
+        <span class="s1">g.update()</span>
+        <span class="s1">g.draw(screen)</span>
+        <span class="s1">g.sprite = MySprite()</span>
+        <span class="s1">gc.collect()</span>
+
+        <span class="s1">self.assertIsNone(r())</span>
+
+
+<span class="s0">################################################################################</span>
+
+<span class="s2">if </span><span class="s1">__name__ == </span><span class="s4">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<html>
+<head>
+<title>slidersetter.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6a8759;}
+.s4 { color: #6897bb;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+slidersetter.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">thorpy.elements.ghost </span><span class="s0">import </span><span class="s1">Ghost</span>
+<span class="s0">from </span><span class="s1">thorpy.elements.slider </span><span class="s0">import </span><span class="s1">_SliderXSetter</span>
+<span class="s0">from </span><span class="s1">thorpy.elements.element </span><span class="s0">import </span><span class="s1">Element</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">functions</span><span class="s0">, </span><span class="s1">style</span><span class="s0">, </span><span class="s1">painterstyle</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">storage</span>
+
+
+<span class="s0">class </span><span class="s1">SliderXSetter(Ghost):</span>
+    <span class="s2">&quot;&quot;&quot;Set of text, slider and value&quot;&quot;&quot;</span>
+
+    <span class="s1">@staticmethod</span>
+    <span class="s0">def </span><span class="s1">make(length</span><span class="s0">, </span><span class="s1">limvals=</span><span class="s0">None, </span><span class="s1">text=</span><span class="s3">&quot;&quot;</span><span class="s0">, </span><span class="s1">type_=float</span><span class="s0">, </span><span class="s1">initial_value=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">s = SliderXSetter(length</span><span class="s0">, </span><span class="s1">limvals</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">initial_value=initial_value</span><span class="s0">,</span>
+                            <span class="s1">type_=type_</span><span class="s0">, </span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">s.finish()</span>
+        <span class="s0">return </span><span class="s1">s</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">length</span><span class="s0">,</span>
+                 <span class="s1">limvals=</span><span class="s0">None,</span>
+                 <span class="s1">text=</span><span class="s3">&quot;&quot;</span><span class="s0">,</span>
+                 <span class="s1">elements=</span><span class="s0">None,</span>
+                 <span class="s1">normal_params=</span><span class="s0">None,</span>
+                 <span class="s1">namestyle=</span><span class="s0">None,</span>
+                 <span class="s1">valuestyle=</span><span class="s0">None,</span>
+                 <span class="s1">type_=float</span><span class="s0">,</span>
+                 <span class="s1">initial_value=</span><span class="s0">None,</span>
+                 <span class="s1">finish=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot;Slider for choosing a value. 
+        &lt;length&gt;: single int value specifying the length of slider in pixels. 
+        &lt;limvals&gt;: 2-tuple specifying the min and max values. 
+        &lt;text&gt;: text preceeding the element. 
+        &lt;type_&gt;: the type of the number to be chosen (e.g int or float) 
+        &lt;initial_value&gt;: the initial value. If None, set to minimum value. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">namestyle = style.STYLE_SLIDER_NAME </span><span class="s0">if </span><span class="s1">namestyle </span><span class="s0">is None else </span><span class="s1">namestyle</span>
+        <span class="s1">valuestyle=style.STYLE_SLIDER_VALUE </span><span class="s0">if </span><span class="s1">valuestyle </span><span class="s0">is None else </span><span class="s1">valuestyle</span>
+        <span class="s1">Ghost.__init__(self</span><span class="s0">, </span><span class="s1">elements</span><span class="s0">, </span><span class="s1">normal_params</span><span class="s0">, </span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">self._slider_el=_SliderXSetter(length</span><span class="s0">, </span><span class="s1">limvals</span><span class="s0">, </span><span class="s3">&quot;&quot;</span><span class="s0">,</span>
+                                        <span class="s1">initial_value=initial_value)</span>
+        <span class="s1">self.add_elements([self._slider_el])</span>
+        <span class="s1">self._value_type = type_</span>
+        <span class="s1">self._round_decimals = </span><span class="s4">2</span>
+        <span class="s1">self._name_element = self._get_name_element(text</span><span class="s0">, </span><span class="s1">namestyle) </span><span class="s5">#herite de setter</span>
+        <span class="s1">self._value_element = self._get_value_element(valuestyle)</span>
+        <span class="s1">self.add_elements([self._name_element</span><span class="s0">, </span><span class="s1">self._value_element])</span>
+        <span class="s1">self._name_element.rank = </span><span class="s4">1</span>
+        <span class="s1">self._slider_el.rank = </span><span class="s4">2</span>
+        <span class="s1">self._value_element.rank = </span><span class="s4">3</span>
+        <span class="s1">self.sort_children_by_rank()</span>
+        <span class="s1">self._storer_rect = </span><span class="s0">None</span>
+        <span class="s1">self._refresh_pos()</span>
+        <span class="s1">self.limvals = self._slider_el.limvals</span>
+        <span class="s0">if </span><span class="s1">finish:</span>
+            <span class="s1">self.finish()</span>
+
+    <span class="s0">def </span><span class="s1">finish(self):</span>
+        <span class="s1">Ghost.finish(self)</span>
+        <span class="s1">self._refresh_pos()</span>
+        <span class="s1">self._slider_el._drag_element.set_setter()</span>
+        <span class="s1">value = str(self._slider_el.get_value())</span>
+        <span class="s1">self._value_element.set_text(value)</span>
+
+    <span class="s0">def </span><span class="s1">set_font_color(self</span><span class="s0">, </span><span class="s1">color):</span>
+        <span class="s1">self._name_element.set_font_color(color)</span>
+
+    <span class="s0">def </span><span class="s1">set_font_size(self</span><span class="s0">, </span><span class="s1">size):</span>
+        <span class="s1">self._name_element.set_font_size(size)</span>
+
+    <span class="s0">def </span><span class="s1">set_value(self</span><span class="s0">, </span><span class="s1">value):</span>
+        <span class="s1">self._slider_el.get_dragger().place_at(value)</span>
+        <span class="s1">self.refresh_value()</span>
+
+    <span class="s0">def </span><span class="s1">show_value(self</span><span class="s0">, </span><span class="s1">show_value):</span>
+        <span class="s1">self._value_element.visible = show_value</span>
+
+    <span class="s0">def </span><span class="s1">_get_name_element(self</span><span class="s0">, </span><span class="s1">name</span><span class="s0">, </span><span class="s1">namestyle):</span>
+        <span class="s1">painter = functions.obtain_valid_painter(</span>
+            <span class="s1">painterstyle.CHECKER_NAME_PAINTER</span><span class="s0">,</span>
+            <span class="s1">size=style.SIZE)</span>
+        <span class="s1">el = Element(name</span><span class="s0">,</span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">el.set_painter(painter)</span>
+        <span class="s0">if </span><span class="s1">namestyle:</span>
+            <span class="s1">el.set_style(namestyle)</span>
+        <span class="s1">el.finish()</span>
+        <span class="s0">return </span><span class="s1">el</span>
+
+    <span class="s0">def </span><span class="s1">_get_value_element(self</span><span class="s0">, </span><span class="s1">valuestyle):</span>
+        <span class="s1">painter = functions.obtain_valid_painter(</span>
+            <span class="s1">painterstyle.CHECKER_VALUE_PAINTER</span><span class="s0">,</span>
+            <span class="s1">size=style.CHECK_SIZE)</span>
+        <span class="s1">el = Element(str(self.get_value())</span><span class="s0">,</span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">el.set_painter(painter)</span>
+        <span class="s0">if </span><span class="s1">valuestyle:</span>
+            <span class="s1">el.set_style(valuestyle)</span>
+        <span class="s1">el.finish()</span>
+        <span class="s0">return </span><span class="s1">el</span>
+
+    <span class="s0">def </span><span class="s1">_refresh_pos(self):</span>
+        <span class="s1">storage.store(self</span><span class="s0">, </span><span class="s1">mode=</span><span class="s3">&quot;h&quot;</span><span class="s1">)</span>
+        <span class="s1">self.fit_children()</span>
+
+    <span class="s0">def </span><span class="s1">refresh_value(self):</span>
+        <span class="s1">self._value_element.unblit()</span>
+        <span class="s1">self._value_element.update()</span>
+        <span class="s1">value = str(self.get_value())</span>
+        <span class="s1">self._value_element.set_text(value)</span>
+        <span class="s1">self._value_element.blit()</span>
+        <span class="s1">self._value_element.update()</span>
+
+    <span class="s0">def </span><span class="s1">get_value(self):</span>
+        <span class="s1">value = self._slider_el.get_value()</span>
+        <span class="s0">return </span><span class="s1">self._value_type(value)</span>
+
+    <span class="s0">def </span><span class="s1">get_storer_rect(self): </span><span class="s5">#!!! normalement rien besoin</span>
+        <span class="s1">tmp = self.get_value()</span>
+        <span class="s1">self._value_element.set_text(str(self._slider_el.limvals[</span><span class="s4">1</span><span class="s1">]))</span>
+        <span class="s1">rect = self.get_family_rect()</span>
+        <span class="s1">self._value_element.set_text(str(tmp))</span>
+        <span class="s0">return </span><span class="s1">rect</span>
+
+    <span class="s0">def </span><span class="s1">get_slider(self):</span>
+        <span class="s0">return </span><span class="s1">self._slider_el</span>
+
+    <span class="s0">def </span><span class="s1">get_dragger(self):</span>
+        <span class="s0">return </span><span class="s1">self.get_slider().get_dragger()</span>
+
+<span class="s5">##    def set_font_color(self, color, state=None, center_title=True):</span>
+<span class="s5">##        &quot;&quot;&quot;set font color for a given state&quot;&quot;&quot;</span>
+<span class="s5">##        self._name_element.set_font_color(color, state, center_title)</span>
+<span class="s5">##</span>
+<span class="s5">##    def set_font_size(self, size, state=None, center_title=True):</span>
+<span class="s5">##        &quot;&quot;&quot;set font size for a given state&quot;&quot;&quot;</span>
+<span class="s5">##        SliderX.set_font_size(self, size, state, center_title)</span>
+<span class="s5">##        self._name_element.set_font_size(size, state, center_title)</span>
+<span class="s5">##</span>
+<span class="s5">##    def set_font_effects(self, biu, state=None, center=True, preserve=False):</span>
+<span class="s5">##        &quot;&quot;&quot;biu = tuple : (bold, italic, underline)&quot;&quot;&quot;</span>
+<span class="s5">##        SliderX.set_font_effects(self, bio, state, center, preserve)</span>
+<span class="s5">##        self._name_element.set_font_effects(biu, state, center, preserve)</span>
+
+<span class="s5">##    def pix_to_val(self, pix, x0): #!!!!!</span>
+<span class="s5">##        value = SliderX.pix_to_val(self, pix, x0)</span>
+<span class="s5">##        if self._value_type is float:</span>
+<span class="s5">##            return round(value, self._round_decimals)</span>
+<span class="s5">##        elif self._value_type is int:</span>
+<span class="s5">##            return int(round(value))</span>
+
+    <span class="s0">def </span><span class="s1">get_help_rect(self):</span>
+        <span class="s0">return </span><span class="s1">self._name_element.get_help_rect()</span>
+
+    <span class="s0">def </span><span class="s1">set_active(self</span><span class="s0">, </span><span class="s1">value):</span>
+        <span class="s1">self.active = value</span>
+        <span class="s1">self._slider_el.set_active(value)</span>
+        <span class="s1">self._slider_el._drag_element.set_active(value)</span>
+</pre>
+</body>
+</html>

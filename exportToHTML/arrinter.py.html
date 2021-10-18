@@ -1,0 +1,419 @@
+<html>
+<head>
+<title>arrinter.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+arrinter.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">import </span><span class="s1">ctypes</span>
+<span class="s0">from </span><span class="s1">ctypes </span><span class="s0">import </span><span class="s1">*</span>
+<span class="s0">import </span><span class="s1">unittest</span>
+
+<span class="s1">__all__ = [</span><span class="s2">'PAI_CONTIGUOUS'</span><span class="s0">, </span><span class="s2">'PAI_FORTRAN'</span><span class="s0">, </span><span class="s2">'PAI_ALIGNED'</span><span class="s0">,</span>
+           <span class="s2">'PAI_NOTSWAPPED'</span><span class="s0">, </span><span class="s2">'PAI_WRITEABLE'</span><span class="s0">, </span><span class="s2">'PAI_ARR_HAS_DESCR'</span><span class="s0">,</span>
+           <span class="s2">'ArrayInterface'</span><span class="s0">,</span><span class="s1">]</span>
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s1">c_ssize_t  </span><span class="s3"># Undefined in early Python versions</span>
+<span class="s0">except </span><span class="s1">NameError:</span>
+    <span class="s0">if </span><span class="s1">sizeof(c_uint) == sizeof(c_void_p):</span>
+        <span class="s1">c_size_t = c_uint</span>
+        <span class="s1">c_ssize_t = c_int</span>
+    <span class="s0">elif </span><span class="s1">sizeof(c_ulong) == sizeof(c_void_p):</span>
+        <span class="s1">c_size_t = c_ulong</span>
+        <span class="s1">c_ssize_t = c_long</span>
+    <span class="s0">elif </span><span class="s1">sizeof(c_ulonglong) == sizeof(c_void_p):</span>
+        <span class="s1">c_size_t = c_ulonglong</span>
+        <span class="s1">c_ssize_t = c_longlong</span>
+
+
+<span class="s1">SIZEOF_VOID_P = sizeof(c_void_p)</span>
+<span class="s0">if </span><span class="s1">SIZEOF_VOID_P &lt;= sizeof(c_int):</span>
+    <span class="s1">Py_intptr_t = c_int</span>
+<span class="s0">elif </span><span class="s1">SIZEOF_VOID_P &lt;= sizeof(c_long):</span>
+    <span class="s1">Py_intptr_t = c_long</span>
+<span class="s0">elif </span><span class="s2">'c_longlong' </span><span class="s0">in </span><span class="s1">globals() </span><span class="s0">and </span><span class="s1">SIZEOF_VOID_P &lt;= sizeof(c_longlong):</span>
+    <span class="s1">Py_intptr_t = c_longlong</span>
+<span class="s0">else</span><span class="s1">:</span>
+    <span class="s0">raise </span><span class="s1">RuntimeError(</span><span class="s2">&quot;Unrecognized pointer size %i&quot; </span><span class="s1">% (pointer_size</span><span class="s0">,</span><span class="s1">))</span>
+
+<span class="s0">class </span><span class="s1">PyArrayInterface(Structure):</span>
+    <span class="s1">_fields_ = [(</span><span class="s2">'two'</span><span class="s0">, </span><span class="s1">c_int)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">'nd'</span><span class="s0">, </span><span class="s1">c_int)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">'typekind'</span><span class="s0">, </span><span class="s1">c_char)</span><span class="s0">,</span>
+                <span class="s1">(</span><span class="s2">'itemsize'</span><span class="s0">, </span><span class="s1">c_int)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">'flags'</span><span class="s0">, </span><span class="s1">c_int)</span><span class="s0">,</span>
+                <span class="s1">(</span><span class="s2">'shape'</span><span class="s0">, </span><span class="s1">POINTER(Py_intptr_t))</span><span class="s0">,</span>
+                <span class="s1">(</span><span class="s2">'strides'</span><span class="s0">, </span><span class="s1">POINTER(Py_intptr_t))</span><span class="s0">,</span>
+                <span class="s1">(</span><span class="s2">'data'</span><span class="s0">, </span><span class="s1">c_void_p)</span><span class="s0">, </span><span class="s1">(</span><span class="s2">'descr'</span><span class="s0">, </span><span class="s1">py_object)]</span>
+
+<span class="s1">PAI_Ptr = POINTER(PyArrayInterface)</span>
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s1">PyCObject_AsVoidPtr = pythonapi.PyCObject_AsVoidPtr</span>
+<span class="s0">except </span><span class="s1">AttributeError:</span>
+    <span class="s0">def </span><span class="s1">PyCObject_AsVoidPtr(o):</span>
+        <span class="s0">raise </span><span class="s1">TypeError(</span><span class="s2">&quot;Not available&quot;</span><span class="s1">)</span>
+<span class="s0">else</span><span class="s1">:</span>
+    <span class="s1">PyCObject_AsVoidPtr.restype = c_void_p</span>
+    <span class="s1">PyCObject_AsVoidPtr.argtypes = [py_object]</span>
+    <span class="s1">PyCObject_GetDesc = pythonapi.PyCObject_GetDesc</span>
+    <span class="s1">PyCObject_GetDesc.restype = c_void_p</span>
+    <span class="s1">PyCObject_GetDesc.argtypes = [py_object]</span>
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s1">PyCapsule_IsValid = pythonapi.PyCapsule_IsValid</span>
+<span class="s0">except </span><span class="s1">AttributeError:</span>
+    <span class="s0">def </span><span class="s1">PyCapsule_IsValid(capsule</span><span class="s0">, </span><span class="s1">name):</span>
+        <span class="s0">return </span><span class="s4">0</span>
+<span class="s0">else</span><span class="s1">:</span>
+    <span class="s1">PyCapsule_IsValid.restype = c_int</span>
+    <span class="s1">PyCapsule_IsValid.argtypes = [py_object</span><span class="s0">, </span><span class="s1">c_char_p]</span>
+    <span class="s1">PyCapsule_GetPointer = pythonapi.PyCapsule_GetPointer</span>
+    <span class="s1">PyCapsule_GetPointer.restype = c_void_p</span>
+    <span class="s1">PyCapsule_GetPointer.argtypes = [py_object</span><span class="s0">, </span><span class="s1">c_char_p]</span>
+    <span class="s1">PyCapsule_GetContext = pythonapi.PyCapsule_GetContext</span>
+    <span class="s1">PyCapsule_GetContext.restype = c_void_p</span>
+    <span class="s1">PyCapsule_GetContext.argtypes = [py_object]</span>
+
+<span class="s0">if </span><span class="s1">sys.version_info &gt;= (</span><span class="s4">3</span><span class="s0">,</span><span class="s1">): </span><span class="s3"># Python3</span>
+    <span class="s1">PyCapsule_Destructor = CFUNCTYPE(</span><span class="s0">None, </span><span class="s1">py_object)</span>
+    <span class="s1">PyCapsule_New = pythonapi.PyCapsule_New</span>
+    <span class="s1">PyCapsule_New.restype = py_object</span>
+    <span class="s1">PyCapsule_New.argtypes = [c_void_p</span><span class="s0">, </span><span class="s1">c_char_p</span><span class="s0">, </span><span class="s1">POINTER(PyCapsule_Destructor)]</span>
+    <span class="s0">def </span><span class="s1">capsule_new(p):</span>
+        <span class="s0">return </span><span class="s1">PyCapsule_New(addressof(p)</span><span class="s0">, None, None</span><span class="s1">)</span>
+<span class="s0">else</span><span class="s1">:</span>
+    <span class="s1">PyCObject_Destructor = CFUNCTYPE(</span><span class="s0">None, </span><span class="s1">c_void_p)</span>
+    <span class="s1">PyCObject_FromVoidPtr = pythonapi.PyCObject_FromVoidPtr</span>
+    <span class="s1">PyCObject_FromVoidPtr.restype = py_object</span>
+    <span class="s1">PyCObject_FromVoidPtr.argtypes = [c_void_p</span><span class="s0">, </span><span class="s1">POINTER(PyCObject_Destructor)]</span>
+    <span class="s0">def </span><span class="s1">capsule_new(p):</span>
+        <span class="s0">return </span><span class="s1">PyCObject_FromVoidPtr(addressof(p)</span><span class="s0">, None</span><span class="s1">)</span>
+
+<span class="s1">PAI_CONTIGUOUS = </span><span class="s4">0x01</span>
+<span class="s1">PAI_FORTRAN = </span><span class="s4">0x02</span>
+<span class="s1">PAI_ALIGNED = </span><span class="s4">0x100</span>
+<span class="s1">PAI_NOTSWAPPED = </span><span class="s4">0x200</span>
+<span class="s1">PAI_WRITEABLE = </span><span class="s4">0x400</span>
+<span class="s1">PAI_ARR_HAS_DESCR = </span><span class="s4">0x800</span>
+
+<span class="s0">class </span><span class="s1">ArrayInterface(object):</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">arr):</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">self._cobj = arr.__array_struct__</span>
+        <span class="s0">except </span><span class="s1">AttributeError:</span>
+            <span class="s0">raise </span><span class="s1">TypeError(</span><span class="s2">&quot;The array object lacks an array structure&quot;</span><span class="s1">)</span>
+        <span class="s0">if not </span><span class="s1">self._cobj:</span>
+            <span class="s0">raise </span><span class="s1">TypeError(</span><span class="s2">&quot;The array object has a NULL array structure value&quot;</span><span class="s1">)</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">vp = PyCObject_AsVoidPtr(self._cobj)</span>
+        <span class="s0">except </span><span class="s1">TypeError:</span>
+            <span class="s0">if </span><span class="s1">PyCapsule_IsValid(self._cobj</span><span class="s0">, None</span><span class="s1">):</span>
+                <span class="s1">vp = PyCapsule_GetPointer(self._cobj</span><span class="s0">, None</span><span class="s1">)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s0">raise </span><span class="s1">TypeError(</span><span class="s2">&quot;The array object has an invalid array structure&quot;</span><span class="s1">)</span>
+            <span class="s1">self.desc = PyCapsule_GetContext(self._cobj)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.desc = PyCObject_GetDesc(self._cobj)</span>
+        <span class="s1">self._inter = cast(vp</span><span class="s0">, </span><span class="s1">PAI_Ptr)[</span><span class="s4">0</span><span class="s1">]</span>
+
+    <span class="s0">def </span><span class="s1">__getattr__(self</span><span class="s0">, </span><span class="s1">name):</span>
+        <span class="s0">if </span><span class="s1">(name == </span><span class="s2">'typekind'</span><span class="s1">):</span>
+            <span class="s0">return </span><span class="s1">self._inter.typekind.decode(</span><span class="s2">'latin-1'</span><span class="s1">)</span>
+        <span class="s0">return </span><span class="s1">getattr(self._inter</span><span class="s0">, </span><span class="s1">name)</span>
+
+    <span class="s0">def </span><span class="s1">__str__(self):</span>
+        <span class="s0">if </span><span class="s1">isinstance(self.desc</span><span class="s0">, </span><span class="s1">tuple):</span>
+            <span class="s1">ver = self.desc[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">ver = </span><span class="s2">&quot;N/A&quot;</span>
+        <span class="s0">return </span><span class="s1">(</span><span class="s2">&quot;nd: %i</span><span class="s0">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;typekind: %s</span><span class="s0">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;itemsize: %i</span><span class="s0">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;flags: %s</span><span class="s0">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;shape: %s</span><span class="s0">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;strides: %s</span><span class="s0">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;ver: %s</span><span class="s0">\n</span><span class="s2">&quot; </span><span class="s1">%</span>
+                <span class="s1">(self.nd</span><span class="s0">, </span><span class="s1">self.typekind</span><span class="s0">, </span><span class="s1">self.itemsize</span><span class="s0">,</span>
+                 <span class="s1">format_flags(self.flags)</span><span class="s0">,</span>
+                 <span class="s1">format_shape(self.nd</span><span class="s0">, </span><span class="s1">self.shape)</span><span class="s0">,</span>
+                 <span class="s1">format_strides(self.nd</span><span class="s0">, </span><span class="s1">self.strides)</span><span class="s0">, </span><span class="s1">ver))</span>
+
+<span class="s0">def </span><span class="s1">format_flags(flags):</span>
+    <span class="s1">names = []</span>
+    <span class="s0">for </span><span class="s1">flag</span><span class="s0">, </span><span class="s1">name </span><span class="s0">in </span><span class="s1">[(PAI_CONTIGUOUS</span><span class="s0">, </span><span class="s2">'CONTIGUOUS'</span><span class="s1">)</span><span class="s0">,</span>
+                       <span class="s1">(PAI_FORTRAN</span><span class="s0">, </span><span class="s2">'FORTRAN'</span><span class="s1">)</span><span class="s0">,</span>
+                       <span class="s1">(PAI_ALIGNED</span><span class="s0">, </span><span class="s2">'ALIGNED'</span><span class="s1">)</span><span class="s0">,</span>
+                       <span class="s1">(PAI_NOTSWAPPED</span><span class="s0">, </span><span class="s2">'NOTSWAPPED'</span><span class="s1">)</span><span class="s0">,</span>
+                       <span class="s1">(PAI_WRITEABLE</span><span class="s0">, </span><span class="s2">'WRITEABLE'</span><span class="s1">)</span><span class="s0">,</span>
+                       <span class="s1">(PAI_ARR_HAS_DESCR</span><span class="s0">, </span><span class="s2">'ARR_HAS_DESCR'</span><span class="s1">)]:</span>
+        <span class="s0">if </span><span class="s1">flag &amp; flags:</span>
+            <span class="s1">names.append(name)</span>
+    <span class="s0">return </span><span class="s2">', '</span><span class="s1">.join(names)</span>
+
+<span class="s0">def </span><span class="s1">format_shape(nd</span><span class="s0">, </span><span class="s1">shape):</span>
+    <span class="s0">return </span><span class="s2">', '</span><span class="s1">.join([str(shape[i]) </span><span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(nd)])</span>
+
+<span class="s0">def </span><span class="s1">format_strides(nd</span><span class="s0">, </span><span class="s1">strides):</span>
+    <span class="s0">return </span><span class="s2">', '</span><span class="s1">.join([str(strides[i]) </span><span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(nd)])</span>
+
+<span class="s0">class </span><span class="s1">Exporter(object):</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">shape</span><span class="s0">,</span>
+                 <span class="s1">typekind=</span><span class="s0">None, </span><span class="s1">itemsize=</span><span class="s0">None, </span><span class="s1">strides=</span><span class="s0">None,</span>
+                 <span class="s1">descr=</span><span class="s0">None, </span><span class="s1">flags=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s0">if </span><span class="s1">typekind </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">typekind = </span><span class="s2">'u'</span>
+        <span class="s0">if </span><span class="s1">itemsize </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">itemsize = </span><span class="s4">1</span>
+        <span class="s0">if </span><span class="s1">flags </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">flags = PAI_WRITEABLE | PAI_ALIGNED | PAI_NOTSWAPPED</span>
+        <span class="s0">if </span><span class="s1">descr </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">flags |= PAI_ARR_HAS_DESCR</span>
+        <span class="s0">if </span><span class="s1">len(typekind) != </span><span class="s4">1</span><span class="s1">:</span>
+            <span class="s0">raise </span><span class="s1">ValueError(</span><span class="s2">&quot;Argument 'typekind' must be length 1 string&quot;</span><span class="s1">)</span>
+        <span class="s1">nd = len(shape)</span>
+        <span class="s1">self.typekind = typekind</span>
+        <span class="s1">self.itemsize = itemsize</span>
+        <span class="s1">self.nd = nd</span>
+        <span class="s1">self.shape = tuple(shape)</span>
+        <span class="s1">self._shape = (c_ssize_t * self.nd)(*self.shape)</span>
+        <span class="s0">if </span><span class="s1">strides </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">self._strides = (c_ssize_t * self.nd)()</span>
+            <span class="s1">self._strides[self.nd - </span><span class="s4">1</span><span class="s1">] = self.itemsize</span>
+            <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(self.nd - </span><span class="s4">1</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">):</span>
+                <span class="s1">self._strides[i - </span><span class="s4">1</span><span class="s1">] = self.shape[i] * self._strides[i]</span>
+            <span class="s1">strides = tuple(self._strides)</span>
+            <span class="s1">self.strides = strides</span>
+        <span class="s0">elif </span><span class="s1">len(strides) == nd:</span>
+            <span class="s1">self.strides = tuple(strides)</span>
+            <span class="s1">self._strides = (c_ssize_t * self.nd)(*self.strides)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">raise </span><span class="s1">ValueError(</span><span class="s2">&quot;Mismatch in length of strides and shape&quot;</span><span class="s1">)</span>
+        <span class="s1">self.descr = descr</span>
+        <span class="s0">if </span><span class="s1">self.is_contiguous(</span><span class="s2">'C'</span><span class="s1">):</span>
+            <span class="s1">flags |= PAI_CONTIGUOUS</span>
+        <span class="s0">if </span><span class="s1">self.is_contiguous(</span><span class="s2">'F'</span><span class="s1">):</span>
+            <span class="s1">flags |= PAI_FORTRAN</span>
+        <span class="s1">self.flags = flags</span>
+        <span class="s1">sz = max(shape[i] * strides[i] </span><span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(nd))</span>
+        <span class="s1">self._data = (c_ubyte * sz)()</span>
+        <span class="s1">self.data = addressof(self._data)</span>
+        <span class="s1">self._inter = PyArrayInterface(</span><span class="s4">2</span><span class="s0">, </span><span class="s1">nd</span><span class="s0">, </span><span class="s1">typekind.encode(</span><span class="s2">'latin_1'</span><span class="s1">)</span><span class="s0">,</span>
+                                       <span class="s1">itemsize</span><span class="s0">, </span><span class="s1">flags</span><span class="s0">, </span><span class="s1">self._shape</span><span class="s0">,</span>
+                                       <span class="s1">self._strides</span><span class="s0">, </span><span class="s1">self.data</span><span class="s0">, </span><span class="s1">descr)</span>
+        <span class="s1">self.len = itemsize</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(nd):</span>
+            <span class="s1">self.len *= self.shape[i]</span>
+
+    <span class="s1">__array_struct__ = property(</span><span class="s0">lambda </span><span class="s1">self: capsule_new(self._inter))</span>
+
+    <span class="s0">def </span><span class="s1">is_contiguous(self</span><span class="s0">, </span><span class="s1">fortran):</span>
+        <span class="s0">if </span><span class="s1">fortran </span><span class="s0">in </span><span class="s2">&quot;CA&quot;</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.strides[-</span><span class="s4">1</span><span class="s1">] == self.itemsize:</span>
+                <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(self.nd - </span><span class="s4">1</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">):</span>
+                    <span class="s0">if </span><span class="s1">self.strides[i - </span><span class="s4">1</span><span class="s1">] != self.shape[i] * self.strides[i]:</span>
+                        <span class="s0">break</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s0">return True</span>
+        <span class="s0">if </span><span class="s1">fortran </span><span class="s0">in </span><span class="s2">&quot;FA&quot;</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.strides[</span><span class="s4">0</span><span class="s1">] == self.itemsize:</span>
+                <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(</span><span class="s4">0</span><span class="s0">, </span><span class="s1">self.nd - </span><span class="s4">1</span><span class="s1">):</span>
+                    <span class="s0">if </span><span class="s1">self.strides[i + </span><span class="s4">1</span><span class="s1">] != self.shape[i] * self.strides[i]:</span>
+                        <span class="s0">break</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s0">return True</span>
+        <span class="s0">return False</span>
+
+<span class="s0">class </span><span class="s1">Array(Exporter):</span>
+    <span class="s1">_ctypes = {(</span><span class="s2">'u'</span><span class="s0">, </span><span class="s4">1</span><span class="s1">): c_uint8</span><span class="s0">,</span>
+               <span class="s1">(</span><span class="s2">'u'</span><span class="s0">, </span><span class="s4">2</span><span class="s1">): c_uint16</span><span class="s0">,</span>
+               <span class="s1">(</span><span class="s2">'u'</span><span class="s0">, </span><span class="s4">4</span><span class="s1">): c_uint32</span><span class="s0">,</span>
+               <span class="s1">(</span><span class="s2">'u'</span><span class="s0">, </span><span class="s4">8</span><span class="s1">): c_uint64</span><span class="s0">,</span>
+               <span class="s1">(</span><span class="s2">'i'</span><span class="s0">, </span><span class="s4">1</span><span class="s1">): c_int8</span><span class="s0">,</span>
+               <span class="s1">(</span><span class="s2">'i'</span><span class="s0">, </span><span class="s4">2</span><span class="s1">): c_int16</span><span class="s0">,</span>
+               <span class="s1">(</span><span class="s2">'i'</span><span class="s0">, </span><span class="s4">4</span><span class="s1">): c_int32</span><span class="s0">,</span>
+               <span class="s1">(</span><span class="s2">'i'</span><span class="s0">, </span><span class="s4">8</span><span class="s1">): c_int64}</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">*args</span><span class="s0">, </span><span class="s1">**kwds):</span>
+        <span class="s1">super(Array</span><span class="s0">, </span><span class="s1">self).__init__(*args</span><span class="s0">, </span><span class="s1">**kwds)</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.flags &amp; PAI_NOTSWAPPED:</span>
+                <span class="s1">ct = self._ctypes[self.typekind</span><span class="s0">, </span><span class="s1">self.itemsize]</span>
+            <span class="s0">elif </span><span class="s1">c_int.__ctype_le__ </span><span class="s0">is </span><span class="s1">c_int:</span>
+                <span class="s1">ct = self._ctypes[self.typekind</span><span class="s0">, </span><span class="s1">self.itemsize].__ctype_be__</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">ct = self._ctypes[self.typekind</span><span class="s0">, </span><span class="s1">self.itemsize].__ctype_le__</span>
+        <span class="s0">except </span><span class="s1">KeyError:</span>
+            <span class="s1">ct = c_uint8 * self.itemsize</span>
+        <span class="s1">self._ctype = ct</span>
+        <span class="s1">self._ctype_p = POINTER(ct)</span>
+    <span class="s0">def </span><span class="s1">__getitem__(self</span><span class="s0">, </span><span class="s1">key):</span>
+        <span class="s0">return </span><span class="s1">cast(self._addr_at(key)</span><span class="s0">, </span><span class="s1">self._ctype_p)[</span><span class="s4">0</span><span class="s1">]</span>
+    <span class="s0">def </span><span class="s1">__setitem__(self</span><span class="s0">, </span><span class="s1">key</span><span class="s0">, </span><span class="s1">value):</span>
+        <span class="s1">cast(self._addr_at(key)</span><span class="s0">, </span><span class="s1">self._ctype_p)[</span><span class="s4">0</span><span class="s1">] = value</span>
+    <span class="s0">def </span><span class="s1">_addr_at(self</span><span class="s0">, </span><span class="s1">key):</span>
+        <span class="s0">if not </span><span class="s1">isinstance(key</span><span class="s0">, </span><span class="s1">tuple):</span>
+            <span class="s1">key = key</span><span class="s0">,</span>
+        <span class="s0">if </span><span class="s1">len(key) != self.nd:</span>
+            <span class="s0">raise </span><span class="s1">ValueError(</span><span class="s2">&quot;wrong number of indexes&quot;</span><span class="s1">)</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(self.nd):</span>
+            <span class="s0">if not </span><span class="s1">(</span><span class="s4">0 </span><span class="s1">&lt;= key[i] &lt; self.shape[i]):</span>
+                <span class="s0">raise </span><span class="s1">IndexError(</span><span class="s2">&quot;index {} out of range&quot;</span><span class="s1">.format(i))</span>
+        <span class="s0">return </span><span class="s1">self.data + sum(i * s </span><span class="s0">for </span><span class="s1">i</span><span class="s0">, </span><span class="s1">s </span><span class="s0">in </span><span class="s1">zip(key</span><span class="s0">, </span><span class="s1">self.strides))</span>
+
+<span class="s0">class </span><span class="s1">ExporterTest(unittest.TestCase):</span>
+    <span class="s0">def </span><span class="s1">test_strides(self):</span>
+        <span class="s1">self.check_args(</span><span class="s4">0</span><span class="s0">, </span><span class="s1">(</span><span class="s4">10</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'u'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">2</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s4">20</span><span class="s0">, </span><span class="s4">20</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">0</span><span class="s0">, </span><span class="s1">(</span><span class="s4">5</span><span class="s0">, </span><span class="s4">3</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'u'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">6</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span><span class="s0">, </span><span class="s4">30</span><span class="s0">, </span><span class="s4">30</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">0</span><span class="s0">, </span><span class="s1">(</span><span class="s4">7</span><span class="s0">, </span><span class="s4">3</span><span class="s0">, </span><span class="s4">5</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'u'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">30</span><span class="s0">, </span><span class="s4">10</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span><span class="s0">, </span><span class="s4">210</span><span class="s0">, </span><span class="s4">210</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">0</span><span class="s0">, </span><span class="s1">(</span><span class="s4">13</span><span class="s0">, </span><span class="s4">5</span><span class="s0">, </span><span class="s4">11</span><span class="s0">, </span><span class="s4">3</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'u'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">330</span><span class="s0">, </span><span class="s4">66</span><span class="s0">, </span><span class="s4">6</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span><span class="s0">, </span><span class="s4">4290</span><span class="s0">, </span><span class="s4">4290</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s0">, </span><span class="s1">(</span><span class="s4">7</span><span class="s0">, </span><span class="s4">3</span><span class="s0">, </span><span class="s4">5</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'i'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">2</span><span class="s0">, </span><span class="s4">14</span><span class="s0">, </span><span class="s4">42</span><span class="s1">)</span><span class="s0">, </span><span class="s4">210</span><span class="s0">, </span><span class="s4">210</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s0">, </span><span class="s1">(</span><span class="s4">7</span><span class="s0">, </span><span class="s4">3</span><span class="s0">, </span><span class="s4">5</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'x'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">2</span><span class="s0">, </span><span class="s4">16</span><span class="s0">, </span><span class="s4">48</span><span class="s1">)</span><span class="s0">, </span><span class="s4">210</span><span class="s0">, </span><span class="s4">240</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s0">, </span><span class="s1">(</span><span class="s4">13</span><span class="s0">, </span><span class="s4">5</span><span class="s0">, </span><span class="s4">11</span><span class="s0">, </span><span class="s4">3</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'%'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">440</span><span class="s0">, </span><span class="s4">88</span><span class="s0">, </span><span class="s4">8</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span><span class="s0">, </span><span class="s4">4290</span><span class="s0">, </span><span class="s4">5720</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s0">, </span><span class="s1">(</span><span class="s4">7</span><span class="s0">, </span><span class="s4">5</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'-'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">15</span><span class="s0">, </span><span class="s4">3</span><span class="s1">)</span><span class="s0">, </span><span class="s4">105</span><span class="s0">, </span><span class="s4">105</span><span class="s0">, </span><span class="s4">3</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s0">, </span><span class="s1">(</span><span class="s4">7</span><span class="s0">, </span><span class="s4">5</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'*'</span><span class="s0">, </span><span class="s1">(</span><span class="s4">3</span><span class="s0">, </span><span class="s4">21</span><span class="s1">)</span><span class="s0">, </span><span class="s4">105</span><span class="s0">, </span><span class="s4">105</span><span class="s0">, </span><span class="s4">3</span><span class="s1">)</span>
+        <span class="s1">self.check_args(</span><span class="s4">3</span><span class="s0">, </span><span class="s1">(</span><span class="s4">7</span><span class="s0">, </span><span class="s4">5</span><span class="s1">)</span><span class="s0">, </span><span class="s2">' '</span><span class="s0">, </span><span class="s1">(</span><span class="s4">3</span><span class="s0">, </span><span class="s4">24</span><span class="s1">)</span><span class="s0">, </span><span class="s4">105</span><span class="s0">, </span><span class="s4">120</span><span class="s0">, </span><span class="s4">3</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_is_contiguous(self):</span>
+        <span class="s1">a = Exporter((</span><span class="s4">10</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s1">itemsize=</span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s2">'C'</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s2">'F'</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s2">'A'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">10</span><span class="s0">, </span><span class="s4">4</span><span class="s1">)</span><span class="s0">, </span><span class="s1">itemsize=</span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s2">'C'</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s2">'A'</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s2">'F'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">13</span><span class="s0">, </span><span class="s4">5</span><span class="s0">, </span><span class="s4">11</span><span class="s0">, </span><span class="s4">3</span><span class="s1">)</span><span class="s0">, </span><span class="s1">itemsize=</span><span class="s4">2</span><span class="s0">, </span><span class="s1">strides=(</span><span class="s4">330</span><span class="s0">, </span><span class="s4">66</span><span class="s0">, </span><span class="s4">6</span><span class="s0">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s2">'C'</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s2">'A'</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s2">'F'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">10</span><span class="s0">, </span><span class="s4">4</span><span class="s1">)</span><span class="s0">, </span><span class="s1">itemsize=</span><span class="s4">2</span><span class="s0">, </span><span class="s1">strides=(</span><span class="s4">2</span><span class="s0">, </span><span class="s4">20</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s2">'F'</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s2">'A'</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s2">'C'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">13</span><span class="s0">, </span><span class="s4">5</span><span class="s0">, </span><span class="s4">11</span><span class="s0">, </span><span class="s4">3</span><span class="s1">)</span><span class="s0">, </span><span class="s1">itemsize=</span><span class="s4">2</span><span class="s0">, </span><span class="s1">strides=(</span><span class="s4">2</span><span class="s0">, </span><span class="s4">26</span><span class="s0">, </span><span class="s4">130</span><span class="s0">, </span><span class="s4">1430</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s2">'F'</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(a.is_contiguous(</span><span class="s2">'A'</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s2">'C'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">2</span><span class="s0">, </span><span class="s4">11</span><span class="s0">, </span><span class="s4">6</span><span class="s0">, </span><span class="s4">4</span><span class="s1">)</span><span class="s0">, </span><span class="s1">itemsize=</span><span class="s4">2</span><span class="s0">, </span><span class="s1">strides=(</span><span class="s4">576</span><span class="s0">, </span><span class="s4">48</span><span class="s0">, </span><span class="s4">8</span><span class="s0">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s2">'A'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">2</span><span class="s0">, </span><span class="s4">11</span><span class="s0">, </span><span class="s4">6</span><span class="s0">, </span><span class="s4">4</span><span class="s1">)</span><span class="s0">, </span><span class="s1">itemsize=</span><span class="s4">2</span><span class="s0">, </span><span class="s1">strides=(</span><span class="s4">2</span><span class="s0">, </span><span class="s4">4</span><span class="s0">, </span><span class="s4">48</span><span class="s0">, </span><span class="s4">288</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s2">'A'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">3</span><span class="s0">, </span><span class="s4">2</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span><span class="s0">, </span><span class="s1">itemsize=</span><span class="s4">2</span><span class="s0">, </span><span class="s1">strides=(</span><span class="s4">16</span><span class="s0">, </span><span class="s4">8</span><span class="s0">, </span><span class="s4">4</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s2">'A'</span><span class="s1">))</span>
+        <span class="s1">a = Exporter((</span><span class="s4">3</span><span class="s0">, </span><span class="s4">2</span><span class="s0">, </span><span class="s4">2</span><span class="s1">)</span><span class="s0">, </span><span class="s1">itemsize=</span><span class="s4">2</span><span class="s0">, </span><span class="s1">strides=(</span><span class="s4">4</span><span class="s0">, </span><span class="s4">12</span><span class="s0">, </span><span class="s4">24</span><span class="s1">))</span>
+        <span class="s1">self.assertFalse(a.is_contiguous(</span><span class="s2">'A'</span><span class="s1">))</span>
+
+    <span class="s0">def </span><span class="s1">check_args(self</span><span class="s0">, </span><span class="s1">call_flags</span><span class="s0">,</span>
+                   <span class="s1">shape</span><span class="s0">, </span><span class="s1">typekind</span><span class="s0">, </span><span class="s1">strides</span><span class="s0">, </span><span class="s1">length</span><span class="s0">, </span><span class="s1">bufsize</span><span class="s0">, </span><span class="s1">itemsize</span><span class="s0">,</span>
+                   <span class="s1">offset=</span><span class="s4">0</span><span class="s1">):</span>
+        <span class="s0">if </span><span class="s1">call_flags &amp; </span><span class="s4">1</span><span class="s1">:</span>
+            <span class="s1">typekind_arg = typekind</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">typekind_arg = </span><span class="s0">None</span>
+        <span class="s0">if </span><span class="s1">call_flags &amp; </span><span class="s4">2</span><span class="s1">:</span>
+            <span class="s1">strides_arg = strides</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">strides_arg = </span><span class="s0">None</span>
+        <span class="s1">a = Exporter(shape</span><span class="s0">, </span><span class="s1">itemsize=itemsize</span><span class="s0">, </span><span class="s1">strides=strides_arg)</span>
+        <span class="s1">self.assertEqual(sizeof(a._data)</span><span class="s0">, </span><span class="s1">bufsize)</span>
+        <span class="s1">self.assertEqual(a.data</span><span class="s0">, </span><span class="s1">ctypes.addressof(a._data) + offset)</span>
+        <span class="s1">m = ArrayInterface(a)</span>
+        <span class="s1">self.assertEqual(m.data</span><span class="s0">, </span><span class="s1">a.data)</span>
+        <span class="s1">self.assertEqual(m.itemsize</span><span class="s0">, </span><span class="s1">itemsize)</span>
+        <span class="s1">self.assertEqual(tuple(m.shape[</span><span class="s4">0</span><span class="s1">:m.nd])</span><span class="s0">, </span><span class="s1">shape)</span>
+        <span class="s1">self.assertEqual(tuple(m.strides[</span><span class="s4">0</span><span class="s1">:m.nd])</span><span class="s0">, </span><span class="s1">strides)</span>
+
+<span class="s0">class </span><span class="s1">ArrayTest(unittest.TestCase):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">*args</span><span class="s0">, </span><span class="s1">**kwds):</span>
+        <span class="s1">unittest.TestCase.__init__(self</span><span class="s0">, </span><span class="s1">*args</span><span class="s0">, </span><span class="s1">**kwds)</span>
+        <span class="s1">self.a = Array((</span><span class="s4">20</span><span class="s0">, </span><span class="s4">15</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'i'</span><span class="s0">, </span><span class="s4">4</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">setUp(self):</span>
+        <span class="s3"># Every test starts with a zeroed array.</span>
+        <span class="s1">memset(self.a.data</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s1">sizeof(self.a._data))</span>
+
+    <span class="s0">def </span><span class="s1">test__addr_at(self):</span>
+        <span class="s1">a = self.a</span>
+        <span class="s1">self.assertEqual(a._addr_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">a.data)</span>
+        <span class="s1">self.assertEqual(a._addr_at((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">1</span><span class="s1">))</span><span class="s0">, </span><span class="s1">a.data + </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a._addr_at((</span><span class="s4">1</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">a.data + </span><span class="s4">60</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a._addr_at((</span><span class="s4">1</span><span class="s0">, </span><span class="s4">1</span><span class="s1">))</span><span class="s0">, </span><span class="s1">a.data + </span><span class="s4">64</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_indices(self):</span>
+        <span class="s1">a = self.a</span>
+        <span class="s1">self.assertEqual(a[</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">]</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a[</span><span class="s4">19</span><span class="s0">, </span><span class="s4">0</span><span class="s1">]</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a[</span><span class="s4">0</span><span class="s0">, </span><span class="s4">14</span><span class="s1">]</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a[</span><span class="s4">19</span><span class="s0">, </span><span class="s4">14</span><span class="s1">]</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a[</span><span class="s4">5</span><span class="s0">, </span><span class="s4">8</span><span class="s1">]</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">a[</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">] = </span><span class="s4">12</span>
+        <span class="s1">a[</span><span class="s4">5</span><span class="s0">, </span><span class="s4">8</span><span class="s1">] = </span><span class="s4">99</span>
+        <span class="s1">self.assertEqual(a[</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">]</span><span class="s0">, </span><span class="s4">12</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(a[</span><span class="s4">5</span><span class="s0">, </span><span class="s4">8</span><span class="s1">]</span><span class="s0">, </span><span class="s4">99</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(IndexError</span><span class="s0">, </span><span class="s1">a.__getitem__</span><span class="s0">, </span><span class="s1">(-</span><span class="s4">1</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(IndexError</span><span class="s0">, </span><span class="s1">a.__getitem__</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(IndexError</span><span class="s0">, </span><span class="s1">a.__getitem__</span><span class="s0">, </span><span class="s1">(</span><span class="s4">20</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(IndexError</span><span class="s0">, </span><span class="s1">a.__getitem__</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">15</span><span class="s1">))</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">a.__getitem__</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">a.__getitem__</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">a = Array((</span><span class="s4">3</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'i'</span><span class="s0">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">a[</span><span class="s4">1</span><span class="s1">] = </span><span class="s4">333</span>
+        <span class="s1">self.assertEqual(a[</span><span class="s4">1</span><span class="s1">]</span><span class="s0">, </span><span class="s4">333</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_typekind(self):</span>
+        <span class="s1">a = Array((</span><span class="s4">1</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'i'</span><span class="s0">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(a._ctype </span><span class="s0">is </span><span class="s1">c_int32)</span>
+        <span class="s1">self.assertTrue(a._ctype_p </span><span class="s0">is </span><span class="s1">POINTER(c_int32))</span>
+        <span class="s1">a = Array((</span><span class="s4">1</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'u'</span><span class="s0">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(a._ctype </span><span class="s0">is </span><span class="s1">c_uint32)</span>
+        <span class="s1">self.assertTrue(a._ctype_p </span><span class="s0">is </span><span class="s1">POINTER(c_uint32))</span>
+        <span class="s1">a = Array((</span><span class="s4">1</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'f'</span><span class="s0">, </span><span class="s4">4</span><span class="s1">) </span><span class="s3"># float types unsupported: size system dependent</span>
+        <span class="s1">ct = a._ctype</span>
+        <span class="s1">self.assertTrue(issubclass(ct</span><span class="s0">, </span><span class="s1">ctypes.Array))</span>
+        <span class="s1">self.assertEqual(sizeof(ct)</span><span class="s0">, </span><span class="s4">4</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_itemsize(self):</span>
+        <span class="s0">for </span><span class="s1">size </span><span class="s0">in </span><span class="s1">[</span><span class="s4">1</span><span class="s0">, </span><span class="s4">2</span><span class="s0">, </span><span class="s4">4</span><span class="s0">, </span><span class="s4">8</span><span class="s1">]:</span>
+            <span class="s1">a = Array((</span><span class="s4">1</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'i'</span><span class="s0">, </span><span class="s1">size)</span>
+            <span class="s1">ct = a._ctype</span>
+            <span class="s1">self.assertTrue(issubclass(ct</span><span class="s0">, </span><span class="s1">ctypes._SimpleCData))</span>
+            <span class="s1">self.assertEqual(sizeof(ct)</span><span class="s0">, </span><span class="s1">size)</span>
+
+    <span class="s0">def </span><span class="s1">test_oddball_itemsize(self):</span>
+        <span class="s0">for </span><span class="s1">size </span><span class="s0">in </span><span class="s1">[</span><span class="s4">3</span><span class="s0">, </span><span class="s4">5</span><span class="s0">, </span><span class="s4">6</span><span class="s0">, </span><span class="s4">7</span><span class="s0">, </span><span class="s4">9</span><span class="s1">]:</span>
+            <span class="s1">a = Array((</span><span class="s4">1</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'i'</span><span class="s0">, </span><span class="s1">size)</span>
+            <span class="s1">ct = a._ctype</span>
+            <span class="s1">self.assertTrue(issubclass(ct</span><span class="s0">, </span><span class="s1">ctypes.Array))</span>
+            <span class="s1">self.assertEqual(sizeof(ct)</span><span class="s0">, </span><span class="s1">size)</span>
+
+    <span class="s0">def </span><span class="s1">test_byteswapped(self):</span>
+        <span class="s1">a = Array((</span><span class="s4">1</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'u'</span><span class="s0">, </span><span class="s4">4</span><span class="s0">, </span><span class="s1">flags=(PAI_ALIGNED | PAI_WRITEABLE))</span>
+        <span class="s1">ct = a._ctype</span>
+        <span class="s1">self.assertTrue(ct </span><span class="s0">is not </span><span class="s1">c_uint32)</span>
+        <span class="s0">if </span><span class="s1">sys.byteorder == </span><span class="s2">'little'</span><span class="s1">:</span>
+            <span class="s1">self.assertTrue(ct </span><span class="s0">is </span><span class="s1">c_uint32.__ctype_be__)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.assertTrue(ct </span><span class="s0">is </span><span class="s1">c_uint32.__ctype_le__)</span>
+        <span class="s1">i = </span><span class="s4">0xa0b0c0d</span>
+        <span class="s1">n = c_uint32(i)</span>
+        <span class="s1">a[</span><span class="s4">0</span><span class="s1">] = i</span>
+        <span class="s1">self.assertEqual(a[</span><span class="s4">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">i)</span>
+        <span class="s1">self.assertEqual(a._data[</span><span class="s4">0</span><span class="s1">:</span><span class="s4">4</span><span class="s1">]</span><span class="s0">,</span>
+                         <span class="s1">cast(addressof(n)</span><span class="s0">, </span><span class="s1">POINTER(c_uint8))[</span><span class="s4">3</span><span class="s1">:-</span><span class="s4">1</span><span class="s1">:-</span><span class="s4">1</span><span class="s1">])</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s2">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

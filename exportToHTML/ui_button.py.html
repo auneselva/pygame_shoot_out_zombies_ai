@@ -1,0 +1,651 @@
+<html>
+<head>
+<title>ui_button.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+ui_button.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Tuple</span><span class="s0">, </span><span class="s1">Dict</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui._constants </span><span class="s0">import </span><span class="s1">UI_BUTTON_PRESSED</span><span class="s0">, </span><span class="s1">UI_BUTTON_DOUBLE_CLICKED</span><span class="s0">, </span><span class="s1">UI_BUTTON_START_PRESS</span>
+<span class="s0">from </span><span class="s1">pygame_gui._constants </span><span class="s0">import </span><span class="s1">UI_BUTTON_ON_HOVERED</span><span class="s0">, </span><span class="s1">UI_BUTTON_ON_UNHOVERED</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core </span><span class="s0">import </span><span class="s1">ObjectID</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IContainerLikeInterface</span><span class="s0">, </span><span class="s1">IUIManagerInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.ui_element </span><span class="s0">import </span><span class="s1">UIElement</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.drawable_shapes </span><span class="s0">import </span><span class="s1">EllipseDrawableShape</span><span class="s0">, </span><span class="s1">RoundedRectangleShape</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.drawable_shapes </span><span class="s0">import </span><span class="s1">RectDrawableShape</span>
+
+
+<span class="s0">class </span><span class="s1">UIButton(UIElement):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A push button, a lot of the appearance of the button, including images to be displayed, is 
+    setup via the theme file. This button is designed to be pressed, do something, and then reset - 
+    rather than to be toggled on or off. 
+ 
+    The button element is reused throughout the UI as part of other elements as it happens to be a 
+    very flexible interactive element. 
+ 
+    :param relative_rect: A rectangle describing the position (relative to its container) and 
+                          dimensions. 
+    :param text: Text for the button. 
+    :param manager: The UIManager that manages this element. 
+    :param container: The container that this element is within. If set to None will be the root 
+                      window's container. 
+    :param tool_tip_text: Optional tool tip text, can be formatted with HTML. If supplied will 
+                          appear on hover. 
+    :param starting_height: The height in layers above it's container that this element will be 
+                            placed. 
+    :param parent_element: The element this element 'belongs to' in the theming hierarchy. 
+    :param object_id: A custom defined ID for fine tuning of theming. 
+    :param anchors: A dictionary describing what this element's relative_rect is relative to. 
+    :param allow_double_clicks: Enables double clicking on buttons which will generate a 
+                                unique event. 
+    :param visible: Whether the element is visible by default. Warning - container visibility may 
+                    override this. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">relative_rect: pygame.Rect</span><span class="s0">,</span>
+                 <span class="s1">text: str</span><span class="s0">,</span>
+                 <span class="s1">manager: IUIManagerInterface</span><span class="s0">,</span>
+                 <span class="s1">container: Union[IContainerLikeInterface</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">tool_tip_text: Union[str</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">starting_height: int = </span><span class="s3">1</span><span class="s0">,</span>
+                 <span class="s1">parent_element: UIElement = </span><span class="s0">None,</span>
+                 <span class="s1">object_id: Union[ObjectID</span><span class="s0">, </span><span class="s1">str</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">anchors: Dict[str</span><span class="s0">, </span><span class="s1">str] = </span><span class="s0">None,</span>
+                 <span class="s1">allow_double_clicks: bool = </span><span class="s0">False,</span>
+                 <span class="s1">visible: int = </span><span class="s3">1</span>
+                 <span class="s1">):</span>
+
+        <span class="s1">super().__init__(relative_rect</span><span class="s0">, </span><span class="s1">manager</span><span class="s0">, </span><span class="s1">container</span><span class="s0">,</span>
+                         <span class="s1">starting_height=starting_height</span><span class="s0">,</span>
+                         <span class="s1">layer_thickness=</span><span class="s3">1</span><span class="s0">,</span>
+                         <span class="s1">anchors=anchors</span><span class="s0">,</span>
+                         <span class="s1">visible=visible)</span>
+
+        <span class="s1">self._create_valid_ids(container=container</span><span class="s0">,</span>
+                               <span class="s1">parent_element=parent_element</span><span class="s0">,</span>
+                               <span class="s1">object_id=object_id</span><span class="s0">,</span>
+                               <span class="s1">element_id=</span><span class="s4">'button'</span><span class="s1">)</span>
+
+        <span class="s1">self.text = text</span>
+
+        <span class="s5"># support for an optional 'tool tip' element attached to this button</span>
+        <span class="s1">self.tool_tip_text = tool_tip_text</span>
+        <span class="s1">self.tool_tip = </span><span class="s0">None</span>
+        <span class="s1">self.ui_root_container = self.ui_manager.get_root_container()</span>
+
+        <span class="s5"># Some different states our button can be in, could use a state machine for this</span>
+        <span class="s5"># if we wanted.</span>
+        <span class="s1">self.held = </span><span class="s0">False</span>
+        <span class="s1">self.pressed = </span><span class="s0">False</span>
+        <span class="s1">self.is_selected = </span><span class="s0">False</span>
+        <span class="s5"># Used to check button pressed without going through pygame.Event system</span>
+        <span class="s1">self.pressed_event = </span><span class="s0">False</span>
+
+        <span class="s5"># time the hovering</span>
+        <span class="s1">self.hover_time = </span><span class="s3">0.0</span>
+
+        <span class="s5"># timer for double clicks</span>
+        <span class="s1">self.allow_double_clicks = allow_double_clicks</span>
+        <span class="s1">self.double_click_timer = self.ui_manager.get_double_click_time() + </span><span class="s3">1.0</span>
+
+        <span class="s1">self.text_surface = </span><span class="s0">None</span>
+        <span class="s1">self.aligned_text_rect = </span><span class="s0">None</span>
+
+        <span class="s1">self.set_image(</span><span class="s0">None</span><span class="s1">)</span>
+
+        <span class="s5"># default range at which we 'let go' of a button</span>
+        <span class="s1">self.hold_range = (</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+
+        <span class="s5"># initialise theme parameters</span>
+        <span class="s1">self.colours = {}</span>
+
+        <span class="s1">self.font = </span><span class="s0">None</span>
+
+        <span class="s1">self.normal_image = </span><span class="s0">None</span>
+        <span class="s1">self.hovered_image = </span><span class="s0">None</span>
+        <span class="s1">self.selected_image = </span><span class="s0">None</span>
+        <span class="s1">self.disabled_image = </span><span class="s0">None</span>
+
+        <span class="s1">self.tool_tip_delay = </span><span class="s3">1.0</span>
+
+        <span class="s1">self.text_horiz_alignment = </span><span class="s4">'center'</span>
+        <span class="s1">self.text_vert_alignment = </span><span class="s4">'center'</span>
+        <span class="s1">self.text_horiz_alignment_padding = </span><span class="s3">1</span>
+        <span class="s1">self.text_vert_alignment_padding = </span><span class="s3">1</span>
+        <span class="s1">self.shape = </span><span class="s4">'rectangle'</span>
+
+        <span class="s1">self.state_transitions = {}</span>
+
+        <span class="s1">self.rebuild_from_changed_theme_data()</span>
+
+    <span class="s0">def </span><span class="s1">_set_any_images_from_theme(self) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Grabs images for this button from the UI theme if any are set. 
+ 
+        :return: True if any of the images have changed since last time they were set. 
+ 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">changed = </span><span class="s0">False</span>
+        <span class="s1">normal_image = </span><span class="s0">None</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">normal_image = self.ui_theme.get_image(</span><span class="s4">'normal_image'</span><span class="s0">, </span><span class="s1">self.combined_element_ids)</span>
+        <span class="s0">except </span><span class="s1">LookupError:</span>
+            <span class="s1">normal_image = </span><span class="s0">None</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">normal_image != self.normal_image:</span>
+                <span class="s1">self.normal_image = normal_image</span>
+                <span class="s1">self.hovered_image = normal_image</span>
+                <span class="s1">self.selected_image = normal_image</span>
+                <span class="s1">self.disabled_image = normal_image</span>
+                <span class="s1">changed = </span><span class="s0">True</span>
+
+        <span class="s1">hovered_image = </span><span class="s0">None</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">hovered_image = self.ui_theme.get_image(</span><span class="s4">'hovered_image'</span><span class="s0">, </span><span class="s1">self.combined_element_ids)</span>
+        <span class="s0">except </span><span class="s1">LookupError:</span>
+            <span class="s1">hovered_image = self.normal_image</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">hovered_image != self.hovered_image:</span>
+                <span class="s1">self.hovered_image = hovered_image</span>
+                <span class="s1">changed = </span><span class="s0">True</span>
+
+        <span class="s1">selected_image = </span><span class="s0">None</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">selected_image = self.ui_theme.get_image(</span><span class="s4">'selected_image'</span><span class="s0">, </span><span class="s1">self.combined_element_ids)</span>
+        <span class="s0">except </span><span class="s1">LookupError:</span>
+            <span class="s1">selected_image = self.normal_image</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">selected_image != self.selected_image:</span>
+                <span class="s1">self.selected_image = selected_image</span>
+                <span class="s1">changed = </span><span class="s0">True</span>
+
+        <span class="s1">disabled_image = </span><span class="s0">None</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">disabled_image = self.ui_theme.get_image(</span><span class="s4">'disabled_image'</span><span class="s0">, </span><span class="s1">self.combined_element_ids)</span>
+        <span class="s0">except </span><span class="s1">LookupError:</span>
+            <span class="s1">disabled_image = self.normal_image</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">disabled_image != self.disabled_image:</span>
+                <span class="s1">self.disabled_image = disabled_image</span>
+                <span class="s1">changed = </span><span class="s0">True</span>
+
+        <span class="s0">return </span><span class="s1">changed</span>
+
+    <span class="s0">def </span><span class="s1">kill(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Overrides the standard sprite kill method to also kill any tooltips belonging to 
+        this button. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.tool_tip </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.tool_tip.kill()</span>
+        <span class="s1">super().kill()</span>
+
+    <span class="s0">def </span><span class="s1">hover_point(self</span><span class="s0">, </span><span class="s1">hover_x: int</span><span class="s0">, </span><span class="s1">hover_y: int) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Tests if a position should be considered 'hovering' the button. Normally this just means 
+        our mouse pointer is inside the buttons rectangle, however if we are holding onto the 
+        button for a purpose(e.g. dragging a window around by it's menu bar) the hover radius can 
+        be made to grow so we don't keep losing touch with whatever we are moving. 
+ 
+        :param hover_x: horizontal pixel co-ordinate to test. 
+        :param hover_y: vertical pixel co-ordinate to test 
+ 
+        :return: Returns True if we are hovering. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.held:</span>
+            <span class="s0">return </span><span class="s1">self.in_hold_range((hover_x</span><span class="s0">, </span><span class="s1">hover_y))</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">(self.drawable_shape.collide_point((hover_x</span><span class="s0">, </span><span class="s1">hover_y)) </span><span class="s0">and</span>
+                    <span class="s1">bool(self.ui_container.rect.collidepoint(hover_x</span><span class="s0">, </span><span class="s1">hover_y)))</span>
+
+    <span class="s0">def </span><span class="s1">can_hover(self) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Tests whether we can trigger the hover state for this button, other states take 
+        priority over it. 
+ 
+        :return: True if we are able to hover this button. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return not </span><span class="s1">self.is_selected </span><span class="s0">and </span><span class="s1">self.is_enabled </span><span class="s0">and not </span><span class="s1">self.held</span>
+
+    <span class="s0">def </span><span class="s1">on_hovered(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Called when we enter the hover state, it sets the colours and image of the button 
+        to the appropriate values and redraws it. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.drawable_shape.set_active_state(</span><span class="s4">'hovered'</span><span class="s1">)</span>
+        <span class="s1">self.hover_time = </span><span class="s3">0.0</span>
+        <span class="s1">event_data = {</span><span class="s4">'user_type'</span><span class="s1">: UI_BUTTON_ON_HOVERED</span><span class="s0">,</span>
+                      <span class="s4">'ui_element'</span><span class="s1">: self</span><span class="s0">,</span>
+                      <span class="s4">'ui_object_id'</span><span class="s1">: self.most_specific_combined_id}</span>
+        <span class="s1">pygame.event.post(pygame.event.Event(pygame.USEREVENT</span><span class="s0">, </span><span class="s1">event_data))</span>
+
+    <span class="s0">def </span><span class="s1">while_hovering(self</span><span class="s0">, </span><span class="s1">time_delta: float</span><span class="s0">,</span>
+                       <span class="s1">mouse_pos: Union[pygame.math.Vector2</span><span class="s0">, </span><span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">, </span><span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Called while we are in the hover state. It will create a tool tip if we've been in the 
+        hover state for a while, the text exists to create one and we haven't created one already. 
+ 
+        :param time_delta: Time in seconds between calls to update. 
+        :param mouse_pos: The current position of the mouse. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">(self.tool_tip </span><span class="s0">is None and </span><span class="s1">self.tool_tip_text </span><span class="s0">is not None and</span>
+                <span class="s1">self.hover_time &gt; self.tool_tip_delay):</span>
+            <span class="s1">hover_height = int(self.rect.height / </span><span class="s3">2</span><span class="s1">)</span>
+            <span class="s1">self.tool_tip = self.ui_manager.create_tool_tip(text=self.tool_tip_text</span><span class="s0">,</span>
+                                                            <span class="s1">position=(mouse_pos[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">,</span>
+                                                                      <span class="s1">self.rect.centery)</span><span class="s0">,</span>
+                                                            <span class="s1">hover_distance=(</span><span class="s3">0</span><span class="s0">,</span>
+                                                                            <span class="s1">hover_height))</span>
+
+        <span class="s1">self.hover_time += time_delta</span>
+
+    <span class="s0">def </span><span class="s1">on_unhovered(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Called when we leave the hover state. Resets the colours and images to normal and kills any 
+        tooltip that was created while we were hovering the button. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.drawable_shape.set_active_state(</span><span class="s4">'normal'</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">self.tool_tip </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.tool_tip.kill()</span>
+            <span class="s1">self.tool_tip = </span><span class="s0">None</span>
+
+        <span class="s1">event_data = {</span><span class="s4">'user_type'</span><span class="s1">: UI_BUTTON_ON_UNHOVERED</span><span class="s0">,</span>
+                      <span class="s4">'ui_element'</span><span class="s1">: self</span><span class="s0">,</span>
+                      <span class="s4">'ui_object_id'</span><span class="s1">: self.most_specific_combined_id}</span>
+        <span class="s1">pygame.event.post(pygame.event.Event(pygame.USEREVENT</span><span class="s0">, </span><span class="s1">event_data))</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Sets the pressed state for an update cycle if we've pressed this button recently. 
+ 
+        :param time_delta: the time in seconds between one call to update and the next. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().update(time_delta)</span>
+        <span class="s0">if </span><span class="s1">self.alive():</span>
+            <span class="s5"># clear pressed state, we only want it to last one update cycle</span>
+            <span class="s1">self.pressed = </span><span class="s0">False</span>
+
+            <span class="s0">if </span><span class="s1">self.pressed_event:</span>
+                <span class="s5"># if a pressed event has occurred set the button to the pressed state for one cycle.</span>
+                <span class="s1">self.pressed_event = </span><span class="s0">False</span>
+                <span class="s1">self.pressed = </span><span class="s0">True</span>
+
+            <span class="s0">if </span><span class="s1">(self.allow_double_clicks </span><span class="s0">and</span>
+                    <span class="s1">self.double_click_timer &lt; self.ui_manager.get_double_click_time()):</span>
+                <span class="s1">self.double_click_timer += time_delta</span>
+
+    <span class="s0">def </span><span class="s1">process_event(self</span><span class="s0">, </span><span class="s1">event: pygame.event.Event) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Handles various interactions with the button. 
+ 
+        :param event: The event to process. 
+ 
+        :return: Return True if we want to consume this event so it is not passed on to the 
+                 rest of the UI. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">consumed_event = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">event.type == pygame.MOUSEBUTTONDOWN </span><span class="s0">and </span><span class="s1">event.button == </span><span class="s3">1</span><span class="s1">:</span>
+            <span class="s1">scaled_mouse_pos = self.ui_manager.calculate_scaled_mouse_position(event.pos)</span>
+            <span class="s0">if </span><span class="s1">self.hover_point(scaled_mouse_pos[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">scaled_mouse_pos[</span><span class="s3">1</span><span class="s1">]):</span>
+                <span class="s0">if </span><span class="s1">self.is_enabled:</span>
+                    <span class="s0">if </span><span class="s1">(self.allow_double_clicks </span><span class="s0">and</span>
+                            <span class="s1">self.double_click_timer &lt;= self.ui_manager.get_double_click_time()):</span>
+                        <span class="s1">event_data = {</span><span class="s4">'user_type'</span><span class="s1">: UI_BUTTON_DOUBLE_CLICKED</span><span class="s0">,</span>
+                                      <span class="s4">'ui_element'</span><span class="s1">: self</span><span class="s0">,</span>
+                                      <span class="s4">'ui_object_id'</span><span class="s1">: self.most_specific_combined_id}</span>
+                        <span class="s1">pygame.event.post(pygame.event.Event(pygame.USEREVENT</span><span class="s0">, </span><span class="s1">event_data))</span>
+                    <span class="s0">else</span><span class="s1">:</span>
+                        <span class="s1">event_data = {</span><span class="s4">'user_type'</span><span class="s1">: UI_BUTTON_START_PRESS</span><span class="s0">,</span>
+                                      <span class="s4">'ui_element'</span><span class="s1">: self</span><span class="s0">,</span>
+                                      <span class="s4">'ui_object_id'</span><span class="s1">: self.most_specific_combined_id}</span>
+                        <span class="s1">pygame.event.post(pygame.event.Event(pygame.USEREVENT</span><span class="s0">, </span><span class="s1">event_data))</span>
+                        <span class="s1">self.double_click_timer = </span><span class="s3">0.0</span>
+                        <span class="s1">self.held = </span><span class="s0">True</span>
+                        <span class="s1">self._set_active()</span>
+                        <span class="s1">self.hover_time = </span><span class="s3">0.0</span>
+                        <span class="s0">if </span><span class="s1">self.tool_tip </span><span class="s0">is not None</span><span class="s1">:</span>
+                            <span class="s1">self.tool_tip.kill()</span>
+                            <span class="s1">self.tool_tip = </span><span class="s0">None</span>
+                <span class="s1">consumed_event = </span><span class="s0">True</span>
+        <span class="s0">if </span><span class="s1">event.type == pygame.MOUSEBUTTONUP </span><span class="s0">and </span><span class="s1">event.button == </span><span class="s3">1</span><span class="s1">:</span>
+            <span class="s1">scaled_mouse_pos = self.ui_manager.calculate_scaled_mouse_position(event.pos)</span>
+            <span class="s0">if </span><span class="s1">(self.is_enabled </span><span class="s0">and</span>
+                    <span class="s1">self.drawable_shape.collide_point(scaled_mouse_pos) </span><span class="s0">and</span>
+                    <span class="s1">self.held):</span>
+                <span class="s1">self.held = </span><span class="s0">False</span>
+                <span class="s1">self._set_inactive()</span>
+                <span class="s1">consumed_event = </span><span class="s0">True</span>
+                <span class="s1">self.pressed_event = </span><span class="s0">True</span>
+
+                <span class="s1">event_data = {</span><span class="s4">'user_type'</span><span class="s1">: UI_BUTTON_PRESSED</span><span class="s0">,</span>
+                              <span class="s4">'ui_element'</span><span class="s1">: self</span><span class="s0">,</span>
+                              <span class="s4">'ui_object_id'</span><span class="s1">: self.most_specific_combined_id}</span>
+                <span class="s1">pygame.event.post(pygame.event.Event(pygame.USEREVENT</span><span class="s0">, </span><span class="s1">event_data))</span>
+
+            <span class="s0">if </span><span class="s1">self.is_enabled </span><span class="s0">and </span><span class="s1">self.held:</span>
+                <span class="s1">self.held = </span><span class="s0">False</span>
+                <span class="s1">self._set_inactive()</span>
+                <span class="s1">consumed_event = </span><span class="s0">True</span>
+
+        <span class="s0">return </span><span class="s1">consumed_event</span>
+
+    <span class="s0">def </span><span class="s1">check_pressed(self) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        A direct way to check if this button has been pressed in the last update cycle. 
+ 
+        :return: True if the button has been pressed. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.pressed</span>
+
+    <span class="s0">def </span><span class="s1">disable(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Disables the button so that it is no longer interactive. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.is_enabled:</span>
+            <span class="s1">self.is_enabled = </span><span class="s0">False</span>
+            <span class="s1">self.drawable_shape.set_active_state(</span><span class="s4">'disabled'</span><span class="s1">)</span>
+
+            <span class="s5"># clear other button state</span>
+            <span class="s1">self.held = </span><span class="s0">False</span>
+            <span class="s1">self.pressed = </span><span class="s0">False</span>
+            <span class="s1">self.is_selected = </span><span class="s0">False</span>
+            <span class="s1">self.pressed_event = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">enable(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Re-enables the button so we can once again interact with it. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if not </span><span class="s1">self.is_enabled:</span>
+            <span class="s1">self.is_enabled = </span><span class="s0">True</span>
+            <span class="s1">self.drawable_shape.set_active_state(</span><span class="s4">'normal'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">_set_active(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Called when we are actively clicking on the button. Changes the colours to the appropriate 
+        ones for the new state then redraws the button. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.drawable_shape.set_active_state(</span><span class="s4">'active'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">_set_inactive(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Called when we stop actively clicking on the button. Restores the colours to the default 
+        state then redraws the button. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.drawable_shape.set_active_state(</span><span class="s4">'normal'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">select(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Called when we select focus this element. Changes the colours and image to the appropriate 
+        ones for the new state then redraws the button. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.is_selected = </span><span class="s0">True</span>
+        <span class="s1">self.drawable_shape.set_active_state(</span><span class="s4">'selected'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">unselect(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Called when we are no longer select focusing this element. Restores the colours and image 
+        to the default state then redraws the button. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.is_selected = </span><span class="s0">False</span>
+        <span class="s1">self.drawable_shape.set_active_state(</span><span class="s4">'normal'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">set_text(self</span><span class="s0">, </span><span class="s1">text: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Sets the text on the button. The button will rebuild. 
+ 
+        :param text: The new text to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">text != self.text:</span>
+            <span class="s1">self.text = text</span>
+            <span class="s1">self.drawable_shape.theming[</span><span class="s4">'text'</span><span class="s1">] = self.text</span>
+            <span class="s5"># recompute aligned_text_rect before rebuild</span>
+            <span class="s1">self.drawable_shape.compute_aligned_text_rect()</span>
+            <span class="s1">self.drawable_shape.redraw_all_states()</span>
+
+    <span class="s0">def </span><span class="s1">set_hold_range(self</span><span class="s0">, </span><span class="s1">xy_range: Tuple[int</span><span class="s0">, </span><span class="s1">int]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Set x and y values, in pixels, around our button to use as the hold range for time when we 
+        want to drag a button about but don't want it to slip out of our grasp too easily. 
+ 
+        Imagine it as a large rectangle around our button, larger in all directions by whatever 
+        values we specify here. 
+ 
+        :param xy_range: The x and y values used to create our larger 'holding' rectangle. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.hold_range = xy_range</span>
+
+    <span class="s0">def </span><span class="s1">in_hold_range(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                            <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                            <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Imagines a potentially larger rectangle around our button in which range we still grip 
+        hold of our button when moving the mouse. Makes it easier to use scrollbars. 
+ 
+        :param position: The position we are testing. 
+ 
+        :return bool: Returns True if our position is inside the hold range. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.drawable_shape.collide_point(position):</span>
+            <span class="s0">return True</span>
+        <span class="s0">elif </span><span class="s1">self.hold_range[</span><span class="s3">0</span><span class="s1">] &gt; </span><span class="s3">0 </span><span class="s0">or </span><span class="s1">self.hold_range[</span><span class="s3">1</span><span class="s1">] &gt; </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">hold_rect = pygame.Rect((self.rect.x - self.hold_range[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">,</span>
+                                     <span class="s1">self.rect.y - self.hold_range[</span><span class="s3">1</span><span class="s1">])</span><span class="s0">,</span>
+                                    <span class="s1">(self.rect.width + (</span><span class="s3">2 </span><span class="s1">* self.hold_range[</span><span class="s3">0</span><span class="s1">])</span><span class="s0">,</span>
+                                     <span class="s1">self.rect.height + (</span><span class="s3">2 </span><span class="s1">* self.hold_range[</span><span class="s3">1</span><span class="s1">])))</span>
+            <span class="s0">return </span><span class="s1">bool(hold_rect.collidepoint(int(position[</span><span class="s3">0</span><span class="s1">])</span><span class="s0">, </span><span class="s1">int(position[</span><span class="s3">1</span><span class="s1">])))</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">rebuild_from_changed_theme_data(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Checks if any theming parameters have changed, and if so triggers a full rebuild of the 
+        button's drawable shape 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().rebuild_from_changed_theme_data()</span>
+        <span class="s1">has_any_changed = </span><span class="s0">False</span>
+
+        <span class="s1">font = self.ui_theme.get_font(self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">font != self.font:</span>
+            <span class="s1">self.font = font</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">cols = {</span><span class="s4">'normal_bg'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'normal_bg'</span><span class="s0">,</span>
+                                                                  <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'hovered_bg'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'hovered_bg'</span><span class="s0">,</span>
+                                                                   <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'disabled_bg'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'disabled_bg'</span><span class="s0">,</span>
+                                                                    <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'selected_bg'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'selected_bg'</span><span class="s0">,</span>
+                                                                    <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'active_bg'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'active_bg'</span><span class="s0">,</span>
+                                                                  <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'normal_text'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'normal_text'</span><span class="s0">,</span>
+                                                                    <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'hovered_text'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'hovered_text'</span><span class="s0">,</span>
+                                                                     <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'disabled_text'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'disabled_text'</span><span class="s0">,</span>
+                                                                      <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'selected_text'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'selected_text'</span><span class="s0">,</span>
+                                                                      <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'active_text'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'active_text'</span><span class="s0">,</span>
+                                                                    <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'normal_border'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'normal_border'</span><span class="s0">,</span>
+                                                                      <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'hovered_border'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'hovered_border'</span><span class="s0">,</span>
+                                                                       <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'disabled_border'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'disabled_border'</span><span class="s0">,</span>
+                                                                        <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'selected_border'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'selected_border'</span><span class="s0">,</span>
+                                                                        <span class="s1">self.combined_element_ids)</span><span class="s0">,</span>
+                <span class="s4">'active_border'</span><span class="s1">: self.ui_theme.get_colour_or_gradient(</span><span class="s4">'active_border'</span><span class="s0">,</span>
+                                                                      <span class="s1">self.combined_element_ids)}</span>
+
+        <span class="s0">if </span><span class="s1">cols != self.colours:</span>
+            <span class="s1">self.colours = cols</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._set_any_images_from_theme():</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s5"># misc</span>
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'shape'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s4">'rectangle'</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=str</span><span class="s0">,</span>
+                                               <span class="s1">allowed_values=[</span><span class="s4">'rectangle'</span><span class="s0">,</span>
+                                                               <span class="s4">'rounded_rectangle'</span><span class="s0">,</span>
+                                                               <span class="s4">'ellipse'</span><span class="s1">]):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_shape_theming_changed(defaults={</span><span class="s4">'border_width'</span><span class="s1">: </span><span class="s3">1</span><span class="s0">,</span>
+                                                       <span class="s4">'shadow_width'</span><span class="s1">: </span><span class="s3">2</span><span class="s0">,</span>
+                                                       <span class="s4">'shape_corner_radius'</span><span class="s1">: </span><span class="s3">2</span><span class="s1">}):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'tool_tip_delay'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s3">1.0</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=float):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_text_alignment_theming():</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">state_transitions = self.ui_theme.get_misc_data(</span><span class="s4">'state_transitions'</span><span class="s0">,</span>
+                                                            <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">except </span><span class="s1">LookupError:</span>
+            <span class="s1">self.state_transitions = {}</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">isinstance(state_transitions</span><span class="s0">, </span><span class="s1">dict):</span>
+                <span class="s0">for </span><span class="s1">key </span><span class="s0">in </span><span class="s1">state_transitions:</span>
+                    <span class="s1">states = key.split(</span><span class="s4">'_'</span><span class="s1">)</span>
+                    <span class="s0">if </span><span class="s1">len(states) == </span><span class="s3">2</span><span class="s1">:</span>
+                        <span class="s1">start_state = states[</span><span class="s3">0</span><span class="s1">]</span>
+                        <span class="s1">target_state = states[</span><span class="s3">1</span><span class="s1">]</span>
+                        <span class="s0">try</span><span class="s1">:</span>
+                            <span class="s1">duration = float(state_transitions[key])</span>
+                        <span class="s0">except </span><span class="s1">ValueError:</span>
+                            <span class="s1">duration = </span><span class="s3">0.0</span>
+                        <span class="s1">self.state_transitions[(start_state</span><span class="s0">, </span><span class="s1">target_state)] = duration</span>
+
+        <span class="s0">if </span><span class="s1">has_any_changed:</span>
+            <span class="s1">self.rebuild()</span>
+
+    <span class="s0">def </span><span class="s1">_check_text_alignment_theming(self) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Checks for any changes in the theming data related to text alignment. 
+ 
+        :return: True if changes found. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">has_any_changed = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'text_horiz_alignment'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s4">'center'</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=str):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'text_horiz_alignment_padding'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s3">1</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=int):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'text_vert_alignment'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s4">'center'</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=str):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'text_vert_alignment_padding'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s3">1</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=int):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">return </span><span class="s1">has_any_changed</span>
+
+    <span class="s0">def </span><span class="s1">rebuild(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        A complete rebuild of the drawable shape used by this button. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">theming_parameters = {</span><span class="s4">'normal_bg'</span><span class="s1">: self.colours[</span><span class="s4">'normal_bg'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'normal_text'</span><span class="s1">: self.colours[</span><span class="s4">'normal_text'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'normal_border'</span><span class="s1">: self.colours[</span><span class="s4">'normal_border'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'normal_image'</span><span class="s1">: self.normal_image</span><span class="s0">,</span>
+                              <span class="s4">'hovered_bg'</span><span class="s1">: self.colours[</span><span class="s4">'hovered_bg'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'hovered_text'</span><span class="s1">: self.colours[</span><span class="s4">'hovered_text'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'hovered_border'</span><span class="s1">: self.colours[</span><span class="s4">'hovered_border'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'hovered_image'</span><span class="s1">: self.hovered_image</span><span class="s0">,</span>
+                              <span class="s4">'disabled_bg'</span><span class="s1">: self.colours[</span><span class="s4">'disabled_bg'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'disabled_text'</span><span class="s1">: self.colours[</span><span class="s4">'disabled_text'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'disabled_border'</span><span class="s1">: self.colours[</span><span class="s4">'disabled_border'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'disabled_image'</span><span class="s1">: self.disabled_image</span><span class="s0">,</span>
+                              <span class="s4">'selected_bg'</span><span class="s1">: self.colours[</span><span class="s4">'selected_bg'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'selected_text'</span><span class="s1">: self.colours[</span><span class="s4">'selected_text'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'selected_border'</span><span class="s1">: self.colours[</span><span class="s4">'selected_border'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'selected_image'</span><span class="s1">: self.selected_image</span><span class="s0">,</span>
+                              <span class="s4">'active_bg'</span><span class="s1">: self.colours[</span><span class="s4">'active_bg'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'active_border'</span><span class="s1">: self.colours[</span><span class="s4">'active_border'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'active_text'</span><span class="s1">: self.colours[</span><span class="s4">'active_text'</span><span class="s1">]</span><span class="s0">,</span>
+                              <span class="s4">'active_image'</span><span class="s1">: self.selected_image</span><span class="s0">,</span>
+                              <span class="s4">'border_width'</span><span class="s1">: self.border_width</span><span class="s0">,</span>
+                              <span class="s4">'shadow_width'</span><span class="s1">: self.shadow_width</span><span class="s0">,</span>
+                              <span class="s4">'font'</span><span class="s1">: self.font</span><span class="s0">,</span>
+                              <span class="s4">'text'</span><span class="s1">: self.text</span><span class="s0">,</span>
+                              <span class="s4">'text_horiz_alignment'</span><span class="s1">: self.text_horiz_alignment</span><span class="s0">,</span>
+                              <span class="s4">'text_vert_alignment'</span><span class="s1">: self.text_vert_alignment</span><span class="s0">,</span>
+                              <span class="s4">'text_horiz_alignment_padding'</span><span class="s1">: self.text_horiz_alignment_padding</span><span class="s0">,</span>
+                              <span class="s4">'text_vert_alignment_padding'</span><span class="s1">: self.text_vert_alignment_padding</span><span class="s0">,</span>
+                              <span class="s4">'shape_corner_radius'</span><span class="s1">: self.shape_corner_radius</span><span class="s0">,</span>
+                              <span class="s4">'transitions'</span><span class="s1">: self.state_transitions}</span>
+
+        <span class="s0">if </span><span class="s1">self.shape == </span><span class="s4">'rectangle'</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape = RectDrawableShape(self.rect</span><span class="s0">, </span><span class="s1">theming_parameters</span><span class="s0">,</span>
+                                                    <span class="s1">[</span><span class="s4">'normal'</span><span class="s0">, </span><span class="s4">'hovered'</span><span class="s0">, </span><span class="s4">'disabled'</span><span class="s0">,</span>
+                                                     <span class="s4">'selected'</span><span class="s0">, </span><span class="s4">'active'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.ui_manager)</span>
+        <span class="s0">elif </span><span class="s1">self.shape == </span><span class="s4">'ellipse'</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape = EllipseDrawableShape(self.rect</span><span class="s0">, </span><span class="s1">theming_parameters</span><span class="s0">,</span>
+                                                       <span class="s1">[</span><span class="s4">'normal'</span><span class="s0">, </span><span class="s4">'hovered'</span><span class="s0">, </span><span class="s4">'disabled'</span><span class="s0">,</span>
+                                                        <span class="s4">'selected'</span><span class="s0">, </span><span class="s4">'active'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.ui_manager)</span>
+        <span class="s0">elif </span><span class="s1">self.shape == </span><span class="s4">'rounded_rectangle'</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape = RoundedRectangleShape(self.rect</span><span class="s0">, </span><span class="s1">theming_parameters</span><span class="s0">,</span>
+                                                        <span class="s1">[</span><span class="s4">'normal'</span><span class="s0">, </span><span class="s4">'hovered'</span><span class="s0">, </span><span class="s4">'disabled'</span><span class="s0">,</span>
+                                                         <span class="s4">'selected'</span><span class="s0">, </span><span class="s4">'active'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.ui_manager)</span>
+
+        <span class="s1">self.on_fresh_drawable_shape_ready()</span>
+
+    <span class="s0">def </span><span class="s1">hide(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        In addition to the base UIElement.hide() - Change the hovered state to a normal state. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().hide()</span>
+
+        <span class="s1">self.on_unhovered()</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,426 @@
+<html>
+<head>
+<title>html_parser.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6a8759;}
+.s4 { color: #6897bb;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+html_parser.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">warnings</span>
+<span class="s0">import </span><span class="s1">html.parser</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">List</span><span class="s0">, </span><span class="s1">Dict</span><span class="s0">, </span><span class="s1">Any</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core.colour_gradient </span><span class="s0">import </span><span class="s1">ColourGradient</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.ui_appearance_theme </span><span class="s0">import </span><span class="s1">UIAppearanceTheme</span>
+
+
+<span class="s0">class </span><span class="s1">CharStyle:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Encapsulates the three classic styling options for a character; bold, italic and underlined. 
+ 
+    :param char_style: An optional CharStyle to copy this character style from. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">char_style: Union[</span><span class="s3">'CharStyle'</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s0">if </span><span class="s1">char_style </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.bold = char_style.bold</span>
+            <span class="s1">self.italic = char_style.italic</span>
+            <span class="s1">self.underline = char_style.underline</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.bold = </span><span class="s0">False</span>
+            <span class="s1">self.italic = </span><span class="s0">False</span>
+            <span class="s1">self.underline = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">__eq__(self</span><span class="s0">, </span><span class="s1">other: </span><span class="s3">'CharStyle'</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Test if this character style is the same as a another. 
+ 
+        :param other: The other to test against. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">(self.bold == other.bold </span><span class="s0">and</span>
+                <span class="s1">self.italic == other.italic </span><span class="s0">and</span>
+                <span class="s1">self.underline == other.underline)</span>
+
+
+<span class="s0">class </span><span class="s1">TextLineContext:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A class that covers all the states of the text 'options' so we know what to apply when 
+    rendering a letter. 
+ 
+    :param font_size: The size of the font in pixels. 
+    :param font_name: The name of the font to use. 
+    :param style: The style of the letter (some combination of bold, italic &amp; underlined) 
+    :param colour: The colour or gradient to render the text with. 
+    :param bg_colour: The colour or gradient to render the background of the text with. 
+    :param is_link: True if it is a hyperlink. 
+    :param link_href: The destination of the hyperlink if we have one. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">font_size: int</span><span class="s0">,</span>
+                 <span class="s1">font_name: str</span><span class="s0">,</span>
+                 <span class="s1">style: CharStyle</span><span class="s0">,</span>
+                 <span class="s1">colour: Union[pygame.Color</span><span class="s0">, </span><span class="s1">ColourGradient]</span><span class="s0">,</span>
+                 <span class="s1">bg_colour: Union[pygame.Color</span><span class="s0">, </span><span class="s1">ColourGradient]</span><span class="s0">,</span>
+                 <span class="s1">is_link: bool</span><span class="s0">,</span>
+                 <span class="s1">link_href: str):</span>
+
+        <span class="s1">self.font_size = font_size</span>
+        <span class="s1">self.font_name = font_name</span>
+        <span class="s1">self.style = style</span>
+        <span class="s1">self.colour = colour</span>
+        <span class="s1">self.bg_colour = bg_colour</span>
+        <span class="s1">self.is_link = is_link</span>
+        <span class="s1">self.link_href = link_href</span>
+
+    <span class="s0">def </span><span class="s1">__eq__(self</span><span class="s0">, </span><span class="s1">other: </span><span class="s3">'TextLineContext'</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Test if this text context is the same as a another. 
+ 
+        :param other: The other to test against. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">font_size_eq = self.font_size == other.font_size</span>
+        <span class="s1">font_name_eq = self.font_name == other.font_name</span>
+        <span class="s1">font_style_eq = self.style == other.style</span>
+        <span class="s1">font_colour_eq = self.colour == other.colour</span>
+        <span class="s1">font_bg_colour_eq = self.bg_colour == other.bg_colour</span>
+        <span class="s1">link_eq = self.is_link == other.is_link</span>
+        <span class="s1">link_href_eq = self.link_href == other.link_href</span>
+
+        <span class="s1">font_name_size_style_equal = (font_size_eq </span><span class="s0">and </span><span class="s1">font_name_eq </span><span class="s0">and </span><span class="s1">font_style_eq)</span>
+        <span class="s1">font_colours_equal = (font_colour_eq </span><span class="s0">and </span><span class="s1">font_bg_colour_eq)</span>
+        <span class="s0">if </span><span class="s1">font_name_size_style_equal </span><span class="s0">and </span><span class="s1">font_colours_equal </span><span class="s0">and </span><span class="s1">link_eq </span><span class="s0">and </span><span class="s1">link_href_eq:</span>
+            <span class="s0">return </span><span class="s1">self.__dict__ == other.__dict__</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">__ne__(self</span><span class="s0">, </span><span class="s1">other: </span><span class="s3">'TextLineContext'</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Test if this text context is not the same as a another. 
+ 
+        :param other: The other to test against. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return not </span><span class="s1">self.__eq__(other)</span>
+
+
+<span class="s0">class </span><span class="s1">TextStyleData:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A group of styles organised so that we can easily access them when stepping through our text 
+    character by character o we always know what style goes with what text. Also stores the text 
+    that goes along with the styles. 
+ 
+    There are three main things going on in this class and the Parse one below: 
+ 
+    1. Parsing the html tags into 'styles' which don't have an associated object but maybe should 
+       (StyleTag?). 
+    2. Storing the style tags into a stack as we also step through the regular text. 
+    3. Each time we change the style tags in some way we take the current state of the style stack, 
+       and the current progress through the regular text and store the style under an index for the 
+       current text position. 
+ 
+    :param theme: 
+    :param combined_ids: 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">default_style = {</span>
+        <span class="s3">'font_name'</span><span class="s1">: </span><span class="s3">'fira_code'</span><span class="s0">,</span>
+        <span class="s3">'font_size'</span><span class="s1">: </span><span class="s4">14</span><span class="s0">,</span>
+        <span class="s3">'font_colour'</span><span class="s1">: pygame.Color(</span><span class="s4">255</span><span class="s0">, </span><span class="s4">255</span><span class="s0">, </span><span class="s4">255</span><span class="s0">, </span><span class="s4">255</span><span class="s1">)</span><span class="s0">,</span>
+        <span class="s3">'bg_colour'</span><span class="s1">: pygame.Color(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+    <span class="s1">}</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">theme: UIAppearanceTheme</span><span class="s0">,</span>
+                 <span class="s1">combined_ids: List[str]):</span>
+        <span class="s1">super().__init__()</span>
+        <span class="s1">self.ui_theme = theme</span>
+        <span class="s1">self.len_text = </span><span class="s4">0</span>
+
+        <span class="s1">self.style_stack = []</span>
+        <span class="s1">self.current_style = {}</span>
+        <span class="s5"># self.next_style = {}</span>
+        <span class="s1">self.text_data = </span><span class="s3">&quot;&quot;</span>
+
+        <span class="s1">self.indexed_styles = {}</span>
+
+        <span class="s1">self.char_style = CharStyle()</span>
+
+        <span class="s1">font_info = self.ui_theme.get_font_info(combined_ids)</span>
+
+        <span class="s1">self.default_style[</span><span class="s3">'font_name'</span><span class="s1">] = font_info[</span><span class="s3">'name'</span><span class="s1">]</span>
+        <span class="s1">self.default_style[</span><span class="s3">'font_size'</span><span class="s1">] = int(font_info[</span><span class="s3">'size'</span><span class="s1">])</span>
+
+        <span class="s1">self.default_style[</span><span class="s3">'font_colour'</span><span class="s1">] = self.ui_theme.get_colour_or_gradient(</span><span class="s3">'normal_text'</span><span class="s0">,</span>
+                                                                                 <span class="s1">combined_ids)</span>
+        <span class="s1">self.default_style[</span><span class="s3">'bg_colour'</span><span class="s1">] = self.ui_theme.get_colour_or_gradient(</span><span class="s3">'dark_bg'</span><span class="s0">,</span>
+                                                                               <span class="s1">combined_ids)</span>
+        <span class="s1">self.font_name = self.default_style[</span><span class="s3">'font_name'</span><span class="s1">]</span>
+        <span class="s1">self.font_size = self.default_style[</span><span class="s3">'font_size'</span><span class="s1">]</span>
+        <span class="s1">self.font_colour = self.default_style[</span><span class="s3">'font_colour'</span><span class="s1">]</span>
+        <span class="s1">self.bg_colour = self.default_style[</span><span class="s3">'bg_colour'</span><span class="s1">]</span>
+
+        <span class="s1">self.is_link = </span><span class="s0">False</span>
+        <span class="s1">self.link_href = </span><span class="s3">''</span>
+
+        <span class="s1">self.push_style(</span><span class="s3">'default_style'</span><span class="s0">, </span><span class="s1">self.default_style)</span>
+
+    <span class="s0">def </span><span class="s1">push_style(self</span><span class="s0">, </span><span class="s1">key: str</span><span class="s0">, </span><span class="s1">styles: Dict[str</span><span class="s0">, </span><span class="s1">Any]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Add a new styling element onto the style stack. These are single styles generally (i.e. a 
+        font size change, or a bolding of text) rather than a load of different styles all at once. 
+        The eventual style of a character/bit of text is built up by evaluating all styling 
+        elements currently on the stack when we parse that bit of text. 
+ 
+        Styles on top of the stack will be evaluated last so they can overwrite elements earlier 
+        in the stack (i.e. a later 'font_size' of 5 wil overwrite an earlier 'font_size' of 3). 
+ 
+        :param key: Name for this styling element so we can identify when to remove it when the 
+        styling block is closed 
+        :param styles: The styling dictionary that contains the actual styling. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">old_styles = {name: self.current_style.get(name) </span><span class="s0">for </span><span class="s1">name </span><span class="s0">in </span><span class="s1">styles}</span>
+        <span class="s1">self.style_stack.append((key</span><span class="s0">, </span><span class="s1">old_styles))</span>
+        <span class="s1">self.current_style.update(styles)</span>
+        <span class="s5"># self.next_style.update(styles)</span>
+
+    <span class="s0">def </span><span class="s1">pop_style(self</span><span class="s0">, </span><span class="s1">key: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Remove a styling element/dictionary from the stack by it's identifying key name. 
+ 
+        :param key: The identifier. 
+        &quot;&quot;&quot;</span>
+        <span class="s5"># Don't do anything if key is not in stack</span>
+        <span class="s0">for </span><span class="s1">match</span><span class="s0">, </span><span class="s1">_ </span><span class="s0">in </span><span class="s1">self.style_stack:</span>
+            <span class="s0">if </span><span class="s1">key == match:</span>
+                <span class="s0">break</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return</span>
+
+        <span class="s5"># Remove all innermost elements until key is closed.</span>
+        <span class="s0">while True</span><span class="s1">:</span>
+            <span class="s1">match</span><span class="s0">, </span><span class="s1">old_styles = self.style_stack.pop()</span>
+            <span class="s5"># self.next_style.update(old_styles)</span>
+            <span class="s1">self.current_style.update(old_styles)</span>
+            <span class="s0">if </span><span class="s1">match == key:</span>
+                <span class="s0">break</span>
+
+    <span class="s0">def </span><span class="s1">add_text(self</span><span class="s0">, </span><span class="s1">text: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Add another bit of text using the current style, and index the text's style appropriately. 
+ 
+        :param text: 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.add_indexed_style(len(self.text_data))</span>
+        <span class="s1">self.text_data = self.text_data[:self.len_text] + text + self.text_data[self.len_text:]</span>
+        <span class="s1">self.len_text += len(text)</span>
+
+    <span class="s0">def </span><span class="s1">add_indexed_style(self</span><span class="s0">, </span><span class="s1">index: int):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Styles indexed by their starting position in the text. 
+ 
+        :param index: The index to use. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s3">'bold' </span><span class="s0">in </span><span class="s1">self.current_style.keys():</span>
+            <span class="s1">self.char_style.bold = self.current_style[</span><span class="s3">'bold'</span><span class="s1">]</span>
+            <span class="s0">if </span><span class="s1">self.char_style.bold </span><span class="s0">is None</span><span class="s1">:</span>
+                <span class="s1">self.char_style.bold = </span><span class="s0">False</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.char_style.bold = </span><span class="s0">False</span>
+        <span class="s0">if </span><span class="s3">'italic' </span><span class="s0">in </span><span class="s1">self.current_style.keys():</span>
+            <span class="s1">self.char_style.italic = self.current_style[</span><span class="s3">'italic'</span><span class="s1">]</span>
+            <span class="s0">if </span><span class="s1">self.char_style.italic </span><span class="s0">is None</span><span class="s1">:</span>
+                <span class="s1">self.char_style.italic = </span><span class="s0">False</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.char_style.italic = </span><span class="s0">False</span>
+        <span class="s0">if </span><span class="s3">'underline' </span><span class="s0">in </span><span class="s1">self.current_style.keys():</span>
+            <span class="s1">self.char_style.underline = self.current_style[</span><span class="s3">'underline'</span><span class="s1">]</span>
+            <span class="s0">if </span><span class="s1">self.char_style.underline </span><span class="s0">is None</span><span class="s1">:</span>
+                <span class="s1">self.char_style.underline = </span><span class="s0">False</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.char_style.underline = </span><span class="s0">False</span>
+
+        <span class="s1">self._set_style_attribute(</span><span class="s3">'font_name'</span><span class="s1">)</span>
+        <span class="s1">self._set_style_attribute(</span><span class="s3">'font_size'</span><span class="s1">)</span>
+        <span class="s1">self._set_style_attribute(</span><span class="s3">'font_colour'</span><span class="s1">)</span>
+        <span class="s1">self._set_style_attribute(</span><span class="s3">'bg_colour'</span><span class="s1">)</span>
+
+        <span class="s0">if </span><span class="s3">'link' </span><span class="s0">in </span><span class="s1">self.current_style.keys():</span>
+            <span class="s1">self.is_link = self.current_style[</span><span class="s3">'link'</span><span class="s1">]</span>
+            <span class="s0">if </span><span class="s1">self.is_link </span><span class="s0">is None</span><span class="s1">:</span>
+                <span class="s1">self.is_link = </span><span class="s0">False</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.is_link = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s3">'link_href' </span><span class="s0">in </span><span class="s1">self.current_style.keys():</span>
+            <span class="s1">self.link_href = self.current_style[</span><span class="s3">'link_href'</span><span class="s1">]</span>
+            <span class="s0">if </span><span class="s1">self.link_href </span><span class="s0">is None</span><span class="s1">:</span>
+                <span class="s1">self.link_href = </span><span class="s3">''</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.link_href = </span><span class="s3">''</span>
+
+        <span class="s1">self.indexed_styles[index] = TextLineContext(self.font_size</span><span class="s0">,</span>
+                                                     <span class="s1">self.font_name</span><span class="s0">,</span>
+                                                     <span class="s1">CharStyle(self.char_style)</span><span class="s0">,</span>
+                                                     <span class="s1">self.font_colour</span><span class="s0">,</span>
+                                                     <span class="s1">self.bg_colour</span><span class="s0">,</span>
+                                                     <span class="s1">self.is_link</span><span class="s0">,</span>
+                                                     <span class="s1">self.link_href)</span>
+
+    <span class="s0">def </span><span class="s1">_set_style_attribute(self</span><span class="s0">, </span><span class="s1">attribute: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Set a style attribute for this font style. 
+ 
+        :param attribute: Name of the attribute to set. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">attribute </span><span class="s0">in </span><span class="s1">self.current_style:</span>
+            <span class="s1">setattr(self</span><span class="s0">, </span><span class="s1">attribute</span><span class="s0">, </span><span class="s1">self.current_style[attribute])</span>
+            <span class="s0">if </span><span class="s1">getattr(self</span><span class="s0">, </span><span class="s1">attribute) </span><span class="s0">is None</span><span class="s1">:</span>
+                <span class="s1">setattr(self</span><span class="s0">, </span><span class="s1">attribute</span><span class="s0">, </span><span class="s1">self.default_style[attribute])</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">setattr(self</span><span class="s0">, </span><span class="s1">attribute</span><span class="s0">, </span><span class="s1">self.default_style[attribute])</span>
+
+
+<span class="s0">class </span><span class="s1">TextHTMLParser(TextStyleData</span><span class="s0">, </span><span class="s1">html.parser.HTMLParser):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Parse a subset of HTML tags into styling data for our text. 
+ 
+    :param ui_theme: The UI theming data. 
+    :param combined_ids: The element IDs used to look up theming data. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">font_sizes = {</span>
+        <span class="s4">1</span><span class="s1">: </span><span class="s4">8</span><span class="s0">,</span>
+        <span class="s4">1.5</span><span class="s1">: </span><span class="s4">9</span><span class="s0">,</span>
+        <span class="s4">2</span><span class="s1">: </span><span class="s4">10</span><span class="s0">,</span>
+        <span class="s4">2.5</span><span class="s1">: </span><span class="s4">11</span><span class="s0">,</span>
+        <span class="s4">3</span><span class="s1">: </span><span class="s4">12</span><span class="s0">,</span>
+        <span class="s4">3.5</span><span class="s1">: </span><span class="s4">13</span><span class="s0">,</span>
+        <span class="s4">4</span><span class="s1">: </span><span class="s4">14</span><span class="s0">,</span>
+        <span class="s4">4.5</span><span class="s1">: </span><span class="s4">16</span><span class="s0">,</span>
+        <span class="s4">5</span><span class="s1">: </span><span class="s4">18</span><span class="s0">,</span>
+        <span class="s4">5.5</span><span class="s1">: </span><span class="s4">20</span><span class="s0">,</span>
+        <span class="s4">6</span><span class="s1">: </span><span class="s4">24</span><span class="s0">,</span>
+        <span class="s4">6.5</span><span class="s1">: </span><span class="s4">32</span><span class="s0">,</span>
+        <span class="s4">7</span><span class="s1">: </span><span class="s4">48</span>
+    <span class="s1">}</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">ui_theme: UIAppearanceTheme</span><span class="s0">,</span>
+                 <span class="s1">combined_ids: List[str]):</span>
+        <span class="s1">super().__init__(ui_theme</span><span class="s0">, </span><span class="s1">combined_ids)</span>
+
+        <span class="s1">self.ui_theme = ui_theme</span>
+        <span class="s1">self.combined_ids = combined_ids</span>
+
+        <span class="s1">self.element_stack = []</span>
+
+    <span class="s0">def </span><span class="s1">handle_starttag(self</span><span class="s0">, </span><span class="s1">tag: str</span><span class="s0">, </span><span class="s1">attrs: Dict[str</span><span class="s0">, </span><span class="s1">str]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Process an HTML 'start tag' (e.g. &lt;b&gt;) where we have a start and an end tag enclosing a 
+        range of text this is the first one of those and controls where we add the 'styling' thing 
+        to our styling stack. 
+ 
+        Eventually we will want to expand this to handle tags like &lt;img&gt;. 
+ 
+        :param tag: The tag itself 
+        :param attrs: Attributes of the tag. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">element = tag.lower()</span>
+
+        <span class="s1">self.element_stack.append(element)</span>
+
+        <span class="s1">attributes = {key.lower(): value </span><span class="s0">for </span><span class="s1">key</span><span class="s0">, </span><span class="s1">value </span><span class="s0">in </span><span class="s1">attrs}</span>
+        <span class="s1">style = {}</span>
+        <span class="s0">if </span><span class="s1">element </span><span class="s0">in </span><span class="s1">(</span><span class="s3">'b'</span><span class="s0">, </span><span class="s3">'strong'</span><span class="s1">):</span>
+            <span class="s1">style[</span><span class="s3">'bold'</span><span class="s1">] = </span><span class="s0">True</span>
+        <span class="s0">elif </span><span class="s1">element == </span><span class="s3">'a'</span><span class="s1">:</span>
+            <span class="s1">style[</span><span class="s3">'link'</span><span class="s1">] = </span><span class="s0">True</span>
+            <span class="s0">if </span><span class="s3">'href' </span><span class="s0">in </span><span class="s1">attributes:</span>
+                <span class="s1">style[</span><span class="s3">&quot;link_href&quot;</span><span class="s1">] = attributes[</span><span class="s3">'href'</span><span class="s1">]</span>
+        <span class="s0">elif </span><span class="s1">element </span><span class="s0">in </span><span class="s1">(</span><span class="s3">'i'</span><span class="s0">, </span><span class="s3">'em'</span><span class="s0">, </span><span class="s3">'var'</span><span class="s1">):</span>
+            <span class="s1">style[</span><span class="s3">'italic'</span><span class="s1">] = </span><span class="s0">True</span>
+        <span class="s0">elif </span><span class="s1">element == </span><span class="s3">'u'</span><span class="s1">:</span>
+            <span class="s1">style[</span><span class="s3">'underline'</span><span class="s1">] = </span><span class="s0">True</span>
+        <span class="s0">elif </span><span class="s1">element == </span><span class="s3">'font'</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s3">'face' </span><span class="s0">in </span><span class="s1">attributes:</span>
+                <span class="s1">font_name = attributes[</span><span class="s3">'face'</span><span class="s1">] </span><span class="s0">if </span><span class="s1">len(attributes[</span><span class="s3">'face'</span><span class="s1">]) &gt; </span><span class="s4">0 </span><span class="s0">else None</span>
+                <span class="s1">style[</span><span class="s3">&quot;font_name&quot;</span><span class="s1">] = font_name</span>
+            <span class="s0">if </span><span class="s3">'size' </span><span class="s0">in </span><span class="s1">attributes:</span>
+                <span class="s0">if </span><span class="s1">len(attributes[</span><span class="s3">'size'</span><span class="s1">]) &gt; </span><span class="s4">0</span><span class="s1">:</span>
+                    <span class="s1">font_size = self.font_sizes[float(attributes[</span><span class="s3">'size'</span><span class="s1">])]</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">font_size = </span><span class="s0">None</span>
+                <span class="s1">style[</span><span class="s3">&quot;font_size&quot;</span><span class="s1">] = font_size</span>
+            <span class="s0">if </span><span class="s3">'color' </span><span class="s0">in </span><span class="s1">attributes:</span>
+                <span class="s0">if </span><span class="s1">attributes[</span><span class="s3">'color'</span><span class="s1">][</span><span class="s4">0</span><span class="s1">] == </span><span class="s3">'#'</span><span class="s1">:</span>
+                    <span class="s1">style[</span><span class="s3">&quot;font_colour&quot;</span><span class="s1">] = pygame.color.Color(attributes[</span><span class="s3">'color'</span><span class="s1">])</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">style[</span><span class="s3">&quot;font_colour&quot;</span><span class="s1">] = self.ui_theme.get_colour_or_gradient(attributes[</span><span class="s3">'color'</span><span class="s1">]</span><span class="s0">,</span>
+                                                                                <span class="s1">self.combined_ids)</span>
+        <span class="s0">elif </span><span class="s1">element == </span><span class="s3">'body'</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s3">'bgcolor' </span><span class="s0">in </span><span class="s1">attributes:</span>
+                <span class="s0">if </span><span class="s1">len(attributes[</span><span class="s3">'bgcolor'</span><span class="s1">]) &gt; </span><span class="s4">0</span><span class="s1">:</span>
+                    <span class="s0">if </span><span class="s3">',' </span><span class="s0">in </span><span class="s1">attributes[</span><span class="s3">'bgcolor'</span><span class="s1">]:</span>
+                        <span class="s1">col_id = attributes[</span><span class="s3">'bgcolor'</span><span class="s1">]</span>
+                        <span class="s1">style[</span><span class="s3">&quot;bg_colour&quot;</span><span class="s1">] = self.ui_theme.get_colour_or_gradient(col_id</span><span class="s0">,</span>
+                                                                                  <span class="s1">self.combined_ids)</span>
+                    <span class="s0">else</span><span class="s1">:</span>
+                        <span class="s1">style[</span><span class="s3">&quot;bg_colour&quot;</span><span class="s1">] = pygame.color.Color(attributes[</span><span class="s3">'bgcolor'</span><span class="s1">])</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">style[</span><span class="s3">&quot;bg_colour&quot;</span><span class="s1">] = </span><span class="s0">None</span>
+
+        <span class="s0">elif </span><span class="s1">element == </span><span class="s3">'br'</span><span class="s1">:</span>
+            <span class="s1">self.add_text(</span><span class="s3">'</span><span class="s0">\n</span><span class="s3">'</span><span class="s1">)  </span><span class="s5"># u'\u2028'</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">warning_text = </span><span class="s3">'Unsupported HTML Tag &lt;' </span><span class="s1">+ element + </span><span class="s3">'&gt;. Check documentation' </span><span class="s1">\</span>
+                                                                <span class="s3">' for full range of supported tags.'</span>
+            <span class="s1">warnings.warn(warning_text</span><span class="s0">, </span><span class="s1">UserWarning)</span>
+
+        <span class="s1">self.push_style(element</span><span class="s0">, </span><span class="s1">style)</span>
+
+    <span class="s0">def </span><span class="s1">handle_endtag(self</span><span class="s0">, </span><span class="s1">tag: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Handles encountering an HTML end tag. Usually this will involve us popping a style off our 
+        stack of styles. 
+ 
+        :param tag: The end tag to handle. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">element = tag.lower()</span>
+
+        <span class="s0">if </span><span class="s1">element </span><span class="s0">not in </span><span class="s1">self.element_stack:</span>
+            <span class="s0">return</span>
+
+        <span class="s1">self.pop_style(element)</span>
+
+        <span class="s1">result = </span><span class="s0">None</span>
+        <span class="s0">while </span><span class="s1">result != element:</span>
+            <span class="s1">result = self.element_stack.pop()</span>
+
+    <span class="s0">def </span><span class="s1">handle_data(self</span><span class="s0">, </span><span class="s1">data: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Handles parsed HTML that is not a tag of any kind, ordinary text basically. 
+ 
+        :param data: Some string data. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.add_text(data)</span>
+
+    <span class="s0">def </span><span class="s1">error(self</span><span class="s0">, </span><span class="s1">message):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Feeds any parsing errors up the chain to the warning system. 
+ 
+        :param message: The message to warn about. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">warnings.warn(message</span><span class="s0">, </span><span class="s1">UserWarning)</span>
+</pre>
+</body>
+</html>

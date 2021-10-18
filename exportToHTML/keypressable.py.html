@@ -1,0 +1,47 @@
+<html>
+<head>
+<title>keypressable.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+keypressable.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">pygame.locals </span><span class="s0">import </span><span class="s1">KEYDOWN</span><span class="s0">, </span><span class="s1">KEYUP</span>
+
+<span class="s0">from </span><span class="s1">thorpy.elements.pressable </span><span class="s0">import </span><span class="s1">Pressable</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.constants </span><span class="s0">import </span><span class="s1">STATE_NORMAL</span><span class="s0">, </span><span class="s1">STATE_PRESSED</span>
+
+
+<span class="s0">class </span><span class="s1">KeyPressable(Pressable):</span>
+    <span class="s2">&quot;&quot;&quot;Keyboard pressable element&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">key</span><span class="s0">, </span><span class="s1">text=</span><span class="s3">&quot;&quot;</span><span class="s0">, </span><span class="s1">elements=</span><span class="s0">None, </span><span class="s1">normal_params=</span><span class="s0">None,</span>
+                 <span class="s1">press_params=</span><span class="s0">None, </span><span class="s1">type_=KEYDOWN</span><span class="s0">, </span><span class="s1">untyp=KEYUP</span><span class="s0">, </span><span class="s1">finish=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot;Keyboard pressable element 
+        &lt;key&gt;: the pygame keyboard key for press event.&quot;&quot;&quot;</span>
+        <span class="s1">super(KeyPressable</span><span class="s0">, </span><span class="s1">self).__init__(text</span><span class="s0">, </span><span class="s1">elements</span><span class="s0">, </span><span class="s1">normal_params</span><span class="s0">,</span>
+                                           <span class="s1">press_params</span><span class="s0">, </span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">self._set_press_reaction(type_</span><span class="s0">, </span><span class="s1">args=dict({</span><span class="s3">&quot;key&quot;</span><span class="s1">: key}))</span>
+        <span class="s1">self._set_unpress_reaction(untyp</span><span class="s0">, </span><span class="s1">args=dict({</span><span class="s3">&quot;key&quot;</span><span class="s1">: key}))</span>
+        <span class="s0">if </span><span class="s1">finish:</span>
+            <span class="s1">self.finish()</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_press(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s0">if </span><span class="s1">self.current_state_key == STATE_NORMAL:</span>
+            <span class="s1">Pressable._press(self)</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_unpress(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s0">if </span><span class="s1">self.current_state_key == STATE_PRESSED:</span>
+            <span class="s1">Pressable._unpress(self)</span>
+</pre>
+</body>
+</html>

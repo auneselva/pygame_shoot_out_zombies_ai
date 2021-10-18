@@ -1,0 +1,558 @@
+<html>
+<head>
+<title>ui_manager.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+ui_manager.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Tuple</span><span class="s0">, </span><span class="s1">List</span><span class="s0">, </span><span class="s1">Dict</span><span class="s0">, </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Set</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IUIManagerInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces.appearance_theme_interface </span><span class="s0">import </span><span class="s1">IUIAppearanceThemeInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IUIElementInterface</span><span class="s0">, </span><span class="s1">IUIContainerInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces.window_stack_interface </span><span class="s0">import </span><span class="s1">IUIWindowStackInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces.tool_tip_interface </span><span class="s0">import </span><span class="s1">IUITooltipInterface</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core.ui_appearance_theme </span><span class="s0">import </span><span class="s1">UIAppearanceTheme</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.ui_window_stack </span><span class="s0">import </span><span class="s1">UIWindowStack</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.ui_container </span><span class="s0">import </span><span class="s1">UIContainer</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.resource_loaders </span><span class="s0">import </span><span class="s1">IResourceLoader</span><span class="s0">, </span><span class="s1">BlockingThreadedResourceLoader</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">PackageResource</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.layered_gui_group </span><span class="s0">import </span><span class="s1">LayeredGUIGroup</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.elements </span><span class="s0">import </span><span class="s1">UITooltip</span>
+
+
+<span class="s0">class </span><span class="s1">UIManager(IUIManagerInterface):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    The UI Manager class helps keep track of all the moving parts in the pygame_gui system. 
+ 
+    Before doing anything else with pygame_gui create a UIManager and remember to update it every 
+    frame. 
+ 
+    :param window_resolution: window resolution. 
+    :param theme_path: relative file path to theme. 
+    :param enable_live_theme_updates: Lets the theme update in-game after we edit the theme file 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">window_resolution: Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                 <span class="s1">theme_path: Union[str</span><span class="s0">, </span><span class="s1">PackageResource] = </span><span class="s0">None,</span>
+                 <span class="s1">enable_live_theme_updates: bool = </span><span class="s0">True,</span>
+                 <span class="s1">resource_loader: IResourceLoader = </span><span class="s0">None</span><span class="s1">):</span>
+
+        <span class="s3"># Pygame compat</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">pygame.MOUSEWHEEL</span>
+        <span class="s0">except </span><span class="s1">AttributeError:</span>
+            <span class="s1">pygame.MOUSEWHEEL = -</span><span class="s4">1</span>
+
+        <span class="s3"># Threaded loading</span>
+        <span class="s0">if </span><span class="s1">resource_loader </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">auto_load = </span><span class="s0">True</span>
+            <span class="s1">self.resource_loader = BlockingThreadedResourceLoader()</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">auto_load = </span><span class="s0">False</span>
+            <span class="s1">self.resource_loader = resource_loader</span>
+
+        <span class="s1">self.window_resolution = window_resolution</span>
+        <span class="s1">self.ui_theme = UIAppearanceTheme(self.resource_loader)</span>
+        <span class="s0">if </span><span class="s1">theme_path </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.ui_theme.load_theme(theme_path)</span>
+
+        <span class="s1">self.universal_empty_surface = pygame.surface.Surface((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">,</span>
+                                                              <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                              <span class="s1">depth=</span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s1">self.ui_group = LayeredGUIGroup()</span>
+
+        <span class="s1">self.focused_set = </span><span class="s0">None</span>
+        <span class="s1">self.root_container = </span><span class="s0">None</span>
+        <span class="s1">self.root_container = UIContainer(pygame.Rect((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">self.window_resolution)</span><span class="s0">,</span>
+                                          <span class="s1">self</span><span class="s0">, </span><span class="s1">starting_height=</span><span class="s4">1</span><span class="s0">,</span>
+                                          <span class="s1">container=</span><span class="s0">None, </span><span class="s1">parent_element=</span><span class="s0">None,</span>
+                                          <span class="s1">object_id=</span><span class="s5">'#root_container'</span><span class="s1">)</span>
+
+        <span class="s1">self.ui_window_stack = UIWindowStack(self.window_resolution</span><span class="s0">, </span><span class="s1">self.root_container)</span>
+
+        <span class="s1">self.live_theme_updates = enable_live_theme_updates</span>
+        <span class="s1">self.theme_update_acc = </span><span class="s4">0.0</span>
+        <span class="s1">self.theme_update_check_interval = </span><span class="s4">1.0</span>
+
+        <span class="s1">self.mouse_double_click_time = </span><span class="s4">0.5</span>
+        <span class="s1">self.mouse_position = (</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.mouse_pos_scale_factor = [</span><span class="s4">1.0</span><span class="s0">, </span><span class="s4">1.0</span><span class="s1">]</span>
+
+        <span class="s1">self.visual_debug_active = </span><span class="s0">False</span>
+
+        <span class="s1">self.resizing_window_cursors = </span><span class="s0">None</span>
+        <span class="s1">self._load_default_cursors()</span>
+        <span class="s1">self.active_user_cursor = pygame.cursors.arrow</span>
+        <span class="s1">self._active_cursor = self.active_user_cursor</span>
+
+        <span class="s0">if </span><span class="s1">auto_load:</span>
+            <span class="s1">self.resource_loader.start()</span>
+            <span class="s3"># If we are using a blocking loader this will only return when loading is complete</span>
+            <span class="s1">self.resource_loader.update()</span>
+
+    <span class="s0">def </span><span class="s1">get_double_click_time(self) -&gt; float:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Returns time between clicks that counts as a double click. 
+ 
+        :return: A float, time measured in seconds. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.mouse_double_click_time</span>
+
+    <span class="s0">def </span><span class="s1">get_root_container(self) -&gt; IUIContainerInterface:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Returns the 'root' container. The one all UI elements are placed in by default if they are 
+        not placed anywhere else, fills the whole OS/pygame window. 
+ 
+        :return: A container. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.root_container</span>
+
+    <span class="s0">def </span><span class="s1">get_theme(self) -&gt; IUIAppearanceThemeInterface:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Gets the theme so the data in it can be accessed. 
+ 
+        :return: The theme data used by this UIManager 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.ui_theme</span>
+
+    <span class="s0">def </span><span class="s1">get_sprite_group(self) -&gt; pygame.sprite.LayeredDirty:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Gets the sprite group used by the entire UI to keep it in the correct order for drawing and 
+        processing input. 
+ 
+        :return: The UI's sprite group. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.ui_group</span>
+
+    <span class="s0">def </span><span class="s1">get_window_stack(self) -&gt; IUIWindowStackInterface:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        The UIWindowStack organises any windows in the UI Manager so that they are correctly sorted 
+        and move windows we interact with to the top of the stack. 
+ 
+        :return: The stack of windows. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.ui_window_stack</span>
+
+    <span class="s0">def </span><span class="s1">get_shadow(self</span><span class="s0">, </span><span class="s1">size: Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">, </span><span class="s1">shadow_width: int = </span><span class="s4">2</span><span class="s0">,</span>
+                   <span class="s1">shape: str = </span><span class="s5">'rectangle'</span><span class="s0">, </span><span class="s1">corner_radius: int = </span><span class="s4">2</span><span class="s1">) -&gt; pygame.surface.Surface:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Returns a 'shadow' surface scaled to the requested size. 
+ 
+        :param size: The size of the object we are shadowing + it's shadow. 
+        :param shadow_width: The width of the shadowed edge. 
+        :param shape: The shape of the requested shadow. 
+        :param corner_radius: The radius of the shadow corners if this is a rectangular shadow. 
+        :return: A shadow as a pygame Surface. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.ui_theme.shadow_generator.find_closest_shadow_scale_to_size(size</span><span class="s0">,</span>
+                                                                                <span class="s1">shadow_width</span><span class="s0">,</span>
+                                                                                <span class="s1">shape</span><span class="s0">,</span>
+                                                                                <span class="s1">corner_radius)</span>
+
+    <span class="s0">def </span><span class="s1">set_window_resolution(self</span><span class="s0">, </span><span class="s1">window_resolution: Tuple[int</span><span class="s0">, </span><span class="s1">int]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Sets the window resolution. 
+ 
+        :param window_resolution: the resolution to set. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.window_resolution = window_resolution</span>
+
+    <span class="s0">def </span><span class="s1">clear_and_reset(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Clear all existing windows and the root container, which should get rid of all created UI 
+        elements. We then recreate the UIWindowStack and the root container. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.root_container.kill()</span>
+        <span class="s3"># need to reset to None before recreating otherwise the old container will linger around.</span>
+        <span class="s1">self.root_container = </span><span class="s0">None</span>
+        <span class="s1">self.root_container = UIContainer(pygame.Rect((</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">self.window_resolution)</span><span class="s0">,</span>
+                                          <span class="s1">self</span><span class="s0">, </span><span class="s1">starting_height=</span><span class="s4">1</span><span class="s0">,</span>
+                                          <span class="s1">container=</span><span class="s0">None, </span><span class="s1">parent_element=</span><span class="s0">None,</span>
+                                          <span class="s1">object_id=</span><span class="s5">'#root_container'</span><span class="s1">)</span>
+        <span class="s1">self.ui_window_stack = UIWindowStack(self.window_resolution</span><span class="s0">, </span><span class="s1">self.root_container)</span>
+
+    <span class="s0">def </span><span class="s1">process_events(self</span><span class="s0">, </span><span class="s1">event: pygame.event.Event):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        This is the top level method through which all input to UI elements is processed and 
+        reacted to. 
+ 
+        One of the key things it controls is the currently 'focused' element of which there 
+        can be only one at a time. It also manages 'consumed events' these events will not be 
+        passed on to elements below them in the GUI hierarchy and helps us stop buttons underneath 
+        windows from receiving input. 
+ 
+        :param event:  pygame.event.Event - the event to process. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">consumed_event = </span><span class="s0">False</span>
+        <span class="s1">sorting_consumed_event = </span><span class="s0">False</span>
+        <span class="s1">sorted_layers = sorted(self.ui_group.layers()</span><span class="s0">, </span><span class="s1">reverse=</span><span class="s0">True</span><span class="s1">)</span>
+        <span class="s0">for </span><span class="s1">layer </span><span class="s0">in </span><span class="s1">sorted_layers:</span>
+            <span class="s1">sprites_in_layer = self.ui_group.get_sprites_from_layer(layer)</span>
+            <span class="s0">if not </span><span class="s1">sorting_consumed_event:</span>
+                <span class="s1">windows_in_layer = [window </span><span class="s0">for </span><span class="s1">window </span><span class="s0">in </span><span class="s1">sprites_in_layer</span>
+                                    <span class="s0">if </span><span class="s5">'window' </span><span class="s0">in </span><span class="s1">window.element_ids[-</span><span class="s4">1</span><span class="s1">]]</span>
+                <span class="s0">for </span><span class="s1">window </span><span class="s0">in </span><span class="s1">windows_in_layer:</span>
+                    <span class="s0">if not </span><span class="s1">sorting_consumed_event:</span>
+                        <span class="s1">sorting_consumed_event = window.check_clicked_inside_or_blocking(event)</span>
+            <span class="s0">if not </span><span class="s1">consumed_event:</span>
+                <span class="s0">for </span><span class="s1">ui_element </span><span class="s0">in </span><span class="s1">sprites_in_layer:</span>
+                    <span class="s0">if </span><span class="s1">ui_element.visible:</span>
+                        <span class="s3"># Only process events for visible elements - ignore hidden elements</span>
+                        <span class="s0">if </span><span class="s1">event.type == pygame.MOUSEBUTTONDOWN </span><span class="s0">and </span><span class="s1">event.button == </span><span class="s4">1</span><span class="s1">:</span>
+                            <span class="s1">mouse_x</span><span class="s0">, </span><span class="s1">mouse_y = event.pos</span>
+                            <span class="s0">if </span><span class="s1">ui_element.hover_point(mouse_x</span><span class="s0">, </span><span class="s1">mouse_y):</span>
+                                <span class="s3"># self.unset_focus_element()</span>
+                                <span class="s1">self.set_focus_set(ui_element.get_focus_set())</span>
+
+                        <span class="s1">consumed_event = ui_element.process_event(event)</span>
+                        <span class="s0">if </span><span class="s1">consumed_event:</span>
+                            <span class="s3"># Generally clicks should only be handled by the top layer of whatever</span>
+                            <span class="s3"># GUI thing we are  clicking on. I am trusting UIElments to decide</span>
+                            <span class="s3"># whether they need to consume the events they respond to. Hopefully</span>
+                            <span class="s3"># this is not a mistake.</span>
+
+                            <span class="s0">break</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        From here all our UI elements are updated and which element is currently 'hovered' is 
+        checked; which means the mouse pointer is overlapping them. This is managed centrally so 
+        we aren't ever overlapping two elements at once. 
+ 
+        It also updates the shape cache to continue storing already created elements shapes in the 
+        long term cache, in case we need them later. 
+ 
+        Finally, if live theme updates are enabled, it checks to see if the theme file has been 
+        modified and triggers all the UI elements to rebuild if it has. 
+ 
+        :param time_delta: The time passed since the last call to update, in seconds. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s0">if </span><span class="s1">self.live_theme_updates:</span>
+            <span class="s1">self.theme_update_acc += time_delta</span>
+            <span class="s0">if </span><span class="s1">self.theme_update_acc &gt; self.theme_update_check_interval:</span>
+                <span class="s1">self.theme_update_acc = </span><span class="s4">0.0</span>
+                <span class="s0">if </span><span class="s1">self.ui_theme.check_need_to_reload():</span>
+                    <span class="s0">for </span><span class="s1">sprite </span><span class="s0">in </span><span class="s1">self.ui_group.sprites():</span>
+                        <span class="s1">sprite.rebuild_from_changed_theme_data()</span>
+
+        <span class="s1">self.ui_theme.update_caching(time_delta)</span>
+
+        <span class="s1">self._update_mouse_position()</span>
+        <span class="s1">hover_handled = </span><span class="s0">False</span>
+        <span class="s1">sorted_layers = sorted(self.ui_group.layers()</span><span class="s0">, </span><span class="s1">reverse=</span><span class="s0">True</span><span class="s1">)</span>
+        <span class="s0">for </span><span class="s1">layer </span><span class="s0">in </span><span class="s1">sorted_layers:</span>
+            <span class="s0">for </span><span class="s1">ui_element </span><span class="s0">in </span><span class="s1">self.ui_group.get_sprites_from_layer(layer):</span>
+                <span class="s0">if </span><span class="s1">ui_element.visible:</span>
+                    <span class="s3"># Only check hover for visible elements - ignore hidden elements</span>
+
+                    <span class="s1">element_handled_hover = ui_element.check_hover(time_delta</span><span class="s0">, </span><span class="s1">hover_handled)</span>
+                    <span class="s0">if </span><span class="s1">element_handled_hover:</span>
+                        <span class="s1">hover_handled = </span><span class="s0">True</span>
+
+        <span class="s1">self.ui_group.update(time_delta)</span>
+
+        <span class="s3"># handle mouse cursors</span>
+        <span class="s1">any_window_edge_hovered = </span><span class="s0">False</span>
+        <span class="s0">for </span><span class="s1">window </span><span class="s0">in </span><span class="s1">self.ui_window_stack.stack:</span>
+            <span class="s0">if </span><span class="s1">window.should_use_window_edge_resize_cursor():</span>
+                <span class="s1">any_window_edge_hovered = </span><span class="s0">True</span>
+                <span class="s1">new_cursor = self.resizing_window_cursors[window.get_hovering_edge_id()]</span>
+
+                <span class="s0">if </span><span class="s1">new_cursor != self._active_cursor:</span>
+                    <span class="s1">self._active_cursor = new_cursor</span>
+                    <span class="s0">try</span><span class="s1">:</span>
+                        <span class="s1">pygame.mouse.set_cursor(*self._active_cursor)</span>
+                    <span class="s0">except </span><span class="s1">pygame.error:</span>
+                        <span class="s0">pass</span>
+
+        <span class="s0">if not </span><span class="s1">any_window_edge_hovered </span><span class="s0">and </span><span class="s1">self._active_cursor != self.active_user_cursor:</span>
+            <span class="s1">self._active_cursor = self.active_user_cursor</span>
+            <span class="s0">try</span><span class="s1">:</span>
+                <span class="s1">pygame.mouse.set_cursor(*self._active_cursor)</span>
+            <span class="s0">except </span><span class="s1">pygame.error:</span>
+                <span class="s0">pass</span>
+
+    <span class="s0">def </span><span class="s1">get_mouse_position(self) -&gt; Tuple[int</span><span class="s0">, </span><span class="s1">int]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Wrapping pygame mouse position so we can mess with it. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.mouse_position</span>
+
+    <span class="s0">def </span><span class="s1">draw_ui(self</span><span class="s0">, </span><span class="s1">window_surface: pygame.surface.Surface):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Draws all the UI elements on the screen. Generally you want this to be after the rest of 
+        your game sprites have been drawn. 
+ 
+        If you want to do something particularly unusual with drawing you may have to write your 
+        own UI manager. 
+ 
+        :param window_surface: The screen or window surface on which we are going to draw all of 
+         our UI Elements. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.ui_group.draw(window_surface)</span>
+
+    <span class="s0">def </span><span class="s1">add_font_paths(self</span><span class="s0">, </span><span class="s1">font_name: str</span><span class="s0">, </span><span class="s1">regular_path: str</span><span class="s0">, </span><span class="s1">bold_path: str = </span><span class="s0">None,</span>
+                       <span class="s1">italic_path: str = </span><span class="s0">None, </span><span class="s1">bold_italic_path: str = </span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Add file paths for custom fonts you want to use in the UI. For each font name you add you 
+        can specify font files for different styles. Fonts with designed styles tend to render a 
+        lot better than fonts that are forced to make use of pygame's bold and italic styling 
+        effects, so if you plan to use bold and italic text at small sizes - find fonts with these 
+        styles available as separate files. 
+ 
+        The font name you specify here can be used to choose the font in the blocks of HTML-subset 
+        formatted text, available in some of the UI elements like the UITextBox. 
+ 
+        It is recommended that you also pre-load any fonts you use at an appropriate moment in your 
+        project rather than letting the library dynamically load them when they are required. That 
+        is because dynamic loading of large font files can cause UI elements with a lot of font 
+        usage to appear rather slowly as they are waiting for the fonts they need to load. 
+ 
+        :param font_name: The name of the font that will be used to reference it elsewhere in 
+                          the GUI. 
+        :param regular_path: The path of the font file for this font with no styles applied. 
+        :param bold_path: The path of the font file for this font with just bold style applied. 
+        :param italic_path: The path of the font file for this font with just italic style applied. 
+        :param bold_italic_path: The path of the font file for this font with bold &amp; italic style 
+               applied. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.get_theme().get_font_dictionary().add_font_path(font_name</span><span class="s0">,</span>
+                                                             <span class="s1">regular_path</span><span class="s0">,</span>
+                                                             <span class="s1">bold_path</span><span class="s0">,</span>
+                                                             <span class="s1">italic_path</span><span class="s0">,</span>
+                                                             <span class="s1">bold_italic_path)</span>
+
+    <span class="s0">def </span><span class="s1">preload_fonts(self</span><span class="s0">, </span><span class="s1">font_list: List[Dict[str</span><span class="s0">, </span><span class="s1">Union[str</span><span class="s0">, </span><span class="s1">int</span><span class="s0">, </span><span class="s1">float]]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        It's a good idea to pre-load the exact fonts your program uses during the loading phase of 
+        your program. By default the pygame_gui library will still work, but will spit out reminder 
+        warnings when you haven't done this. Loading fonts on the fly will slow down the apparent 
+        responsiveness when creating UI elements that use a lot of different fonts. 
+ 
+        To pre-load custom fonts, or to use custom fonts at all (i.e. ones that aren't the default 
+        'fira_code' font) you must first add the paths to the files for those fonts, then load the 
+        specific fonts with a list of font descriptions in a dictionary form like so: 
+ 
+        code:`{'name': 'fira_code', 'point_size': 12, 'style': 'bold_italic'}` 
+ 
+        You can specify size either in pygame.Font point sizes with 'point_size', or in HTML style 
+        sizes with 'html_size'. Style options are: 
+ 
+        - 'regular' 
+        - 'italic' 
+        - 'bold' 
+        - 'bold_italic' 
+ 
+        The name parameter here must match the one you used when you added the file paths. 
+ 
+        :param font_list: A list of font descriptions in dictionary format as described above. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">for </span><span class="s1">font </span><span class="s0">in </span><span class="s1">font_list:</span>
+            <span class="s1">name = </span><span class="s5">'fira_code'</span>
+            <span class="s1">bold = </span><span class="s0">False</span>
+            <span class="s1">italic = </span><span class="s0">False</span>
+            <span class="s1">size = </span><span class="s4">14</span>
+            <span class="s0">if </span><span class="s5">'name' </span><span class="s0">in </span><span class="s1">font:</span>
+                <span class="s1">name = font[</span><span class="s5">'name'</span><span class="s1">]</span>
+            <span class="s0">if </span><span class="s5">'style' </span><span class="s0">in </span><span class="s1">font:</span>
+                <span class="s0">if </span><span class="s5">'bold' </span><span class="s0">in </span><span class="s1">font[</span><span class="s5">'style'</span><span class="s1">]:</span>
+                    <span class="s1">bold = </span><span class="s0">True</span>
+                <span class="s0">if </span><span class="s5">'italic' </span><span class="s0">in </span><span class="s1">font[</span><span class="s5">'style'</span><span class="s1">]:</span>
+                    <span class="s1">italic = </span><span class="s0">True</span>
+            <span class="s0">if </span><span class="s5">'html_size' </span><span class="s0">in </span><span class="s1">font:</span>
+                <span class="s1">font_dict = self.ui_theme.get_font_dictionary()</span>
+                <span class="s1">size = font_dict.convert_html_to_point_size(font[</span><span class="s5">'html_size'</span><span class="s1">])</span>
+            <span class="s0">elif </span><span class="s5">'point_size' </span><span class="s0">in </span><span class="s1">font:</span>
+                <span class="s1">size = font[</span><span class="s5">'point_size'</span><span class="s1">]</span>
+
+            <span class="s1">self.ui_theme.get_font_dictionary().preload_font(size</span><span class="s0">, </span><span class="s1">name</span><span class="s0">, </span><span class="s1">bold</span><span class="s0">, </span><span class="s1">italic)</span>
+
+    <span class="s0">def </span><span class="s1">print_unused_fonts(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Helps you identify which pre-loaded fonts you are actually still using in your project 
+        after you've fiddled around with the text a lot by printing out a list of fonts that have 
+        not been used yet at the time this function is called. 
+ 
+        Of course if you don't run the code path in which a particular font is used before calling 
+        this function then it won't be of much use, so take it's results under advisement rather 
+        than as gospel. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.ui_theme.get_font_dictionary().print_unused_loaded_fonts()</span>
+
+    <span class="s0">def </span><span class="s1">get_focus_set(self):</span>
+        <span class="s0">return </span><span class="s1">self.focused_set</span>
+
+    <span class="s0">def </span><span class="s1">set_focus_set(self</span><span class="s0">, </span><span class="s1">focus: Union[IUIElementInterface</span><span class="s0">, </span><span class="s1">Set[IUIElementInterface]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Set a set of element as the focused set. 
+ 
+        :param focus: The set of element to focus on. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">focus </span><span class="s0">is </span><span class="s1">self.focused_set:</span>
+            <span class="s0">return</span>
+        <span class="s0">if </span><span class="s1">self.focused_set </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">for </span><span class="s1">item </span><span class="s0">in </span><span class="s1">self.focused_set:</span>
+                <span class="s0">if </span><span class="s1">isinstance(focus</span><span class="s0">, </span><span class="s1">set):</span>
+                    <span class="s0">if </span><span class="s1">item </span><span class="s0">not in </span><span class="s1">focus:</span>
+                        <span class="s1">item.unfocus()</span>
+                    <span class="s0">else</span><span class="s1">:</span>
+                        <span class="s0">pass  </span><span class="s3"># do nothing in this case because the item is also in new focus set</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">item.unfocus()</span>
+            <span class="s1">self.focused_set = </span><span class="s0">None</span>
+
+        <span class="s0">if </span><span class="s1">self.focused_set </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">focus </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s0">if </span><span class="s1">isinstance(focus</span><span class="s0">, </span><span class="s1">IUIElementInterface):</span>
+                    <span class="s1">self.focused_set = focus.get_focus_set()</span>
+                <span class="s0">elif </span><span class="s1">isinstance(focus</span><span class="s0">, </span><span class="s1">set):</span>
+                    <span class="s1">self.focused_set = focus</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.focused_set = </span><span class="s0">None</span>
+
+            <span class="s0">if </span><span class="s1">self.focused_set </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s0">for </span><span class="s1">item </span><span class="s0">in </span><span class="s1">self.focused_set:</span>
+                    <span class="s0">if not </span><span class="s1">item.is_focused:</span>
+                        <span class="s1">item.focus()</span>
+
+    <span class="s0">def </span><span class="s1">set_visual_debug_mode(self</span><span class="s0">, </span><span class="s1">is_active: bool):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Loops through all our UIElements to turn visual debug mode on or off. Also calls 
+        print_layer_debug() 
+ 
+        :param is_active: True to activate visual debug and False to turn it off. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.visual_debug_active </span><span class="s0">and not </span><span class="s1">is_active:</span>
+            <span class="s1">self.visual_debug_active = </span><span class="s0">False</span>
+            <span class="s0">for </span><span class="s1">layer </span><span class="s0">in </span><span class="s1">self.ui_group.layers():</span>
+                <span class="s0">for </span><span class="s1">element </span><span class="s0">in </span><span class="s1">self.ui_group.get_sprites_from_layer(layer):</span>
+                    <span class="s1">element.set_visual_debug_mode(self.visual_debug_active)</span>
+        <span class="s0">elif not </span><span class="s1">self.visual_debug_active </span><span class="s0">and </span><span class="s1">is_active:</span>
+            <span class="s1">self.visual_debug_active = </span><span class="s0">True</span>
+            <span class="s3"># preload the debug font if it's not already loaded</span>
+            <span class="s1">self.get_theme().get_font_dictionary().ensure_debug_font_loaded()</span>
+
+            <span class="s0">for </span><span class="s1">layer </span><span class="s0">in </span><span class="s1">self.ui_group.layers():</span>
+                <span class="s0">for </span><span class="s1">element </span><span class="s0">in </span><span class="s1">self.ui_group.get_sprites_from_layer(layer):</span>
+                    <span class="s1">element.set_visual_debug_mode(self.visual_debug_active)</span>
+
+            <span class="s3"># Finally print a version of the current layers to the console:</span>
+            <span class="s1">self.print_layer_debug()</span>
+
+    <span class="s0">def </span><span class="s1">print_layer_debug(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Print some formatted information on the current state of the UI Layers. 
+ 
+        Handy for debugging layer problems. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">for </span><span class="s1">layer </span><span class="s0">in </span><span class="s1">self.ui_group.layers():</span>
+            <span class="s1">print(</span><span class="s5">&quot;Layer: &quot; </span><span class="s1">+ str(layer))</span>
+            <span class="s1">print(</span><span class="s5">&quot;-----------------------&quot;</span><span class="s1">)</span>
+            <span class="s0">for </span><span class="s1">element </span><span class="s0">in </span><span class="s1">self.ui_group.get_sprites_from_layer(layer):</span>
+                <span class="s0">if </span><span class="s1">element.element_ids[-</span><span class="s4">1</span><span class="s1">] == </span><span class="s5">'container'</span><span class="s1">:</span>
+                    <span class="s1">print(str(element.most_specific_combined_id) +</span>
+                          <span class="s5">': thickness - ' </span><span class="s1">+ str(element.layer_thickness))</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">print(str(element.most_specific_combined_id))</span>
+            <span class="s1">print(</span><span class="s5">' '</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">set_active_cursor(self</span><span class="s0">, </span><span class="s1">cursor: Tuple[Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">, </span><span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                              <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">...]</span><span class="s0">, </span><span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">...]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        This is for users of the library to set the currently active cursor, it will be currently 
+        only be overriden by the resizing cursors. 
+ 
+        The expected input is in the same format as the standard pygame cursor module, except 
+        without expanding the initial Tuple. So, to call this function with the default pygame 
+        arrow cursor you would do: 
+ 
+            manager.set_active_cursor(pygame.cursors.arrow) 
+ 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">self.active_user_cursor = cursor</span>
+
+    <span class="s0">def </span><span class="s1">get_universal_empty_surface(self) -&gt; pygame.surface.Surface:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Sometimes we want to hide sprites or just have sprites with no visual component, when we 
+        do we can just use this empty surface to save having lots of empty surfaces all over memory. 
+ 
+        :return: An empty, and therefore invisible pygame.surface.Surface 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.universal_empty_surface</span>
+
+    <span class="s0">def </span><span class="s1">create_tool_tip(self</span><span class="s0">, </span><span class="s1">text: str</span><span class="s0">, </span><span class="s1">position: Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                        <span class="s1">hover_distance: Tuple[int</span><span class="s0">, </span><span class="s1">int]) -&gt; IUITooltipInterface:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Creates a tool tip ands returns it. Have hidden this away in the manager so we can call it 
+        from other UI elements and create tool tips without creating cyclical import problems. 
+ 
+        :param text: The tool tips text, can utilise the HTML subset used in all UITextBoxes. 
+        :param position: The screen position to create the tool tip for. 
+        :param hover_distance: The distance we should hover away from our target position. 
+ 
+        :return: A tool tip placed somewhere on the screen. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">tool_tip = UITooltip(text</span><span class="s0">, </span><span class="s1">hover_distance</span><span class="s0">, </span><span class="s1">self)</span>
+        <span class="s1">tool_tip.find_valid_position(pygame.math.Vector2(position[</span><span class="s4">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">position[</span><span class="s4">1</span><span class="s1">]))</span>
+        <span class="s0">return </span><span class="s1">tool_tip</span>
+
+    <span class="s0">def </span><span class="s1">_update_mouse_position(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Wrapping pygame mouse position so we can mess with it. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.mouse_position = self.calculate_scaled_mouse_position(pygame.mouse.get_pos())</span>
+
+    <span class="s0">def </span><span class="s1">calculate_scaled_mouse_position(self</span><span class="s0">, </span><span class="s1">position: Tuple[int</span><span class="s0">, </span><span class="s1">int]) -&gt; Tuple[int</span><span class="s0">, </span><span class="s1">int]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Scaling an input mouse position by a scale factor. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">(int(self.mouse_pos_scale_factor[</span><span class="s4">0</span><span class="s1">] * position[</span><span class="s4">0</span><span class="s1">])</span><span class="s0">,</span>
+                <span class="s1">int(self.mouse_pos_scale_factor[</span><span class="s4">1</span><span class="s1">] * position[</span><span class="s4">1</span><span class="s1">]))</span>
+
+    <span class="s0">def </span><span class="s1">_load_default_cursors(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        'Loads' the default cursors we use in the GUI for resizing windows. No actual files are 
+        opened as this is all string date compiled into pygame cursor images. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s3"># cursors for resizing windows</span>
+        <span class="s1">x_sizer_cursor = pygame.cursors.compile(pygame.cursors.sizer_x_strings)</span>
+        <span class="s1">y_sizer_cursor = pygame.cursors.compile(pygame.cursors.sizer_y_strings)</span>
+        <span class="s1">xy_sizer_cursor = pygame.cursors.compile(pygame.cursors.sizer_xy_strings)</span>
+        <span class="s1">list_yx = list(pygame.cursors.sizer_xy_strings)</span>
+        <span class="s1">list_yx.reverse()</span>
+        <span class="s1">yx_sizer_cursor = pygame.cursors.compile(tuple(list_yx))</span>
+
+        <span class="s1">self.resizing_window_cursors = {</span><span class="s5">'xl'</span><span class="s1">: ((</span><span class="s4">24</span><span class="s0">, </span><span class="s4">16</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">12</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span><span class="s0">, </span><span class="s1">*x_sizer_cursor)</span><span class="s0">,</span>
+                                        <span class="s5">'xr'</span><span class="s1">: ((</span><span class="s4">24</span><span class="s0">, </span><span class="s4">16</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">8</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span><span class="s0">, </span><span class="s1">*x_sizer_cursor)</span><span class="s0">,</span>
+                                        <span class="s5">'yt'</span><span class="s1">: ((</span><span class="s4">16</span><span class="s0">, </span><span class="s4">24</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">8</span><span class="s0">, </span><span class="s4">12</span><span class="s1">)</span><span class="s0">, </span><span class="s1">*y_sizer_cursor)</span><span class="s0">,</span>
+                                        <span class="s5">'yb'</span><span class="s1">: ((</span><span class="s4">16</span><span class="s0">, </span><span class="s4">24</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">8</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span><span class="s0">, </span><span class="s1">*y_sizer_cursor)</span><span class="s0">,</span>
+                                        <span class="s5">'xy'</span><span class="s1">: ((</span><span class="s4">24</span><span class="s0">, </span><span class="s4">16</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">8</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span><span class="s0">, </span><span class="s1">*xy_sizer_cursor)</span><span class="s0">,</span>
+                                        <span class="s5">'yx'</span><span class="s1">: ((</span><span class="s4">24</span><span class="s0">, </span><span class="s4">16</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s4">8</span><span class="s0">, </span><span class="s4">8</span><span class="s1">)</span><span class="s0">, </span><span class="s1">*yx_sizer_cursor)}</span>
+</pre>
+</body>
+</html>

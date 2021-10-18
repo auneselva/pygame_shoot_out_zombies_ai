@@ -1,0 +1,123 @@
+<html>
+<head>
+<title>mercurial.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+mercurial.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span>
+
+<span class="s0">import </span><span class="s1">logging</span>
+<span class="s0">import </span><span class="s1">os</span>
+
+<span class="s0">from </span><span class="s1">pip._vendor.six.moves </span><span class="s0">import </span><span class="s1">configparser</span>
+
+<span class="s0">from </span><span class="s1">pip._internal.download </span><span class="s0">import </span><span class="s1">path_to_url</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.misc </span><span class="s0">import </span><span class="s1">display_path</span><span class="s0">, </span><span class="s1">make_vcs_requirement_url</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.temp_dir </span><span class="s0">import </span><span class="s1">TempDirectory</span>
+<span class="s0">from </span><span class="s1">pip._internal.vcs </span><span class="s0">import </span><span class="s1">VersionControl</span><span class="s0">, </span><span class="s1">vcs</span>
+
+<span class="s1">logger = logging.getLogger(__name__)</span>
+
+
+<span class="s0">class </span><span class="s1">Mercurial(VersionControl):</span>
+    <span class="s1">name = </span><span class="s2">'hg'</span>
+    <span class="s1">dirname = </span><span class="s2">'.hg'</span>
+    <span class="s1">repo_name = </span><span class="s2">'clone'</span>
+    <span class="s1">schemes = (</span><span class="s2">'hg'</span><span class="s0">, </span><span class="s2">'hg+http'</span><span class="s0">, </span><span class="s2">'hg+https'</span><span class="s0">, </span><span class="s2">'hg+ssh'</span><span class="s0">, </span><span class="s2">'hg+static-http'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">get_base_rev_args(self</span><span class="s0">, </span><span class="s1">rev):</span>
+        <span class="s0">return </span><span class="s1">[rev]</span>
+
+    <span class="s0">def </span><span class="s1">export(self</span><span class="s0">, </span><span class="s1">location):</span>
+        <span class="s3">&quot;&quot;&quot;Export the Hg repository at the url to the destination location&quot;&quot;&quot;</span>
+        <span class="s0">with </span><span class="s1">TempDirectory(kind=</span><span class="s2">&quot;export&quot;</span><span class="s1">) </span><span class="s0">as </span><span class="s1">temp_dir:</span>
+            <span class="s1">self.unpack(temp_dir.path)</span>
+
+            <span class="s1">self.run_command(</span>
+                <span class="s1">[</span><span class="s2">'archive'</span><span class="s0">, </span><span class="s1">location]</span><span class="s0">, </span><span class="s1">show_stdout=</span><span class="s0">False, </span><span class="s1">cwd=temp_dir.path</span>
+            <span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">fetch_new(self</span><span class="s0">, </span><span class="s1">dest</span><span class="s0">, </span><span class="s1">url</span><span class="s0">, </span><span class="s1">rev_options):</span>
+        <span class="s1">rev_display = rev_options.to_display()</span>
+        <span class="s1">logger.info(</span>
+            <span class="s2">'Cloning hg %s%s to %s'</span><span class="s0">,</span>
+            <span class="s1">url</span><span class="s0">,</span>
+            <span class="s1">rev_display</span><span class="s0">,</span>
+            <span class="s1">display_path(dest)</span><span class="s0">,</span>
+        <span class="s1">)</span>
+        <span class="s1">self.run_command([</span><span class="s2">'clone'</span><span class="s0">, </span><span class="s2">'--noupdate'</span><span class="s0">, </span><span class="s2">'-q'</span><span class="s0">, </span><span class="s1">url</span><span class="s0">, </span><span class="s1">dest])</span>
+        <span class="s1">cmd_args = [</span><span class="s2">'update'</span><span class="s0">, </span><span class="s2">'-q'</span><span class="s1">] + rev_options.to_args()</span>
+        <span class="s1">self.run_command(cmd_args</span><span class="s0">, </span><span class="s1">cwd=dest)</span>
+
+    <span class="s0">def </span><span class="s1">switch(self</span><span class="s0">, </span><span class="s1">dest</span><span class="s0">, </span><span class="s1">url</span><span class="s0">, </span><span class="s1">rev_options):</span>
+        <span class="s1">repo_config = os.path.join(dest</span><span class="s0">, </span><span class="s1">self.dirname</span><span class="s0">, </span><span class="s2">'hgrc'</span><span class="s1">)</span>
+        <span class="s1">config = configparser.SafeConfigParser()</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">config.read(repo_config)</span>
+            <span class="s1">config.set(</span><span class="s2">'paths'</span><span class="s0">, </span><span class="s2">'default'</span><span class="s0">, </span><span class="s1">url)</span>
+            <span class="s0">with </span><span class="s1">open(repo_config</span><span class="s0">, </span><span class="s2">'w'</span><span class="s1">) </span><span class="s0">as </span><span class="s1">config_file:</span>
+                <span class="s1">config.write(config_file)</span>
+        <span class="s0">except </span><span class="s1">(OSError</span><span class="s0">, </span><span class="s1">configparser.NoSectionError) </span><span class="s0">as </span><span class="s1">exc:</span>
+            <span class="s1">logger.warning(</span>
+                <span class="s2">'Could not switch Mercurial repository to %s: %s'</span><span class="s0">, </span><span class="s1">url</span><span class="s0">, </span><span class="s1">exc</span><span class="s0">,</span>
+            <span class="s1">)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">cmd_args = [</span><span class="s2">'update'</span><span class="s0">, </span><span class="s2">'-q'</span><span class="s1">] + rev_options.to_args()</span>
+            <span class="s1">self.run_command(cmd_args</span><span class="s0">, </span><span class="s1">cwd=dest)</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">dest</span><span class="s0">, </span><span class="s1">url</span><span class="s0">, </span><span class="s1">rev_options):</span>
+        <span class="s1">self.run_command([</span><span class="s2">'pull'</span><span class="s0">, </span><span class="s2">'-q'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">cwd=dest)</span>
+        <span class="s1">cmd_args = [</span><span class="s2">'update'</span><span class="s0">, </span><span class="s2">'-q'</span><span class="s1">] + rev_options.to_args()</span>
+        <span class="s1">self.run_command(cmd_args</span><span class="s0">, </span><span class="s1">cwd=dest)</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">get_remote_url(cls</span><span class="s0">, </span><span class="s1">location):</span>
+        <span class="s1">url = cls.run_command(</span>
+            <span class="s1">[</span><span class="s2">'showconfig'</span><span class="s0">, </span><span class="s2">'paths.default'</span><span class="s1">]</span><span class="s0">,</span>
+            <span class="s1">show_stdout=</span><span class="s0">False, </span><span class="s1">cwd=location).strip()</span>
+        <span class="s0">if </span><span class="s1">cls._is_local_repository(url):</span>
+            <span class="s1">url = path_to_url(url)</span>
+        <span class="s0">return </span><span class="s1">url.strip()</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">get_revision(cls</span><span class="s0">, </span><span class="s1">location):</span>
+        <span class="s1">current_revision = cls.run_command(</span>
+            <span class="s1">[</span><span class="s2">'parents'</span><span class="s0">, </span><span class="s2">'--template={rev}'</span><span class="s1">]</span><span class="s0">,</span>
+            <span class="s1">show_stdout=</span><span class="s0">False, </span><span class="s1">cwd=location).strip()</span>
+        <span class="s0">return </span><span class="s1">current_revision</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">get_revision_hash(cls</span><span class="s0">, </span><span class="s1">location):</span>
+        <span class="s1">current_rev_hash = cls.run_command(</span>
+            <span class="s1">[</span><span class="s2">'parents'</span><span class="s0">, </span><span class="s2">'--template={node}'</span><span class="s1">]</span><span class="s0">,</span>
+            <span class="s1">show_stdout=</span><span class="s0">False, </span><span class="s1">cwd=location).strip()</span>
+        <span class="s0">return </span><span class="s1">current_rev_hash</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">get_src_requirement(cls</span><span class="s0">, </span><span class="s1">location</span><span class="s0">, </span><span class="s1">project_name):</span>
+        <span class="s1">repo = cls.get_remote_url(location)</span>
+        <span class="s0">if not </span><span class="s1">repo.lower().startswith(</span><span class="s2">'hg:'</span><span class="s1">):</span>
+            <span class="s1">repo = </span><span class="s2">'hg+' </span><span class="s1">+ repo</span>
+        <span class="s1">current_rev_hash = cls.get_revision_hash(location)</span>
+        <span class="s0">return </span><span class="s1">make_vcs_requirement_url(repo</span><span class="s0">, </span><span class="s1">current_rev_hash</span><span class="s0">, </span><span class="s1">project_name)</span>
+
+    <span class="s0">def </span><span class="s1">is_commit_id_equal(self</span><span class="s0">, </span><span class="s1">dest</span><span class="s0">, </span><span class="s1">name):</span>
+        <span class="s3">&quot;&quot;&quot;Always assume the versions don't match&quot;&quot;&quot;</span>
+        <span class="s0">return False</span>
+
+
+<span class="s1">vcs.register(Mercurial)</span>
+</pre>
+</body>
+</html>

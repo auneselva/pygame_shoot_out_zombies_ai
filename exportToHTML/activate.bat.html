@@ -1,0 +1,68 @@
+<html>
+<head>
+<title>activate.bat</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6a8759;}
+.s4 { color: #9876aa; font-style: italic;}
+.s5 { color: #6a8759; font-style: italic;}
+.s6 { color: #a9b7c6;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+activate.bat</font>
+</center></td></tr></table>
+<pre><span class="s0">@echo off</span>
+
+<span class="s2">rem This file is UTF-8 encoded, so we need to update the current code page while executing it</span>
+<span class="s0">for </span><span class="s1">/f </span><span class="s3">&quot;tokens=2 delims=:&quot; </span><span class="s4">%%</span><span class="s1">a in ('</span><span class="s3">&quot;%SystemRoot%\System32\chcp.com&quot;</span><span class="s1">') do (</span>
+    <span class="s0">set </span><span class="s3">&quot;_OLD_CODEPAGE=</span><span class="s5">%%</span><span class="s3">a&quot;</span>
+<span class="s1">)</span>
+<span class="s0">if defined </span><span class="s1">_OLD_CODEPAGE (</span>
+    <span class="s3">&quot;%SystemRoot%\System32\chcp.com&quot; </span><span class="s4">65001 </span><span class="s0">&gt; </span><span class="s4">nul</span>
+<span class="s1">)</span>
+
+<span class="s0">set </span><span class="s3">&quot;VIRTUAL_ENV=C:\Users\Connie\PycharmProjects\game_ai\venv&quot;</span>
+
+<span class="s0">if not defined PROMPT </span><span class="s1">(</span>
+    <span class="s0">set </span><span class="s3">&quot;PROMPT=$P$G&quot;</span>
+<span class="s1">)</span>
+
+<span class="s0">if defined </span><span class="s1">_OLD_VIRTUAL_PROMPT (</span>
+    <span class="s0">set </span><span class="s3">&quot;PROMPT=%_OLD_VIRTUAL_PROMPT%&quot;</span>
+<span class="s1">)</span>
+
+<span class="s0">if defined </span><span class="s1">_OLD_VIRTUAL_PYTHONHOME (</span>
+    <span class="s0">set </span><span class="s3">&quot;PYTHONHOME=%_OLD_VIRTUAL_PYTHONHOME%&quot;</span>
+<span class="s1">)</span>
+
+<span class="s0">set </span><span class="s3">&quot;_OLD_VIRTUAL_PROMPT=%PROMPT%&quot;</span>
+<span class="s0">set </span><span class="s3">&quot;PROMPT=(venv) %PROMPT%&quot;</span>
+
+<span class="s0">if defined </span><span class="s1">PYTHONHOME (</span>
+    <span class="s0">set </span><span class="s3">&quot;_OLD_VIRTUAL_PYTHONHOME=%PYTHONHOME%&quot;</span>
+    <span class="s0">set </span><span class="s6">PYTHONHOME</span><span class="s0">=</span>
+<span class="s1">)</span>
+
+<span class="s0">if defined </span><span class="s1">_OLD_VIRTUAL_PATH (</span>
+    <span class="s0">set </span><span class="s3">&quot;PATH=%_OLD_VIRTUAL_PATH%&quot;</span>
+<span class="s1">) </span><span class="s0">else </span><span class="s1">(</span>
+    <span class="s0">set </span><span class="s3">&quot;_OLD_VIRTUAL_PATH=%PATH%&quot;</span>
+<span class="s1">)</span>
+
+<span class="s0">set </span><span class="s3">&quot;PATH=%VIRTUAL_ENV%\Scripts;%PATH%&quot;</span>
+
+<span class="s1">:</span><span class="s0">END</span>
+<span class="s0">if defined </span><span class="s1">_OLD_CODEPAGE (</span>
+    <span class="s3">&quot;%SystemRoot%\System32\chcp.com&quot; </span><span class="s6">%_OLD_CODEPAGE% </span><span class="s0">&gt; </span><span class="s4">nul</span>
+    <span class="s0">set </span><span class="s3">&quot;_OLD_CODEPAGE=&quot;</span>
+<span class="s1">)</span>
+</pre>
+</body>
+</html>

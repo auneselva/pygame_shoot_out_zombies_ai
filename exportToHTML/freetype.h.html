@@ -1,0 +1,159 @@
+<html>
+<head>
+<title>freetype.h</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6a8759;}
+.s4 { color: #6897bb;}
+.s5 { color: #0f9795;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+freetype.h</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+  pygame - Python Game Library 
+  Copyright (C) 2009 Vicent Marti 
+ 
+  This library is free software; you can redistribute it and/or 
+  modify it under the terms of the GNU Library General Public 
+  License as published by the Free Software Foundation; either 
+  version 2 of the License, or (at your option) any later version. 
+ 
+  This library is distributed in the hope that it will be useful, 
+  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  Library General Public License for more details. 
+ 
+  You should have received a copy of the GNU Library General Public 
+  License along with this library; if not, write to the Free 
+  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+ 
+*/</span>
+<span class="s2">#ifndef </span><span class="s1">_PYGAME_FREETYPE_H_</span>
+<span class="s2">#define </span><span class="s1">_PYGAME_FREETYPE_H_</span>
+
+<span class="s2">#define </span><span class="s1">PGFT_PYGAME1_COMPAT</span>
+<span class="s2">#define </span><span class="s1">HAVE_PYGAME_SDL_VIDEO</span>
+<span class="s2">#define </span><span class="s1">HAVE_PYGAME_SDL_RWOPS</span>
+
+<span class="s2">#include </span><span class="s3">&quot;pygame.h&quot;</span>
+<span class="s2">#include </span><span class="s3">&quot;pgcompat.h&quot;</span>
+
+<span class="s2">#if </span><span class="s1">PY3</span>
+<span class="s1">#   define IS_PYTHON_3</span>
+<span class="s2">#endif</span>
+
+<span class="s2">#include </span><span class="s1">&lt;ft2build.h&gt;</span>
+<span class="s2">#include </span><span class="s1">FT_FREETYPE_H</span>
+<span class="s2">#include </span><span class="s1">FT_CACHE_H</span>
+<span class="s2">#include </span><span class="s1">FT_XFREE86_H</span>
+<span class="s2">#include </span><span class="s1">FT_TRIGONOMETRY_H</span>
+
+<span class="s0">/********************************************************** 
+ * Global module constants 
+ **********************************************************/</span>
+
+<span class="s0">/* Render styles */</span>
+<span class="s2">#define </span><span class="s1">FT_STYLE_NORMAL     </span><span class="s4">0x00</span>
+<span class="s2">#define </span><span class="s1">FT_STYLE_STRONG     </span><span class="s4">0x01</span>
+<span class="s2">#define </span><span class="s1">FT_STYLE_OBLIQUE    </span><span class="s4">0x02</span>
+<span class="s2">#define </span><span class="s1">FT_STYLE_UNDERLINE  </span><span class="s4">0x04</span>
+<span class="s2">#define </span><span class="s1">FT_STYLE_WIDE       </span><span class="s4">0x08</span>
+<span class="s2">#define </span><span class="s1">FT_STYLE_DEFAULT    </span><span class="s4">0xFF</span>
+
+<span class="s0">/* Bounding box modes */</span>
+<span class="s2">#define </span><span class="s1">FT_BBOX_EXACT           FT_GLYPH_BBOX_SUBPIXELS</span>
+<span class="s2">#define </span><span class="s1">FT_BBOX_EXACT_GRIDFIT   FT_GLYPH_BBOX_GRIDFIT</span>
+<span class="s2">#define </span><span class="s1">FT_BBOX_PIXEL           FT_GLYPH_BBOX_TRUNCATE</span>
+<span class="s2">#define </span><span class="s1">FT_BBOX_PIXEL_GRIDFIT   FT_GLYPH_BBOX_PIXELS</span>
+
+<span class="s0">/* Rendering flags */</span>
+<span class="s2">#define </span><span class="s1">FT_RFLAG_NONE                  (</span><span class="s4">0</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">FT_RFLAG_ANTIALIAS             (</span><span class="s4">1 </span><span class="s1">&lt;&lt; </span><span class="s4">0</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">FT_RFLAG_AUTOHINT              (</span><span class="s4">1 </span><span class="s1">&lt;&lt; </span><span class="s4">1</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">FT_RFLAG_VERTICAL              (</span><span class="s4">1 </span><span class="s1">&lt;&lt; </span><span class="s4">2</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">FT_RFLAG_HINTED                (</span><span class="s4">1 </span><span class="s1">&lt;&lt; </span><span class="s4">3</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">FT_RFLAG_KERNING               (</span><span class="s4">1 </span><span class="s1">&lt;&lt; </span><span class="s4">4</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">FT_RFLAG_TRANSFORM             (</span><span class="s4">1 </span><span class="s1">&lt;&lt; </span><span class="s4">5</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">FT_RFLAG_PAD                   (</span><span class="s4">1 </span><span class="s1">&lt;&lt; </span><span class="s4">6</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">FT_RFLAG_ORIGIN                (</span><span class="s4">1 </span><span class="s1">&lt;&lt; </span><span class="s4">7</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">FT_RFLAG_UCS4                  (</span><span class="s4">1 </span><span class="s1">&lt;&lt; </span><span class="s4">8</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">FT_RFLAG_USE_BITMAP_STRIKES    (</span><span class="s4">1 </span><span class="s1">&lt;&lt; </span><span class="s4">9</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">FT_RFLAG_DEFAULTS              (FT_RFLAG_HINTED | \</span>
+                                        <span class="s1">FT_RFLAG_USE_BITMAP_STRIKES | \</span>
+                                        <span class="s1">FT_RFLAG_ANTIALIAS)</span>
+
+
+<span class="s2">#define </span><span class="s1">FT_RENDER_NEWBYTEARRAY      </span><span class="s4">0x0</span>
+<span class="s2">#define </span><span class="s1">FT_RENDER_NEWSURFACE        </span><span class="s4">0x1</span>
+<span class="s2">#define </span><span class="s1">FT_RENDER_EXISTINGSURFACE   </span><span class="s4">0x2</span>
+
+<span class="s0">/********************************************************** 
+ * Global module types 
+ **********************************************************/</span>
+
+<span class="s2">typedef struct </span><span class="s1">_scale_s {</span>
+    <span class="s1">FT_UInt x, y;</span>
+<span class="s1">} Scale_t;</span>
+<span class="s2">typedef </span><span class="s1">FT_Angle Angle_t;</span>
+
+<span class="s2">struct </span><span class="s1">fontinternals_;</span>
+<span class="s2">struct </span><span class="s1">freetypeinstance_;</span>
+
+<span class="s2">typedef struct </span><span class="s1">{</span>
+    <span class="s1">FT_Long font_index;</span>
+    <span class="s1">FT_Open_Args open_args;</span>
+<span class="s1">} pgFontId;</span>
+
+<span class="s2">typedef struct </span><span class="s1">{</span>
+    <span class="s1">PyObject_HEAD</span>
+    <span class="s1">pgFontId id;</span>
+    <span class="s1">PyObject *path;</span>
+    <span class="s2">int </span><span class="s1">is_scalable;</span>
+
+    <span class="s1">Scale_t face_size;</span>
+    <span class="s1">FT_Int16 style;</span>
+    <span class="s1">FT_Int16 render_flags;</span>
+    <span class="s2">double </span><span class="s1">strength;</span>
+    <span class="s2">double </span><span class="s1">underline_adjustment;</span>
+    <span class="s1">FT_UInt resolution;</span>
+    <span class="s1">Angle_t rotation;</span>
+    <span class="s1">FT_Matrix transform;</span>
+    <span class="s1">FT_Byte fgcolor[</span><span class="s4">4</span><span class="s1">];</span>
+
+    <span class="s2">struct </span><span class="s1">freetypeinstance_ *freetype;  </span><span class="s0">/* Personal reference */</span>
+    <span class="s2">struct </span><span class="s1">fontinternals_ *_internals;</span>
+<span class="s1">} pgFontObject;</span>
+
+<span class="s2">#define </span><span class="s1">pgFont_IS_ALIVE(o) \</span>
+    <span class="s1">(((pgFontObject *)(o))</span><span class="s5">-&gt;</span><span class="s1">_internals != </span><span class="s4">0</span><span class="s1">)</span>
+
+<span class="s0">/********************************************************** 
+ * Module declaration 
+ **********************************************************/</span>
+<span class="s2">#define </span><span class="s1">PYGAMEAPI_FREETYPE_FIRSTSLOT </span><span class="s4">0</span>
+<span class="s2">#define </span><span class="s1">PYGAMEAPI_FREETYPE_NUMSLOTS </span><span class="s4">2</span>
+
+<span class="s2">#ifndef </span><span class="s1">PYGAME_FREETYPE_INTERNAL</span>
+
+<span class="s2">#define </span><span class="s1">pgFont_Check(x) ((x)</span><span class="s5">-&gt;</span><span class="s1">ob_type == (PyTypeObject*)PgFREETYPE_C_API[</span><span class="s4">0</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgFont_Type (*(PyTypeObject*)PgFREETYPE_C_API[</span><span class="s4">1</span><span class="s1">])</span>
+<span class="s2">#define </span><span class="s1">pgFont_New (*(PyObject*(*)(</span><span class="s2">const char</span><span class="s1">*, </span><span class="s2">long</span><span class="s1">))PgFREETYPE_C_API[</span><span class="s4">1</span><span class="s1">])</span>
+
+<span class="s2">#define </span><span class="s1">import_pygame_freetype() \</span>
+    <span class="s1">_IMPORT_PYGAME_MODULE(freetype, FREETYPE, PgFREETYPE_C_API)</span>
+
+<span class="s2">static void </span><span class="s1">*PgFREETYPE_C_API[PYGAMEAPI_FREETYPE_NUMSLOTS] = {</span><span class="s4">0</span><span class="s1">};</span>
+<span class="s2">#endif </span><span class="s0">/* PYGAME_FREETYPE_INTERNAL */</span>
+
+<span class="s2">#endif </span><span class="s0">/* _PYGAME_FREETYPE_H_ */</span>
+</pre>
+</body>
+</html>

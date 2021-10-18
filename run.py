@@ -80,16 +80,6 @@ class Game(object):
 
     def tick(self):
 
-        if not self.enemies:
-            print("You won!")
-            print("Coins collected: ", self.player.score)
-            print("Enemies shot: ", self.player.kills)
-
-        if self.player.hp == 0:
-            print("Game over")
-            print("Coins collected: ", self.player.score)
-            print("Enemies shot: ", self.player.kills)
-
         self.player.tick()
         for enemy in self.enemies:
             enemy.tick()
@@ -105,11 +95,16 @@ class Game(object):
         if self.time_counter % 150 == 50:
             self.spawns.pop(0)
 
-        if not self.enemies and self.player.kills < 120:
-            self.n_enemies *= 2
-            self.enemies = self.create_objects(Enemy, self.n_enemies, self.r_enemy, self.red, self.obstacles, 5)
-        if not self.enemies and self.player.kills >= 120:
-            self.run = False
+        if self.run is True:
+            if not self.enemies and self.player.hp >= 0:
+                if self.player.kills < 120:
+                    self.n_enemies *= 2
+                    self.enemies = self.create_objects(Enemy, self.n_enemies, self.r_enemy, self.red, self.obstacles, 5)
+                if self.player.kills >= 120:
+                    self.run = False
+            if self.player.hp < 0:
+                self.run = False
+                self.enemies.clear()
         # tag those who are close enough to each other to perform a group attack
         self.tag_enemies()
 
@@ -125,32 +120,41 @@ class Game(object):
         self.screen.blit(font.render(str(self.beh_texts[self.current_behavior]), True, yellow_text), (int(self.res[0]) + 60, 30))
 
         if self.run is False:
-            if self.end_info_prepared is False:
-                self.time_counter = pygame.time.get_ticks() - self.start_time
-                counting_minutes = str(int(self.time_counter / 60000))
-                counting_seconds = int((self.time_counter / 1000) % 60)
-                if counting_seconds == 0:
-                    text_seconds = "00"
-                elif 10 > counting_seconds > 1:
-                    text_seconds = "0" + str(counting_seconds)
-                else:
-                    text_seconds = str(counting_seconds)
-                text_time = font.render(str("Time elapsed: " + str(counting_minutes + ":" + text_seconds)), True,
-                                        yellow_text)
-                text_coins = font.render(str("Coins collected: " + str(self.player.score)), True, yellow_text)
-                text_enemies = font.render(str("Enemies shot: " + str(self.player.kills)), True, yellow_text)
-                self.end_info_prepared = True
-            else:
+            if self.player.hp < 0:
                 width = 300
-                height = 200
+                height = 70
+                text_lost = font.render("You died!", True, yellow_text)
                 pygame.draw.rect(self.screen, (30, 41, 71),
                                  (int(self.res[0] / 2 - width / 2), int(self.res[1] / 2 - height / 2), width, height))
-                self.screen.blit(text_time,
-                                 (int(self.res[0] / 2 - width / 2) + 20, int(self.res[1] / 2 - height / 2) + 50))
-                self.screen.blit(text_coins,
-                                 (int(self.res[0] / 2 - width / 2) + 20, int(self.res[1] / 2 - height / 2) + 100))
-                self.screen.blit(text_enemies,
-                                 (int(self.res[0] / 2 - width / 2) + 20, int(self.res[1] / 2 - height / 2) + 150))
+                self.screen.blit(text_lost,
+                                 (int(self.res[0] / 2 - width / 2) + 20, int(self.res[1] / 2 - height / 2) + 20))
+            else:
+                if self.end_info_prepared is False:
+                    self.time_counter = pygame.time.get_ticks() - self.start_time
+                    counting_minutes = str(int(self.time_counter / 60000))
+                    counting_seconds = int((self.time_counter / 1000) % 60)
+                    if counting_seconds == 0:
+                        text_seconds = "00"
+                    elif 10 > counting_seconds > 1:
+                        text_seconds = "0" + str(counting_seconds)
+                    else:
+                        text_seconds = str(counting_seconds)
+                    text_time = font.render(str("Time elapsed: " + str(counting_minutes + ":" + text_seconds)), True,
+                                            yellow_text)
+                    text_coins = font.render(str("Coins collected: " + str(self.player.score)), True, yellow_text)
+                    text_enemies = font.render(str("Enemies shot: " + str(self.player.kills)), True, yellow_text)
+                    self.end_info_prepared = True
+                else:
+                    width = 300
+                    height = 200
+                    pygame.draw.rect(self.screen, (30, 41, 71),
+                                     (int(self.res[0] / 2 - width / 2), int(self.res[1] / 2 - height / 2), width, height))
+                    self.screen.blit(text_time,
+                                     (int(self.res[0] / 2 - width / 2) + 20, int(self.res[1] / 2 - height / 2) + 50))
+                    self.screen.blit(text_coins,
+                                     (int(self.res[0] / 2 - width / 2) + 20, int(self.res[1] / 2 - height / 2) + 100))
+                    self.screen.blit(text_enemies,
+                                     (int(self.res[0] / 2 - width / 2) + 20, int(self.res[1] / 2 - height / 2) + 150))
 
     def draw(self):
         self.player.draw()
@@ -197,7 +201,6 @@ class Game(object):
         return False
 
     def tag_enemies(self):
-
         gathered = []
         circle_r = self.res[0] / 10
         n_min_gath = 7

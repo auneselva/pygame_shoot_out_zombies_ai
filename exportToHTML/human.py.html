@@ -1,0 +1,95 @@
+<html>
+<head>
+<title>human.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+.s5 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+human.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">BLEND_RGBA_MIN</span>
+<span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">Surface</span>
+
+<span class="s0">from </span><span class="s1">thorpy._utils.colorscomputing </span><span class="s0">import </span><span class="s1">grow_color</span><span class="s0">, </span><span class="s1">normalize_color</span>
+<span class="s0">from </span><span class="s1">thorpy.painting.painters.roundrect </span><span class="s0">import </span><span class="s1">RoundRect</span>
+<span class="s0">from </span><span class="s1">thorpy.painting.painters.classicframe </span><span class="s0">import </span><span class="s1">ClassicFrame</span>
+<span class="s0">from </span><span class="s1">thorpy.painting.graphics </span><span class="s0">import </span><span class="s1">linear_v_monogradation</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">style</span>
+
+
+<span class="s0">class </span><span class="s1">Human(ClassicFrame):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">size=</span><span class="s0">None, </span><span class="s1">color=</span><span class="s0">None, </span><span class="s1">clip=</span><span class="s2">&quot;auto&quot;</span><span class="s0">, </span><span class="s1">radius_ext=</span><span class="s0">None,</span>
+                 <span class="s1">radius_int=</span><span class="s0">None, </span><span class="s1">pressed=</span><span class="s0">False, </span><span class="s1">dark=</span><span class="s0">None, </span><span class="s1">light=</span><span class="s0">None, </span><span class="s1">thick=</span><span class="s3">1</span><span class="s0">,</span>
+                 <span class="s1">hovered=</span><span class="s0">False, </span><span class="s1">border_color=</span><span class="s0">None</span><span class="s1">): </span><span class="s4">#changer border</span>
+        <span class="s5">&quot;&quot;&quot;If radius is in the range [0, 1], self.radius_value is the fraction 
+        of radius * min(size), else it is interpreted as a raw pixel value. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">clip == </span><span class="s2">&quot;auto&quot;</span><span class="s1">:</span>
+            <span class="s1">inflation = -</span><span class="s3">2 </span><span class="s1">* thick</span>
+            <span class="s1">clip = (inflation</span><span class="s0">, </span><span class="s1">inflation)</span>
+        <span class="s1">ClassicFrame.__init__(self</span><span class="s0">,</span>
+                              <span class="s1">size=size</span><span class="s0">,</span>
+                              <span class="s1">color=color</span><span class="s0">,</span>
+                              <span class="s1">pressed=pressed</span><span class="s0">,</span>
+                              <span class="s1">hovered=hovered</span><span class="s0">,</span>
+                              <span class="s1">dark=dark</span><span class="s0">,</span>
+                              <span class="s1">light=light</span><span class="s0">,</span>
+                              <span class="s1">thick=thick</span><span class="s0">,</span>
+                              <span class="s1">clip=clip)</span>
+        <span class="s1">radius_value = style.DEF_RADIUS </span><span class="s0">if </span><span class="s1">radius_ext </span><span class="s0">is None else </span><span class="s1">radius_ext</span>
+        <span class="s0">if </span><span class="s3">0. </span><span class="s1">&lt;= radius_value &lt;= </span><span class="s3">1.</span><span class="s1">:</span>
+            <span class="s1">radius_value = min(self.size) * radius_value</span>
+        <span class="s1">self.radius_ext = radius_value</span>
+        <span class="s1">self.radius_int = radius_int</span>
+        <span class="s0">if </span><span class="s1">radius_int == </span><span class="s0">None</span><span class="s1">:</span>
+            <span class="s1">self.radius_int = self.radius_ext - self.thick</span>
+
+        <span class="s1">self.border_color = style.BORDER_FACT </span><span class="s0">if </span><span class="s1">border_color </span><span class="s0">is None else </span><span class="s1">border_color</span>
+        <span class="s0">if </span><span class="s1">isinstance(self.border_color</span><span class="s0">, </span><span class="s1">float):</span>
+            <span class="s1">self.border_color = normalize_color(grow_color(self.border_color</span><span class="s0">,</span>
+                                                           <span class="s1">self.color))</span>
+
+    <span class="s0">def </span><span class="s1">draw(self):</span>
+        <span class="s0">if </span><span class="s1">self.hovered:</span>
+            <span class="s1">exterior = RoundRect(self.size</span><span class="s0">, </span><span class="s1">style.COLOR_BULK_HOVER</span><span class="s0">, </span><span class="s1">self.clip</span><span class="s0">,</span>
+                                 <span class="s1">self.radius_ext)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">exterior = RoundRect(self.size</span><span class="s0">, </span><span class="s1">self.border_color</span><span class="s0">, </span><span class="s1">self.clip</span><span class="s0">,</span>
+                                 <span class="s1">self.radius_ext)</span>
+        <span class="s1">w</span><span class="s0">, </span><span class="s1">h = (self.size[</span><span class="s3">0</span><span class="s1">] - </span><span class="s3">2</span><span class="s1">*self.thick</span><span class="s0">, </span><span class="s1">self.size[</span><span class="s3">1</span><span class="s1">] - </span><span class="s3">2</span><span class="s1">*self.thick)</span>
+        <span class="s1">w = </span><span class="s3">0 </span><span class="s0">if </span><span class="s1">w &lt; </span><span class="s3">0 </span><span class="s0">else </span><span class="s1">w</span>
+        <span class="s1">h = </span><span class="s3">0 </span><span class="s0">if </span><span class="s1">h &lt; </span><span class="s3">0 </span><span class="s0">else </span><span class="s1">h</span>
+        <span class="s1">int_size = (w</span><span class="s0">, </span><span class="s1">h)</span>
+        <span class="s0">if </span><span class="s1">self.pressed:</span>
+            <span class="s1">interior = RoundRect(int_size</span><span class="s0">, </span><span class="s1">self.color</span><span class="s0">, </span><span class="s1">self.clip</span><span class="s0">, </span><span class="s1">self.radius_int)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">interior = RoundRect(int_size</span><span class="s0">, </span><span class="s1">self.light</span><span class="s0">, </span><span class="s1">self.clip</span><span class="s0">, </span><span class="s1">self.radius_int)</span>
+        <span class="s1">sext = exterior.draw()</span>
+        <span class="s1">sint = interior.draw()</span>
+        <span class="s1">degrad = Surface(int_size)</span>
+        <span class="s0">if </span><span class="s1">self.pressed:</span>
+            <span class="s1">linear_v_monogradation(degrad</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s1">int(h)</span><span class="s0">, </span><span class="s1">self.color</span><span class="s0">, </span><span class="s1">self.dark)</span>
+            <span class="s1">sint.blit(degrad</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">special_flags=BLEND_RGBA_MIN)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">linear_v_monogradation(degrad</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s1">int(h)</span><span class="s0">, </span><span class="s1">self.dark</span><span class="s0">, </span><span class="s1">self.color)</span>
+            <span class="s1">sint.blit(degrad</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">special_flags=BLEND_RGBA_MIN)</span>
+        <span class="s1">sext.blit(sint</span><span class="s0">, </span><span class="s1">(self.thick</span><span class="s0">, </span><span class="s1">self.thick))</span>
+        <span class="s0">return </span><span class="s1">sext</span>
+
+    <span class="s0">def </span><span class="s1">set_color(self</span><span class="s0">, </span><span class="s1">color):</span>
+        <span class="s1">ClassicFrame.set_color(self</span><span class="s0">, </span><span class="s1">color)</span>
+        <span class="s0">if </span><span class="s1">len(color) == </span><span class="s3">4</span><span class="s1">:</span>
+            <span class="s1">self.border_color = tuple(list(self.border_color) + [color[</span><span class="s3">3</span><span class="s1">]])</span></pre>
+</body>
+</html>

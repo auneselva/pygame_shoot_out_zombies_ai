@@ -1,0 +1,100 @@
+<html>
+<head>
+<title>classicframe.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6897bb;}
+.s3 { color: #6a8759;}
+.s4 { color: #808080;}
+.s5 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+classicframe.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">Rect</span>
+<span class="s0">from </span><span class="s1">pygame.draw </span><span class="s0">import </span><span class="s1">lines</span>
+
+<span class="s0">from </span><span class="s1">thorpy.painting.painters.basicframe </span><span class="s0">import </span><span class="s1">BasicFrame</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">style</span>
+<span class="s0">from </span><span class="s1">thorpy._utils.rectscomputing </span><span class="s0">import </span><span class="s1">get_top_coords</span><span class="s0">, </span><span class="s1">get_bottom_coords</span>
+<span class="s0">from </span><span class="s1">thorpy._utils.colorscomputing </span><span class="s0">import </span><span class="s1">grow_color</span><span class="s0">, </span><span class="s1">normalize_color</span>
+
+
+<span class="s0">class </span><span class="s1">ClassicFrame(BasicFrame):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">size=</span><span class="s0">None, </span><span class="s1">color=</span><span class="s0">None, </span><span class="s1">pressed=</span><span class="s0">False, </span><span class="s1">dark=</span><span class="s0">None,</span>
+                 <span class="s1">hovered=</span><span class="s0">False, </span><span class="s1">light=</span><span class="s0">None, </span><span class="s1">thick=</span><span class="s2">1</span><span class="s0">, </span><span class="s1">clip=</span><span class="s3">&quot;auto&quot;</span><span class="s1">):</span>
+        <span class="s0">if </span><span class="s1">clip == </span><span class="s3">&quot;auto&quot;</span><span class="s1">:</span>
+            <span class="s1">inflation = -</span><span class="s2">2 </span><span class="s1">* thick</span>
+            <span class="s1">clip = (inflation</span><span class="s0">, </span><span class="s1">inflation)</span>
+        <span class="s1">BasicFrame.__init__(self</span><span class="s0">,</span>
+                            <span class="s1">size=size</span><span class="s0">,</span>
+                            <span class="s1">color=color</span><span class="s0">,</span>
+                            <span class="s1">clip=clip</span><span class="s0">,</span>
+                            <span class="s1">pressed=pressed</span><span class="s0">,</span>
+                            <span class="s1">hovered=hovered)</span>
+        <span class="s1">self.dark = dark</span>
+        <span class="s1">self.light = light</span>
+        <span class="s1">self.thick = thick</span>
+        <span class="s1">self.light = style.LIGHT_FACTOR </span><span class="s0">if </span><span class="s1">light </span><span class="s0">is None else </span><span class="s1">light</span>
+        <span class="s1">self.dark = style.DARK_FACTOR </span><span class="s0">if </span><span class="s1">dark </span><span class="s0">is None else </span><span class="s1">dark</span>
+<span class="s4">##        if self.light is None:</span>
+<span class="s4">##            white = make_compatible(constants.WHITE, self.color)</span>
+<span class="s4">##            self.light = mid_color(self.color, white)</span>
+        <span class="s0">if </span><span class="s1">isinstance(self.light</span><span class="s0">, </span><span class="s1">float):</span>
+            <span class="s1">self.light = normalize_color(grow_color(self.light</span><span class="s0">, </span><span class="s1">self.color))</span>
+<span class="s4">##        if self.dark is None:</span>
+<span class="s4">##            black = make_compatible(constants.BLACK, self.color)</span>
+<span class="s4">##            self.dark = mid_color(self.color, black)</span>
+        <span class="s0">if </span><span class="s1">isinstance(self.dark</span><span class="s0">, </span><span class="s1">float):</span>
+            <span class="s1">self.dark = normalize_color(grow_color(self.dark</span><span class="s0">, </span><span class="s1">self.color))</span>
+
+    <span class="s0">def </span><span class="s1">blit_borders_on(self</span><span class="s0">, </span><span class="s1">surface):</span>
+        <span class="s1">rect = Rect((</span><span class="s2">0</span><span class="s0">, </span><span class="s2">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">self.size)</span>
+        <span class="s0">for </span><span class="s1">x </span><span class="s0">in </span><span class="s1">range(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">self.thick):</span>
+            <span class="s1">r = rect.inflate(-x</span><span class="s0">, </span><span class="s1">-x)</span>
+            <span class="s1">tc = get_top_coords(r)</span>
+            <span class="s1">bc = get_bottom_coords(r)</span>
+            <span class="s0">if </span><span class="s1">self.pressed:</span>
+                <span class="s1">lines(surface</span><span class="s0">, </span><span class="s1">self.dark</span><span class="s0">, False, </span><span class="s1">tc</span><span class="s0">, </span><span class="s2">1</span><span class="s1">)</span>
+                <span class="s1">lines(surface</span><span class="s0">, </span><span class="s1">self.light</span><span class="s0">, False, </span><span class="s1">bc</span><span class="s0">, </span><span class="s2">1</span><span class="s1">)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">lines(surface</span><span class="s0">, </span><span class="s1">self.light</span><span class="s0">, False, </span><span class="s1">tc</span><span class="s0">, </span><span class="s2">1</span><span class="s1">)</span>
+                <span class="s1">lines(surface</span><span class="s0">, </span><span class="s1">self.dark</span><span class="s0">, False, </span><span class="s1">bc</span><span class="s0">, </span><span class="s2">1</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">draw(self):</span>
+        <span class="s1">surface = BasicFrame.draw(self)</span>
+        <span class="s1">self.blit_borders_on(surface)</span>
+        <span class="s0">return </span><span class="s1">surface</span>
+
+    <span class="s0">def </span><span class="s1">get_fusion(self</span><span class="s0">, </span><span class="s1">title</span><span class="s0">, </span><span class="s1">center_title):</span>
+        <span class="s5">&quot;&quot;&quot;Fusion the painter.img and the title.img and returns this fusion&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.pressed:</span>
+            <span class="s0">if </span><span class="s1">center_title </span><span class="s0">is True</span><span class="s1">:  </span><span class="s4"># center the title on the element rect</span>
+                <span class="s1">title.center_on(self.size)</span>
+                <span class="s1">title._pos = (title._pos[</span><span class="s2">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">title._pos[</span><span class="s2">1</span><span class="s1">] + self.thick)</span>
+            <span class="s4"># center_title is the topleft argument</span>
+            <span class="s0">elif </span><span class="s1">center_title </span><span class="s0">is not False</span><span class="s1">:</span>
+                <span class="s1">title._pos = center_title</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">title._pos = (</span><span class="s2">0</span><span class="s0">, </span><span class="s2">0</span><span class="s1">)</span>
+            <span class="s1">painter_img = self.get_surface()</span>
+            <span class="s1">title.blit_on(painter_img)</span>
+            <span class="s0">return </span><span class="s1">painter_img</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">BasicFrame.get_fusion(self</span><span class="s0">, </span><span class="s1">title</span><span class="s0">, </span><span class="s1">center_title)</span>
+
+    <span class="s0">def </span><span class="s1">set_color(self</span><span class="s0">, </span><span class="s1">color):</span>
+        <span class="s1">self.color = color</span>
+        <span class="s0">if </span><span class="s1">len(color) == </span><span class="s2">4</span><span class="s1">:</span>
+            <span class="s1">self.dark = tuple(list(self.dark) + [color[</span><span class="s2">3</span><span class="s1">]])</span>
+            <span class="s1">self.light = tuple(list(self.light) + [color[</span><span class="s2">3</span><span class="s1">]])</span>
+</pre>
+</body>
+</html>

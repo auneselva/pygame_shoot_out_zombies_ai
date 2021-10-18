@@ -1,0 +1,660 @@
+<html>
+<head>
+<title>base_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6a8759;}
+.s4 { color: #6897bb;}
+.s5 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+base_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0"># -*- coding: utf8 -*-</span>
+
+<span class="s2">import </span><span class="s1">sys</span>
+<span class="s2">import </span><span class="s1">unittest</span>
+
+<span class="s2">import </span><span class="s1">platform</span>
+<span class="s1">IS_PYPY = </span><span class="s3">'PyPy' </span><span class="s1">== platform.python_implementation()</span>
+
+<span class="s2">try</span><span class="s1">:</span>
+    <span class="s2">from </span><span class="s1">pygame.tests.test_utils </span><span class="s2">import </span><span class="s1">arrinter</span>
+<span class="s2">except </span><span class="s1">NameError:</span>
+    <span class="s2">pass</span>
+<span class="s2">import </span><span class="s1">pygame</span>
+
+
+<span class="s1">init_called = quit_called = </span><span class="s4">0</span>
+<span class="s2">def </span><span class="s1">__PYGAMEinit__(): </span><span class="s0">#called automatically by pygame.init()</span>
+    <span class="s2">global </span><span class="s1">init_called</span>
+    <span class="s1">init_called = init_called + </span><span class="s4">1</span>
+    <span class="s1">pygame.register_quit(pygame_quit)</span>
+<span class="s2">def </span><span class="s1">pygame_quit():</span>
+    <span class="s2">global </span><span class="s1">quit_called</span>
+    <span class="s1">quit_called = quit_called + </span><span class="s4">1</span>
+
+
+<span class="s1">quit_hook_ran = </span><span class="s4">0</span>
+<span class="s2">def </span><span class="s1">quit_hook():</span>
+    <span class="s2">global </span><span class="s1">quit_hook_ran</span>
+    <span class="s1">quit_hook_ran = </span><span class="s4">1</span>
+
+
+<span class="s2">class </span><span class="s1">BaseModuleTest(unittest.TestCase):</span>
+
+    <span class="s2">def </span><span class="s1">tearDown(self):</span>
+        <span class="s0"># Clean up after each test method.</span>
+        <span class="s1">pygame.quit()</span>
+
+    <span class="s2">def </span><span class="s1">testAutoInit(self):</span>
+        <span class="s1">pygame.init()</span>
+        <span class="s1">pygame.quit()</span>
+        <span class="s1">self.assertEqual(init_called</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(quit_called</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_get_sdl_byteorder(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensure the SDL byte order is valid&quot;&quot;&quot;</span>
+        <span class="s1">byte_order = pygame.get_sdl_byteorder()</span>
+        <span class="s1">expected_options = (pygame.LIL_ENDIAN</span><span class="s2">, </span><span class="s1">pygame.BIG_ENDIAN)</span>
+
+        <span class="s1">self.assertIn(byte_order</span><span class="s2">, </span><span class="s1">expected_options)</span>
+
+    <span class="s2">def </span><span class="s1">test_get_sdl_version(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensure the SDL version is valid&quot;&quot;&quot;</span>
+        <span class="s1">self.assertEqual(len(pygame.get_sdl_version())</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span>
+
+    <span class="s2">class </span><span class="s1">ExporterBase(object):</span>
+        <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">shape</span><span class="s2">, </span><span class="s1">typechar</span><span class="s2">, </span><span class="s1">itemsize):</span>
+            <span class="s2">import </span><span class="s1">ctypes</span>
+
+            <span class="s1">ndim = len(shape)</span>
+            <span class="s1">self.ndim = ndim</span>
+            <span class="s1">self.shape = tuple(shape)</span>
+            <span class="s1">array_len = </span><span class="s4">1</span>
+            <span class="s2">for </span><span class="s1">d </span><span class="s2">in </span><span class="s1">shape:</span>
+                <span class="s1">array_len *= d</span>
+            <span class="s1">self.size = itemsize * array_len</span>
+            <span class="s1">self.parent = ctypes.create_string_buffer(self.size)</span>
+            <span class="s1">self.itemsize = itemsize</span>
+            <span class="s1">strides = [itemsize] * ndim</span>
+            <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(ndim - </span><span class="s4">1</span><span class="s2">, </span><span class="s4">0</span><span class="s2">, </span><span class="s1">-</span><span class="s4">1</span><span class="s1">):</span>
+                <span class="s1">strides[i - </span><span class="s4">1</span><span class="s1">] = strides[i] * shape[i]</span>
+            <span class="s1">self.strides = tuple(strides)</span>
+            <span class="s1">self.data = ctypes.addressof(self.parent)</span><span class="s2">, False</span>
+            <span class="s2">if </span><span class="s1">self.itemsize == </span><span class="s4">1</span><span class="s1">:</span>
+                <span class="s1">byteorder = </span><span class="s3">'|'</span>
+            <span class="s2">elif </span><span class="s1">sys.byteorder == </span><span class="s3">'big'</span><span class="s1">:</span>
+                <span class="s1">byteorder = </span><span class="s3">'&gt;'</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s1">byteorder = </span><span class="s3">'&lt;'</span>
+            <span class="s1">self.typestr = byteorder + typechar + str(self.itemsize)</span>
+
+    <span class="s2">def </span><span class="s1">assertSame(self</span><span class="s2">, </span><span class="s1">proxy</span><span class="s2">, </span><span class="s1">obj):</span>
+        <span class="s1">self.assertEqual(proxy.length</span><span class="s2">, </span><span class="s1">obj.size)</span>
+        <span class="s1">iface = proxy.__array_interface__</span>
+        <span class="s1">self.assertEqual(iface[</span><span class="s3">'typestr'</span><span class="s1">]</span><span class="s2">, </span><span class="s1">obj.typestr)</span>
+        <span class="s1">self.assertEqual(iface[</span><span class="s3">'shape'</span><span class="s1">]</span><span class="s2">, </span><span class="s1">obj.shape)</span>
+        <span class="s1">self.assertEqual(iface[</span><span class="s3">'strides'</span><span class="s1">]</span><span class="s2">, </span><span class="s1">obj.strides)</span>
+        <span class="s1">self.assertEqual(iface[</span><span class="s3">'data'</span><span class="s1">]</span><span class="s2">, </span><span class="s1">obj.data)</span>
+
+    <span class="s2">def </span><span class="s1">test_PgObject_GetBuffer_array_interface(self):</span>
+        <span class="s2">from </span><span class="s1">pygame.bufferproxy </span><span class="s2">import </span><span class="s1">BufferProxy</span>
+
+        <span class="s2">class </span><span class="s1">Exporter(self.ExporterBase):</span>
+            <span class="s2">def </span><span class="s1">get__array_interface__(self):</span>
+                <span class="s2">return </span><span class="s1">{</span><span class="s3">'version'</span><span class="s1">: </span><span class="s4">3</span><span class="s2">,</span>
+                        <span class="s3">'typestr'</span><span class="s1">: self.typestr</span><span class="s2">,</span>
+                        <span class="s3">'shape'</span><span class="s1">: self.shape</span><span class="s2">,</span>
+                        <span class="s3">'strides'</span><span class="s1">: self.strides</span><span class="s2">,</span>
+                        <span class="s3">'data'</span><span class="s1">: self.data}</span>
+            <span class="s1">__array_interface__ = property(get__array_interface__)</span>
+            <span class="s0"># Should be ignored by PgObject_GetBuffer</span>
+            <span class="s1">__array_struct__ = property(</span><span class="s2">lambda </span><span class="s1">self: </span><span class="s2">None</span><span class="s1">)</span>
+
+        <span class="s1">_shape = [</span><span class="s4">2</span><span class="s2">, </span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">7</span><span class="s2">, </span><span class="s4">11</span><span class="s1">]  </span><span class="s0"># Some prime numbers</span>
+        <span class="s2">for </span><span class="s1">ndim </span><span class="s2">in </span><span class="s1">range(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">len(_shape)):</span>
+            <span class="s1">o = Exporter(_shape[</span><span class="s4">0</span><span class="s1">:ndim]</span><span class="s2">, </span><span class="s3">'i'</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+            <span class="s1">v = BufferProxy(o)</span>
+            <span class="s1">self.assertSame(v</span><span class="s2">, </span><span class="s1">o)</span>
+        <span class="s1">ndim = </span><span class="s4">2</span>
+        <span class="s1">shape = _shape[</span><span class="s4">0</span><span class="s1">:ndim]</span>
+        <span class="s2">for </span><span class="s1">typechar </span><span class="s2">in </span><span class="s1">(</span><span class="s3">'i'</span><span class="s2">, </span><span class="s3">'u'</span><span class="s1">):</span>
+            <span class="s2">for </span><span class="s1">itemsize </span><span class="s2">in </span><span class="s1">(</span><span class="s4">1</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">8</span><span class="s1">):</span>
+                <span class="s1">o = Exporter(shape</span><span class="s2">, </span><span class="s1">typechar</span><span class="s2">, </span><span class="s1">itemsize)</span>
+                <span class="s1">v = BufferProxy(o)</span>
+                <span class="s1">self.assertSame(v</span><span class="s2">, </span><span class="s1">o)</span>
+        <span class="s2">for </span><span class="s1">itemsize </span><span class="s2">in </span><span class="s1">(</span><span class="s4">4</span><span class="s2">, </span><span class="s4">8</span><span class="s1">):</span>
+            <span class="s1">o = Exporter(shape</span><span class="s2">, </span><span class="s3">'f'</span><span class="s2">, </span><span class="s1">itemsize)</span>
+            <span class="s1">v = BufferProxy(o)</span>
+            <span class="s1">self.assertSame(v</span><span class="s2">, </span><span class="s1">o)</span>
+
+        <span class="s0"># Is the dict received from an exporting object properly released?</span>
+        <span class="s0"># The dict should be freed before PgObject_GetBuffer returns.</span>
+        <span class="s0"># When the BufferProxy v's length property is referenced, v calls</span>
+        <span class="s0"># PgObject_GetBuffer, which in turn references Exporter2 o's</span>
+        <span class="s0"># __array_interface__ property. The Exporter2 instance o returns a</span>
+        <span class="s0"># dict subclass for which it keeps both a regular reference and a</span>
+        <span class="s0"># weak reference. The regular reference should be the only</span>
+        <span class="s0"># remaining reference when PgObject_GetBuffer returns. This is</span>
+        <span class="s0"># verified by first checking the weak reference both before and</span>
+        <span class="s0"># after the regular reference held by o is removed.</span>
+
+        <span class="s2">import </span><span class="s1">weakref</span><span class="s2">, </span><span class="s1">gc</span>
+
+        <span class="s2">class </span><span class="s1">NoDictError(RuntimeError):</span>
+            <span class="s2">pass</span>
+
+        <span class="s2">class </span><span class="s1">WRDict(dict):</span>
+            <span class="s5">&quot;&quot;&quot;Weak referenceable dict&quot;&quot;&quot;</span>
+            <span class="s2">pass</span>
+
+        <span class="s2">class </span><span class="s1">Exporter2(Exporter):</span>
+            <span class="s2">def </span><span class="s1">get__array_interface__2(self):</span>
+                <span class="s1">self.d = WRDict(Exporter.get__array_interface__(self))</span>
+                <span class="s1">self.dict_ref = weakref.ref(self.d)</span>
+                <span class="s2">return </span><span class="s1">self.d</span>
+            <span class="s1">__array_interface__ = property(get__array_interface__2)</span>
+            <span class="s2">def </span><span class="s1">free_dict(self):</span>
+                <span class="s1">self.d = </span><span class="s2">None</span>
+            <span class="s2">def </span><span class="s1">is_dict_alive(self):</span>
+                <span class="s2">try</span><span class="s1">:</span>
+                    <span class="s2">return </span><span class="s1">self.dict_ref() </span><span class="s2">is not None</span>
+                <span class="s2">except </span><span class="s1">AttributeError:</span>
+                    <span class="s2">raise </span><span class="s1">NoDictError(</span><span class="s3">&quot;__array_interface__ is unread&quot;</span><span class="s1">)</span>
+
+        <span class="s1">o = Exporter2((</span><span class="s4">2</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span><span class="s2">, </span><span class="s3">'u'</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">v = BufferProxy(o)</span>
+        <span class="s1">self.assertRaises(NoDictError</span><span class="s2">, </span><span class="s1">o.is_dict_alive)</span>
+        <span class="s1">length = v.length</span>
+        <span class="s1">self.assertTrue(o.is_dict_alive())</span>
+        <span class="s1">o.free_dict()</span>
+        <span class="s1">gc.collect()</span>
+        <span class="s1">self.assertFalse(o.is_dict_alive())</span>
+
+    <span class="s2">def </span><span class="s1">test_GetView_array_struct(self):</span>
+        <span class="s2">from </span><span class="s1">pygame.bufferproxy </span><span class="s2">import </span><span class="s1">BufferProxy</span>
+
+        <span class="s2">class </span><span class="s1">Exporter(self.ExporterBase):</span>
+            <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">shape</span><span class="s2">, </span><span class="s1">typechar</span><span class="s2">, </span><span class="s1">itemsize):</span>
+                <span class="s1">super(Exporter</span><span class="s2">, </span><span class="s1">self).__init__(shape</span><span class="s2">, </span><span class="s1">typechar</span><span class="s2">, </span><span class="s1">itemsize)</span>
+                <span class="s1">self.view = BufferProxy(self.__dict__)</span>
+
+            <span class="s2">def </span><span class="s1">get__array_struct__(self):</span>
+                <span class="s2">return </span><span class="s1">self.view.__array_struct__</span>
+            <span class="s1">__array_struct__ = property(get__array_struct__)</span>
+            <span class="s0"># Should not cause PgObject_GetBuffer to fail</span>
+            <span class="s1">__array_interface__ = property(</span><span class="s2">lambda </span><span class="s1">self: </span><span class="s2">None</span><span class="s1">)</span>
+
+        <span class="s1">_shape = [</span><span class="s4">2</span><span class="s2">, </span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">7</span><span class="s2">, </span><span class="s4">11</span><span class="s1">]  </span><span class="s0"># Some prime numbers</span>
+        <span class="s2">for </span><span class="s1">ndim </span><span class="s2">in </span><span class="s1">range(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">len(_shape)):</span>
+            <span class="s1">o = Exporter(_shape[</span><span class="s4">0</span><span class="s1">:ndim]</span><span class="s2">, </span><span class="s3">'i'</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+            <span class="s1">v = BufferProxy(o)</span>
+            <span class="s1">self.assertSame(v</span><span class="s2">, </span><span class="s1">o)</span>
+        <span class="s1">ndim = </span><span class="s4">2</span>
+        <span class="s1">shape = _shape[</span><span class="s4">0</span><span class="s1">:ndim]</span>
+        <span class="s2">for </span><span class="s1">typechar </span><span class="s2">in </span><span class="s1">(</span><span class="s3">'i'</span><span class="s2">, </span><span class="s3">'u'</span><span class="s1">):</span>
+            <span class="s2">for </span><span class="s1">itemsize </span><span class="s2">in </span><span class="s1">(</span><span class="s4">1</span><span class="s2">, </span><span class="s4">2</span><span class="s2">, </span><span class="s4">4</span><span class="s2">, </span><span class="s4">8</span><span class="s1">):</span>
+                <span class="s1">o = Exporter(shape</span><span class="s2">, </span><span class="s1">typechar</span><span class="s2">, </span><span class="s1">itemsize)</span>
+                <span class="s1">v = BufferProxy(o)</span>
+                <span class="s1">self.assertSame(v</span><span class="s2">, </span><span class="s1">o)</span>
+        <span class="s2">for </span><span class="s1">itemsize </span><span class="s2">in </span><span class="s1">(</span><span class="s4">4</span><span class="s2">, </span><span class="s4">8</span><span class="s1">):</span>
+            <span class="s1">o = Exporter(shape</span><span class="s2">, </span><span class="s3">'f'</span><span class="s2">, </span><span class="s1">itemsize)</span>
+            <span class="s1">v = BufferProxy(o)</span>
+            <span class="s1">self.assertSame(v</span><span class="s2">, </span><span class="s1">o)</span>
+
+        <span class="s0"># Check returned cobject/capsule reference count</span>
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s2">from </span><span class="s1">sys </span><span class="s2">import </span><span class="s1">getrefcount</span>
+        <span class="s2">except </span><span class="s1">ImportError:</span>
+            <span class="s0"># PyPy: no reference counting</span>
+            <span class="s2">pass</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s1">o = Exporter(shape</span><span class="s2">, </span><span class="s1">typechar</span><span class="s2">, </span><span class="s1">itemsize)</span>
+            <span class="s1">self.assertEqual(getrefcount(o.__array_struct__)</span><span class="s2">, </span><span class="s4">1</span><span class="s1">)</span>
+
+    <span class="s2">if </span><span class="s1">pygame.HAVE_NEWBUF:</span>
+        <span class="s2">from </span><span class="s1">pygame.tests.test_utils </span><span class="s2">import </span><span class="s1">buftools</span>
+
+    <span class="s2">def </span><span class="s1">NEWBUF_assertSame(self</span><span class="s2">, </span><span class="s1">proxy</span><span class="s2">, </span><span class="s1">exp):</span>
+        <span class="s1">buftools = self.buftools</span>
+        <span class="s1">Importer = buftools.Importer</span>
+        <span class="s1">self.assertEqual(proxy.length</span><span class="s2">, </span><span class="s1">exp.len)</span>
+        <span class="s1">imp = Importer(proxy</span><span class="s2">, </span><span class="s1">buftools.PyBUF_RECORDS_RO)</span>
+        <span class="s1">self.assertEqual(imp.readonly</span><span class="s2">, </span><span class="s1">exp.readonly)</span>
+        <span class="s1">self.assertEqual(imp.format</span><span class="s2">, </span><span class="s1">exp.format)</span>
+        <span class="s1">self.assertEqual(imp.itemsize</span><span class="s2">, </span><span class="s1">exp.itemsize)</span>
+        <span class="s1">self.assertEqual(imp.ndim</span><span class="s2">, </span><span class="s1">exp.ndim)</span>
+        <span class="s1">self.assertEqual(imp.shape</span><span class="s2">, </span><span class="s1">exp.shape)</span>
+        <span class="s1">self.assertEqual(imp.strides</span><span class="s2">, </span><span class="s1">exp.strides)</span>
+        <span class="s1">self.assertTrue(imp.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+
+    <span class="s1">@unittest.skipIf(</span><span class="s2">not </span><span class="s1">pygame.HAVE_NEWBUF</span><span class="s2">, </span><span class="s3">'newbuf not implemented'</span><span class="s1">)</span>
+    <span class="s2">def </span><span class="s1">test_newbuf(self):</span>
+        <span class="s2">from </span><span class="s1">pygame.bufferproxy </span><span class="s2">import </span><span class="s1">BufferProxy</span>
+
+        <span class="s1">Exporter = self.buftools.Exporter</span>
+        <span class="s1">_shape = [</span><span class="s4">2</span><span class="s2">, </span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">7</span><span class="s2">, </span><span class="s4">11</span><span class="s1">]  </span><span class="s0"># Some prime numbers</span>
+        <span class="s2">for </span><span class="s1">ndim </span><span class="s2">in </span><span class="s1">range(</span><span class="s4">1</span><span class="s2">, </span><span class="s1">len(_shape)):</span>
+            <span class="s1">o = Exporter(_shape[</span><span class="s4">0</span><span class="s1">:ndim]</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s1">)</span>
+            <span class="s1">v = BufferProxy(o)</span>
+            <span class="s1">self.NEWBUF_assertSame(v</span><span class="s2">, </span><span class="s1">o)</span>
+        <span class="s1">ndim = </span><span class="s4">2</span>
+        <span class="s1">shape = _shape[</span><span class="s4">0</span><span class="s1">:ndim]</span>
+        <span class="s2">for </span><span class="s1">format </span><span class="s2">in </span><span class="s1">[</span><span class="s3">'b'</span><span class="s2">, </span><span class="s3">'B'</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s2">, </span><span class="s3">'=H'</span><span class="s2">, </span><span class="s3">'=i'</span><span class="s2">, </span><span class="s3">'=I'</span><span class="s2">, </span><span class="s3">'=q'</span><span class="s2">, </span><span class="s3">'=Q'</span><span class="s2">, </span><span class="s3">'f'</span><span class="s2">, </span><span class="s3">'d'</span><span class="s2">,</span>
+                       <span class="s3">'1h'</span><span class="s2">, </span><span class="s3">'=1h'</span><span class="s2">, </span><span class="s3">'x'</span><span class="s2">, </span><span class="s3">'1x'</span><span class="s2">, </span><span class="s3">'2x'</span><span class="s2">, </span><span class="s3">'3x'</span><span class="s2">, </span><span class="s3">'4x'</span><span class="s2">, </span><span class="s3">'5x'</span><span class="s2">, </span><span class="s3">'6x'</span><span class="s2">,</span>
+                       <span class="s3">'7x'</span><span class="s2">, </span><span class="s3">'8x'</span><span class="s2">, </span><span class="s3">'9x'</span><span class="s1">]:</span>
+            <span class="s1">o = Exporter(shape</span><span class="s2">, </span><span class="s1">format)</span>
+            <span class="s1">v = BufferProxy(o)</span>
+            <span class="s1">self.NEWBUF_assertSame(v</span><span class="s2">, </span><span class="s1">o)</span>
+
+    <span class="s1">@unittest.skipIf(</span><span class="s2">not </span><span class="s1">pygame.HAVE_NEWBUF</span><span class="s2">, </span><span class="s3">'newbuf not implemented'</span><span class="s1">)</span>
+    <span class="s2">def </span><span class="s1">test_bad_format(self):</span>
+        <span class="s2">from </span><span class="s1">pygame.bufferproxy </span><span class="s2">import </span><span class="s1">BufferProxy</span>
+        <span class="s2">from </span><span class="s1">pygame.newbuffer </span><span class="s2">import </span><span class="s1">BufferMixin</span>
+        <span class="s2">from </span><span class="s1">ctypes </span><span class="s2">import </span><span class="s1">create_string_buffer</span><span class="s2">, </span><span class="s1">addressof</span>
+
+        <span class="s1">buftools = self.buftools</span>
+        <span class="s1">Exporter = buftools.Exporter</span>
+        <span class="s1">Importer = buftools.Importer</span>
+        <span class="s1">PyBUF_FORMAT = buftools.PyBUF_FORMAT</span>
+
+        <span class="s2">for </span><span class="s1">format </span><span class="s2">in </span><span class="s1">[</span><span class="s3">''</span><span class="s2">, </span><span class="s3">'='</span><span class="s2">, </span><span class="s3">'1'</span><span class="s2">, </span><span class="s3">' '</span><span class="s2">, </span><span class="s3">'2h'</span><span class="s2">, </span><span class="s3">'=2h'</span><span class="s2">,</span>
+                       <span class="s3">'0x'</span><span class="s2">, </span><span class="s3">'11x'</span><span class="s2">, </span><span class="s3">'=!'</span><span class="s2">, </span><span class="s3">'h '</span><span class="s2">, </span><span class="s3">' h'</span><span class="s2">, </span><span class="s3">'hh'</span><span class="s2">, </span><span class="s3">'?'</span><span class="s1">]:</span>
+            <span class="s1">exp = Exporter((</span><span class="s4">1</span><span class="s2">,</span><span class="s1">)</span><span class="s2">, </span><span class="s1">format</span><span class="s2">, </span><span class="s1">itemsize=</span><span class="s4">2</span><span class="s1">)</span>
+            <span class="s1">b = BufferProxy(exp)</span>
+            <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">b</span><span class="s2">, </span><span class="s1">PyBUF_FORMAT)</span>
+
+    <span class="s1">@unittest.skipIf(</span><span class="s2">not </span><span class="s1">pygame.HAVE_NEWBUF</span><span class="s2">, </span><span class="s3">'newbuf not implemented'</span><span class="s1">)</span>
+    <span class="s2">def </span><span class="s1">test_PgDict_AsBuffer_PyBUF_flags(self):</span>
+        <span class="s2">from </span><span class="s1">pygame.bufferproxy </span><span class="s2">import </span><span class="s1">BufferProxy</span>
+
+        <span class="s1">is_lil_endian = pygame.get_sdl_byteorder() == pygame.LIL_ENDIAN</span>
+        <span class="s1">fsys</span><span class="s2">, </span><span class="s1">frev = (</span><span class="s3">'&lt;'</span><span class="s2">, </span><span class="s3">'&gt;'</span><span class="s1">) </span><span class="s2">if </span><span class="s1">is_lil_endian </span><span class="s2">else </span><span class="s1">(</span><span class="s3">'&gt;'</span><span class="s2">, </span><span class="s3">'&lt;'</span><span class="s1">)</span>
+        <span class="s1">buftools = self.buftools</span>
+        <span class="s1">Importer = buftools.Importer</span>
+        <span class="s1">a = BufferProxy({</span><span class="s3">'typestr'</span><span class="s1">: </span><span class="s3">'|u4'</span><span class="s2">,</span>
+                         <span class="s3">'shape'</span><span class="s1">: (</span><span class="s4">10</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span><span class="s2">,</span>
+                         <span class="s3">'data'</span><span class="s1">: (</span><span class="s4">9</span><span class="s2">, False</span><span class="s1">)}) </span><span class="s0"># 9? No data accesses.</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_SIMPLE)</span>
+        <span class="s1">self.assertEqual(b.ndim</span><span class="s2">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.format </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">a.length)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.shape </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.strides </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">self.assertEqual(b.buf</span><span class="s2">, </span><span class="s4">9</span><span class="s1">)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_WRITABLE)</span>
+        <span class="s1">self.assertEqual(b.ndim</span><span class="s2">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.format </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">a.length)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.shape </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.strides </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">self.assertEqual(b.buf</span><span class="s2">, </span><span class="s4">9</span><span class="s1">)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_ND)</span>
+        <span class="s1">self.assertEqual(b.ndim</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.format </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">a.length)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s4">4</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.shape</span><span class="s2">, </span><span class="s1">(</span><span class="s4">10</span><span class="s2">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(b.strides </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">self.assertEqual(b.buf</span><span class="s2">, </span><span class="s4">9</span><span class="s1">)</span>
+        <span class="s1">a = BufferProxy({</span><span class="s3">'typestr'</span><span class="s1">: fsys + </span><span class="s3">'i2'</span><span class="s2">,</span>
+                         <span class="s3">'shape'</span><span class="s1">: (</span><span class="s4">5</span><span class="s2">, </span><span class="s4">10</span><span class="s1">)</span><span class="s2">,</span>
+                         <span class="s3">'strides'</span><span class="s1">: (</span><span class="s4">24</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span><span class="s2">,</span>
+                         <span class="s3">'data'</span><span class="s1">: (</span><span class="s4">42</span><span class="s2">, False</span><span class="s1">)}) </span><span class="s0"># 42? No data accesses.</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_STRIDES)</span>
+        <span class="s1">self.assertEqual(b.ndim</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.format </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s4">100</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.shape</span><span class="s2">, </span><span class="s1">(</span><span class="s4">5</span><span class="s2">, </span><span class="s4">10</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(b.strides</span><span class="s2">, </span><span class="s1">(</span><span class="s4">24</span><span class="s2">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">self.assertEqual(b.buf</span><span class="s2">, </span><span class="s4">42</span><span class="s1">)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_FULL_RO)</span>
+        <span class="s1">self.assertEqual(b.ndim</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.format</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s4">100</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.shape</span><span class="s2">, </span><span class="s1">(</span><span class="s4">5</span><span class="s2">, </span><span class="s4">10</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(b.strides</span><span class="s2">, </span><span class="s1">(</span><span class="s4">24</span><span class="s2">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">self.assertEqual(b.buf</span><span class="s2">, </span><span class="s4">42</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_SIMPLE)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_ND)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_C_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_F_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_ANY_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_CONTIG)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_SIMPLE)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_ND)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_C_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_F_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_ANY_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_CONTIG)</span>
+        <span class="s1">a = BufferProxy({</span><span class="s3">'typestr'</span><span class="s1">: frev + </span><span class="s3">'i2'</span><span class="s2">,</span>
+                         <span class="s3">'shape'</span><span class="s1">: (</span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">10</span><span class="s1">)</span><span class="s2">,</span>
+                         <span class="s3">'strides'</span><span class="s1">: (</span><span class="s4">120</span><span class="s2">, </span><span class="s4">24</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span><span class="s2">,</span>
+                         <span class="s3">'data'</span><span class="s1">: (</span><span class="s4">1000000</span><span class="s2">, True</span><span class="s1">)}) </span><span class="s0"># 1000000? No data accesses.</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_FULL_RO)</span>
+        <span class="s1">self.assertEqual(b.ndim</span><span class="s2">, </span><span class="s4">3</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.format</span><span class="s2">, </span><span class="s1">frev + </span><span class="s3">'h'</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s4">300</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.shape</span><span class="s2">, </span><span class="s1">(</span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">10</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(b.strides</span><span class="s2">, </span><span class="s1">(</span><span class="s4">120</span><span class="s2">, </span><span class="s4">24</span><span class="s2">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.readonly)</span>
+        <span class="s1">self.assertEqual(b.buf</span><span class="s2">, </span><span class="s4">1000000</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_FULL)</span>
+
+    <span class="s1">@unittest.skipIf(IS_PYPY </span><span class="s2">or </span><span class="s1">(</span><span class="s2">not </span><span class="s1">pygame.HAVE_NEWBUF)</span><span class="s2">, </span><span class="s3">'newbuf with ctypes'</span><span class="s1">)</span>
+    <span class="s2">def </span><span class="s1">test_PgObject_AsBuffer_PyBUF_flags(self):</span>
+        <span class="s2">from </span><span class="s1">pygame.bufferproxy </span><span class="s2">import </span><span class="s1">BufferProxy</span>
+        <span class="s2">import </span><span class="s1">ctypes</span>
+
+        <span class="s1">is_lil_endian = pygame.get_sdl_byteorder() == pygame.LIL_ENDIAN</span>
+        <span class="s1">fsys</span><span class="s2">, </span><span class="s1">frev = (</span><span class="s3">'&lt;'</span><span class="s2">, </span><span class="s3">'&gt;'</span><span class="s1">) </span><span class="s2">if </span><span class="s1">is_lil_endian </span><span class="s2">else </span><span class="s1">(</span><span class="s3">'&gt;'</span><span class="s2">, </span><span class="s3">'&lt;'</span><span class="s1">)</span>
+        <span class="s1">buftools = self.buftools</span>
+        <span class="s1">Importer = buftools.Importer</span>
+        <span class="s1">e = arrinter.Exporter((</span><span class="s4">10</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span><span class="s2">, </span><span class="s1">typekind=</span><span class="s3">'f'</span><span class="s2">,</span>
+                              <span class="s1">itemsize=ctypes.sizeof(ctypes.c_double))</span>
+        <span class="s1">a = BufferProxy(e)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_SIMPLE)</span>
+        <span class="s1">self.assertEqual(b.ndim</span><span class="s2">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.format </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">e.len)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s1">e.itemsize)</span>
+        <span class="s1">self.assertTrue(b.shape </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.strides </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">self.assertEqual(b.buf</span><span class="s2">, </span><span class="s1">e.data)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_WRITABLE)</span>
+        <span class="s1">self.assertEqual(b.ndim</span><span class="s2">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.format </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">e.len)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s1">e.itemsize)</span>
+        <span class="s1">self.assertTrue(b.shape </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.strides </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">self.assertEqual(b.buf</span><span class="s2">, </span><span class="s1">e.data)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_ND)</span>
+        <span class="s1">self.assertEqual(b.ndim</span><span class="s2">, </span><span class="s1">e.nd)</span>
+        <span class="s1">self.assertTrue(b.format </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">a.length)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s1">e.itemsize)</span>
+        <span class="s1">self.assertEqual(b.shape</span><span class="s2">, </span><span class="s1">e.shape)</span>
+        <span class="s1">self.assertTrue(b.strides </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">self.assertEqual(b.buf</span><span class="s2">, </span><span class="s1">e.data)</span>
+        <span class="s1">e = arrinter.Exporter((</span><span class="s4">5</span><span class="s2">, </span><span class="s4">10</span><span class="s1">)</span><span class="s2">, </span><span class="s1">typekind=</span><span class="s3">'i'</span><span class="s2">, </span><span class="s1">itemsize=</span><span class="s4">2</span><span class="s2">,</span>
+                              <span class="s1">strides=(</span><span class="s4">24</span><span class="s2">, </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s1">a = BufferProxy(e)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_STRIDES)</span>
+        <span class="s1">self.assertEqual(b.ndim</span><span class="s2">, </span><span class="s1">e.nd)</span>
+        <span class="s1">self.assertTrue(b.format </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">e.len)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s1">e.itemsize)</span>
+        <span class="s1">self.assertEqual(b.shape</span><span class="s2">, </span><span class="s1">e.shape)</span>
+        <span class="s1">self.assertEqual(b.strides</span><span class="s2">, </span><span class="s1">e.strides)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">self.assertEqual(b.buf</span><span class="s2">, </span><span class="s1">e.data)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_FULL_RO)</span>
+        <span class="s1">self.assertEqual(b.ndim</span><span class="s2">, </span><span class="s1">e.nd)</span>
+        <span class="s1">self.assertEqual(b.format</span><span class="s2">, </span><span class="s3">'=h'</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">e.len)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s1">e.itemsize)</span>
+        <span class="s1">self.assertEqual(b.shape</span><span class="s2">, </span><span class="s1">e.shape)</span>
+        <span class="s1">self.assertEqual(b.strides</span><span class="s2">, </span><span class="s1">e.strides)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(b.readonly)</span>
+        <span class="s1">self.assertEqual(b.buf</span><span class="s2">, </span><span class="s1">e.data)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_SIMPLE)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_WRITABLE)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_WRITABLE)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_ND)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_C_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_F_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_ANY_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_CONTIG)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_SIMPLE)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_ND)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_C_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_F_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">,</span>
+                          <span class="s1">buftools.PyBUF_ANY_CONTIGUOUS)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_CONTIG)</span>
+        <span class="s1">e = arrinter.Exporter((</span><span class="s4">3</span><span class="s2">, </span><span class="s4">5</span><span class="s2">, </span><span class="s4">10</span><span class="s1">)</span><span class="s2">, </span><span class="s1">typekind=</span><span class="s3">'i'</span><span class="s2">, </span><span class="s1">itemsize=</span><span class="s4">2</span><span class="s2">,</span>
+                              <span class="s1">strides=(</span><span class="s4">120</span><span class="s2">, </span><span class="s4">24</span><span class="s2">, </span><span class="s4">2</span><span class="s1">)</span><span class="s2">,</span>
+                              <span class="s1">flags=arrinter.PAI_ALIGNED)</span>
+        <span class="s1">a = BufferProxy(e)</span>
+        <span class="s1">b = Importer(a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_FULL_RO)</span>
+        <span class="s1">self.assertEqual(b.ndim</span><span class="s2">, </span><span class="s1">e.nd)</span>
+        <span class="s1">self.assertEqual(b.format</span><span class="s2">, </span><span class="s1">frev + </span><span class="s3">'h'</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(b.len</span><span class="s2">, </span><span class="s1">e.len)</span>
+        <span class="s1">self.assertEqual(b.itemsize</span><span class="s2">, </span><span class="s1">e.itemsize)</span>
+        <span class="s1">self.assertEqual(b.shape</span><span class="s2">, </span><span class="s1">e.shape)</span>
+        <span class="s1">self.assertEqual(b.strides</span><span class="s2">, </span><span class="s1">e.strides)</span>
+        <span class="s1">self.assertTrue(b.suboffsets </span><span class="s2">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(b.readonly)</span>
+        <span class="s1">self.assertEqual(b.buf</span><span class="s2">, </span><span class="s1">e.data)</span>
+        <span class="s1">self.assertRaises(BufferError</span><span class="s2">, </span><span class="s1">Importer</span><span class="s2">, </span><span class="s1">a</span><span class="s2">, </span><span class="s1">buftools.PyBUF_FULL)</span>
+
+    <span class="s2">def </span><span class="s1">test_PgObject_GetBuffer_exception(self):</span>
+        <span class="s0"># For consistency with surfarray</span>
+        <span class="s2">from </span><span class="s1">pygame.bufferproxy </span><span class="s2">import </span><span class="s1">BufferProxy</span>
+
+        <span class="s1">bp = BufferProxy(</span><span class="s4">1</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s2">, </span><span class="s1">getattr</span><span class="s2">, </span><span class="s1">bp</span><span class="s2">, </span><span class="s3">'length'</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">not_init_assertions(self):</span>
+        <span class="s1">self.assertFalse(pygame.get_init()</span><span class="s2">, </span><span class="s3">&quot;pygame shouldn't be initialized&quot;</span><span class="s1">)</span>
+        <span class="s1">self.assertFalse(pygame.display.get_init()</span><span class="s2">,</span>
+                         <span class="s3">&quot;display shouldn't be initialized&quot;</span><span class="s1">)</span>
+
+        <span class="s2">if </span><span class="s3">'pygame.mixer' </span><span class="s2">in </span><span class="s1">sys.modules:</span>
+            <span class="s1">self.assertFalse(pygame.mixer.get_init()</span><span class="s2">,</span>
+                             <span class="s3">&quot;mixer shouldn't be initialized&quot;</span><span class="s1">)</span>
+
+        <span class="s2">if </span><span class="s3">'pygame.font' </span><span class="s2">in </span><span class="s1">sys.modules:</span>
+            <span class="s1">self.assertFalse(pygame.font.get_init()</span><span class="s2">,</span>
+                             <span class="s3">&quot;init shouldn't be initialized&quot;</span><span class="s1">)</span>
+
+        <span class="s0">## !!! TODO : Remove when scrap works for OS X</span>
+        <span class="s2">import </span><span class="s1">platform</span>
+        <span class="s2">if </span><span class="s1">platform.system().startswith(</span><span class="s3">'Darwin'</span><span class="s1">):</span>
+            <span class="s2">return</span>
+
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s1">self.assertRaises(pygame.error</span><span class="s2">, </span><span class="s1">pygame.scrap.get)</span>
+        <span class="s2">except </span><span class="s1">NotImplementedError:</span>
+            <span class="s0"># Scrap is optional.</span>
+            <span class="s2">pass</span>
+
+        <span class="s0"># pygame.cdrom</span>
+        <span class="s0"># pygame.joystick</span>
+
+    <span class="s2">def </span><span class="s1">init_assertions(self):</span>
+        <span class="s1">self.assertTrue(pygame.get_init())</span>
+        <span class="s1">self.assertTrue(pygame.display.get_init())</span>
+
+        <span class="s2">if </span><span class="s3">'pygame.mixer' </span><span class="s2">in </span><span class="s1">sys.modules:</span>
+            <span class="s1">self.assertTrue(pygame.mixer.get_init())</span>
+
+        <span class="s2">if </span><span class="s3">'pygame.font' </span><span class="s2">in </span><span class="s1">sys.modules:</span>
+            <span class="s1">self.assertTrue(pygame.font.get_init())</span>
+
+    <span class="s2">def </span><span class="s1">test_quit__and_init(self):</span>
+        <span class="s0"># __doc__ (as of 2008-06-25) for pygame.base.quit:</span>
+
+          <span class="s0"># pygame.quit(): return None</span>
+          <span class="s0"># uninitialize all pygame modules</span>
+
+        <span class="s0"># Make sure everything is not init</span>
+        <span class="s1">self.not_init_assertions()</span>
+
+        <span class="s0"># Initiate it</span>
+        <span class="s1">pygame.init()</span>
+
+        <span class="s0"># Check</span>
+        <span class="s1">self.init_assertions()</span>
+
+        <span class="s0"># Quit</span>
+        <span class="s1">pygame.quit()</span>
+
+        <span class="s0"># All modules have quit</span>
+        <span class="s1">self.not_init_assertions()</span>
+
+    <span class="s2">def </span><span class="s1">test_register_quit(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensure that a registered function is called on quit()&quot;&quot;&quot;</span>
+        <span class="s1">self.assertFalse(quit_hook_ran)</span>
+
+        <span class="s1">pygame.init()</span>
+        <span class="s1">pygame.register_quit(quit_hook)</span>
+        <span class="s1">pygame.quit()</span>
+
+        <span class="s1">self.assertTrue(quit_hook_ran)</span>
+
+    <span class="s2">def </span><span class="s1">test_get_error(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.base.get_error:</span>
+
+          <span class="s0"># pygame.get_error(): return errorstr</span>
+          <span class="s0"># get the current error message</span>
+          <span class="s0">#</span>
+          <span class="s0"># SDL maintains an internal error message. This message will usually</span>
+          <span class="s0"># be given to you when pygame.error is raised. You will rarely need to</span>
+          <span class="s0"># call this function.</span>
+          <span class="s0">#</span>
+
+        <span class="s0"># The first error could be all sorts of nonsense or empty.</span>
+        <span class="s1">e = pygame.get_error()</span>
+        <span class="s1">pygame.set_error(</span><span class="s3">&quot;hi&quot;</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(pygame.get_error()</span><span class="s2">, </span><span class="s3">&quot;hi&quot;</span><span class="s1">)</span>
+        <span class="s1">pygame.set_error(</span><span class="s3">&quot;&quot;</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(pygame.get_error()</span><span class="s2">, </span><span class="s3">&quot;&quot;</span><span class="s1">)</span>
+
+
+
+    <span class="s2">def </span><span class="s1">test_set_error(self):</span>
+
+        <span class="s0"># The first error could be all sorts of nonsense or empty.</span>
+        <span class="s1">e = pygame.get_error()</span>
+        <span class="s1">pygame.set_error(</span><span class="s3">&quot;hi&quot;</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(pygame.get_error()</span><span class="s2">, </span><span class="s3">&quot;hi&quot;</span><span class="s1">)</span>
+        <span class="s1">pygame.set_error(</span><span class="s3">&quot;&quot;</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(pygame.get_error()</span><span class="s2">, </span><span class="s3">&quot;&quot;</span><span class="s1">)</span>
+
+    <span class="s2">def </span><span class="s1">test_unicode_error(self):</span>
+        <span class="s2">if </span><span class="s1">sys.version_info.major &gt; </span><span class="s4">2</span><span class="s1">:</span>
+            <span class="s1">pygame.set_error(</span><span class="s3">u'你好'</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(</span><span class="s3">u'你好'</span><span class="s2">, </span><span class="s1">pygame.get_error())</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s0"># no unicode objects for now</span>
+            <span class="s1">pygame.set_error(</span><span class="s3">u'你好'</span><span class="s1">)</span>
+            <span class="s1">encstr = </span><span class="s3">u'你好'</span><span class="s1">.encode(</span><span class="s3">'utf8'</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(encstr</span><span class="s2">, </span><span class="s1">pygame.get_error())</span>
+
+    <span class="s2">def </span><span class="s1">test_init(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.base.init:</span>
+
+        <span class="s0"># pygame.init(): return (numpass, numfail)</span>
+        <span class="s0"># initialize all imported pygame modules</span>
+        <span class="s0">#</span>
+        <span class="s0"># Initialize all imported Pygame modules. No exceptions will be raised</span>
+        <span class="s0"># if a module fails, but the total number if successful and failed</span>
+        <span class="s0"># inits will be returned as a tuple. You can always initialize</span>
+        <span class="s0"># individual modules manually, but pygame.init is a convenient way to</span>
+        <span class="s0"># get everything started. The init() functions for individual modules</span>
+        <span class="s0"># will raise exceptions when they fail.</span>
+        <span class="s0">#</span>
+        <span class="s0"># You may want to initalise the different modules seperately to speed</span>
+        <span class="s0"># up your program or to not use things your game does not.</span>
+        <span class="s0">#</span>
+        <span class="s0"># It is safe to call this init() more than once: repeated calls will</span>
+        <span class="s0"># have no effect. This is true even if you have pygame.quit() all the</span>
+        <span class="s0"># modules.</span>
+        <span class="s0">#</span>
+
+
+
+        <span class="s0"># Make sure everything is not init</span>
+        <span class="s1">self.not_init_assertions()</span>
+
+        <span class="s0"># Initiate it</span>
+        <span class="s1">pygame.init()</span>
+
+        <span class="s0"># Check</span>
+        <span class="s1">self.init_assertions()</span>
+
+        <span class="s0"># Quit</span>
+        <span class="s1">pygame.quit()</span>
+
+        <span class="s0"># All modules have quit</span>
+        <span class="s1">self.not_init_assertions()</span>
+
+    <span class="s2">def </span><span class="s1">test_get_init(self):</span>
+        <span class="s0"># Test if get_init() gets the init state.</span>
+        <span class="s1">self.assertFalse(pygame.get_init())</span>
+
+    <span class="s2">def </span><span class="s1">test_get_init__after_init(self):</span>
+        <span class="s0"># Test if get_init() gets the init state after pygame.init() called.</span>
+        <span class="s1">pygame.init()</span>
+
+        <span class="s1">self.assertTrue(pygame.get_init())</span>
+
+    <span class="s2">def </span><span class="s1">test_get_init__after_quit(self):</span>
+        <span class="s0"># Test if get_init() gets the init state after pygame.quit() called.</span>
+        <span class="s1">pygame.init()</span>
+        <span class="s1">pygame.quit()</span>
+
+        <span class="s1">self.assertFalse(pygame.get_init())</span>
+
+    <span class="s2">def </span><span class="s1">todo_test_segfault(self):</span>
+
+        <span class="s0"># __doc__ (as of 2008-08-02) for pygame.base.segfault:</span>
+
+          <span class="s0"># crash</span>
+
+        <span class="s1">self.fail()</span>
+
+<span class="s2">if </span><span class="s1">__name__ == </span><span class="s3">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

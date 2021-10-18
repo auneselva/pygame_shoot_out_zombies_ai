@@ -1,0 +1,1118 @@
+<html>
+<head>
+<title>transform_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6897bb;}
+.s4 { color: #629755; font-style: italic;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+transform_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">unittest</span>
+<span class="s0">import </span><span class="s1">platform</span>
+
+<span class="s0">from </span><span class="s1">pygame.tests </span><span class="s0">import </span><span class="s1">test_utils</span>
+<span class="s0">import </span><span class="s1">pygame</span>
+<span class="s0">import </span><span class="s1">pygame.transform</span>
+<span class="s0">from </span><span class="s1">pygame.locals </span><span class="s0">import </span><span class="s1">*</span>
+
+
+<span class="s0">def </span><span class="s1">show_image(s</span><span class="s0">, </span><span class="s1">images = []):</span>
+    <span class="s2">#pygame.display.init()</span>
+    <span class="s1">size = s.get_rect()[</span><span class="s3">2</span><span class="s1">:]</span>
+    <span class="s1">screen = pygame.display.set_mode(size)</span>
+    <span class="s1">screen.blit(s</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span>
+    <span class="s1">pygame.display.flip()</span>
+    <span class="s1">pygame.event.pump()</span>
+    <span class="s1">going = </span><span class="s0">True</span>
+    <span class="s1">idx = </span><span class="s3">0</span>
+    <span class="s0">while </span><span class="s1">going:</span>
+        <span class="s1">events = pygame.event.get()</span>
+        <span class="s0">for </span><span class="s1">e </span><span class="s0">in </span><span class="s1">events:</span>
+            <span class="s0">if </span><span class="s1">e.type == QUIT:</span>
+                <span class="s1">going = </span><span class="s0">False</span>
+            <span class="s0">if </span><span class="s1">e.type == KEYDOWN:</span>
+                <span class="s0">if </span><span class="s1">e.key </span><span class="s0">in </span><span class="s1">[K_s</span><span class="s0">, </span><span class="s1">K_a]:</span>
+                    <span class="s0">if </span><span class="s1">e.key == K_s: idx += </span><span class="s3">1</span>
+                    <span class="s0">if </span><span class="s1">e.key == K_a: idx -= </span><span class="s3">1</span>
+                    <span class="s1">s = images[idx]</span>
+                    <span class="s1">screen.blit(s</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span>
+                    <span class="s1">pygame.display.flip()</span>
+                    <span class="s1">pygame.event.pump()</span>
+                <span class="s0">elif </span><span class="s1">e.key </span><span class="s0">in </span><span class="s1">[K_ESCAPE]:</span>
+                    <span class="s1">going = </span><span class="s0">False</span>
+    <span class="s1">pygame.display.quit()</span>
+    <span class="s1">pygame.display.init()</span>
+
+<span class="s0">def </span><span class="s1">threshold(return_surf</span><span class="s0">, </span><span class="s1">surf</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">threshold = (</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">diff_color = (</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">change_return = </span><span class="s0">True </span><span class="s1">):</span>
+    <span class="s4">&quot;&quot;&quot; given the color it makes return_surf only have areas with the given colour. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">width</span><span class="s0">, </span><span class="s1">height =surf.get_width()</span><span class="s0">, </span><span class="s1">surf.get_height()</span>
+
+    <span class="s0">if </span><span class="s1">change_return:</span>
+        <span class="s1">return_surf.fill(diff_color)</span>
+
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s1">r</span><span class="s0">, </span><span class="s1">g</span><span class="s0">, </span><span class="s1">b = color</span>
+    <span class="s0">except </span><span class="s1">ValueError:</span>
+        <span class="s1">r</span><span class="s0">, </span><span class="s1">g</span><span class="s0">, </span><span class="s1">b</span><span class="s0">, </span><span class="s1">a = color</span>
+
+
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s1">tr</span><span class="s0">, </span><span class="s1">tg</span><span class="s0">, </span><span class="s1">tb = color</span>
+    <span class="s0">except </span><span class="s1">ValueError:</span>
+        <span class="s1">tr</span><span class="s0">, </span><span class="s1">tg</span><span class="s0">, </span><span class="s1">tb</span><span class="s0">, </span><span class="s1">ta = color</span>
+
+
+
+    <span class="s1">similar = </span><span class="s3">0</span>
+    <span class="s0">for </span><span class="s1">y </span><span class="s0">in </span><span class="s1">xrange(height):</span>
+        <span class="s0">for </span><span class="s1">x </span><span class="s0">in </span><span class="s1">xrange(width):</span>
+            <span class="s1">c1 = surf.get_at((x</span><span class="s0">,</span><span class="s1">y))</span>
+
+            <span class="s0">if </span><span class="s1">( (abs(c1[</span><span class="s3">0</span><span class="s1">] - r) &lt; tr) &amp;</span>
+                 <span class="s1">(abs(c1[</span><span class="s3">1</span><span class="s1">] - g) &lt; tg) &amp;</span>
+                 <span class="s1">(abs(c1[</span><span class="s3">2</span><span class="s1">] - b) &lt; tb) ):</span>
+                <span class="s2"># this pixel is within the threshold.</span>
+                <span class="s0">if </span><span class="s1">change_return:</span>
+                    <span class="s1">return_surf.set_at((x</span><span class="s0">,</span><span class="s1">y)</span><span class="s0">, </span><span class="s1">c1)</span>
+                <span class="s1">similar += </span><span class="s3">1</span>
+            <span class="s2">#else:</span>
+            <span class="s2">#    print c1, c2</span>
+
+
+    <span class="s0">return </span><span class="s1">similar</span>
+
+
+<span class="s0">class </span><span class="s1">TransformModuleTest( unittest.TestCase ):</span>
+
+    <span class="s0">def </span><span class="s1">test_scale__alpha( self ):</span>
+        <span class="s4">&quot;&quot;&quot; see if set_alpha information is kept. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">s = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">))</span>
+        <span class="s1">s.set_alpha(</span><span class="s3">55</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(s.get_alpha()</span><span class="s0">,</span><span class="s3">55</span><span class="s1">)</span>
+
+        <span class="s1">s = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">))</span>
+        <span class="s1">s.set_alpha(</span><span class="s3">55</span><span class="s1">)</span>
+        <span class="s1">s2 = pygame.transform.scale(s</span><span class="s0">, </span><span class="s1">(</span><span class="s3">64</span><span class="s0">,</span><span class="s3">64</span><span class="s1">))</span>
+        <span class="s1">s3 = s.copy()</span>
+        <span class="s1">self.assertEqual(s.get_alpha()</span><span class="s0">,</span><span class="s1">s3.get_alpha())</span>
+        <span class="s1">self.assertEqual(s.get_alpha()</span><span class="s0">,</span><span class="s1">s2.get_alpha())</span>
+
+    <span class="s0">def </span><span class="s1">test_scale__destination( self ):</span>
+        <span class="s4">&quot;&quot;&quot; see if the destination surface can be passed in to use. 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">s = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">))</span>
+        <span class="s1">s2 = pygame.transform.scale(s</span><span class="s0">, </span><span class="s1">(</span><span class="s3">64</span><span class="s0">,</span><span class="s3">64</span><span class="s1">))</span>
+        <span class="s1">s3 = s2.copy()</span>
+
+        <span class="s1">s3 = pygame.transform.scale(s</span><span class="s0">, </span><span class="s1">(</span><span class="s3">64</span><span class="s0">,</span><span class="s3">64</span><span class="s1">)</span><span class="s0">, </span><span class="s1">s3)</span>
+        <span class="s1">pygame.transform.scale(s</span><span class="s0">, </span><span class="s1">(</span><span class="s3">64</span><span class="s0">,</span><span class="s3">64</span><span class="s1">)</span><span class="s0">, </span><span class="s1">s2)</span>
+
+        <span class="s2"># the wrong size surface is past in.  Should raise an error.</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">pygame.transform.scale</span><span class="s0">, </span><span class="s1">s</span><span class="s0">, </span><span class="s1">(</span><span class="s3">33</span><span class="s0">,</span><span class="s3">64</span><span class="s1">)</span><span class="s0">, </span><span class="s1">s3)</span>
+
+        <span class="s1">s = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">))</span>
+        <span class="s1">s2 = pygame.transform.smoothscale(s</span><span class="s0">, </span><span class="s1">(</span><span class="s3">64</span><span class="s0">,</span><span class="s3">64</span><span class="s1">))</span>
+        <span class="s1">s3 = s2.copy()</span>
+
+        <span class="s1">s3 = pygame.transform.smoothscale(s</span><span class="s0">, </span><span class="s1">(</span><span class="s3">64</span><span class="s0">,</span><span class="s3">64</span><span class="s1">)</span><span class="s0">, </span><span class="s1">s3)</span>
+        <span class="s1">pygame.transform.smoothscale(s</span><span class="s0">, </span><span class="s1">(</span><span class="s3">64</span><span class="s0">,</span><span class="s3">64</span><span class="s1">)</span><span class="s0">, </span><span class="s1">s2)</span>
+
+        <span class="s2"># the wrong size surface is past in.  Should raise an error.</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">pygame.transform.smoothscale</span><span class="s0">, </span><span class="s1">s</span><span class="s0">, </span><span class="s1">(</span><span class="s3">33</span><span class="s0">,</span><span class="s3">64</span><span class="s1">)</span><span class="s0">, </span><span class="s1">s3)</span>
+
+    <span class="s0">def </span><span class="s1">test_scale__zero_surface_transform(self):</span>
+        <span class="s1">tmp_surface = pygame.transform.scale(pygame.Surface((</span><span class="s3">128</span><span class="s0">, </span><span class="s3">128</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(tmp_surface.get_size()</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">tmp_surface = pygame.transform.scale(tmp_surface</span><span class="s0">, </span><span class="s1">(</span><span class="s3">128</span><span class="s0">, </span><span class="s3">128</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(tmp_surface.get_size()</span><span class="s0">, </span><span class="s1">(</span><span class="s3">128</span><span class="s0">, </span><span class="s3">128</span><span class="s1">))</span>
+
+    <span class="s0">def </span><span class="s1">test_threshold__honors_third_surface(self):</span>
+        <span class="s2"># __doc__ for threshold as of Tue 07/15/2008</span>
+
+        <span class="s2"># pygame.transform.threshold(DestSurface, Surface, color, threshold =</span>
+        <span class="s2"># (0,0,0,0), diff_color = (0,0,0,0), change_return = True, Surface =</span>
+        <span class="s2"># None): return num_threshold_pixels</span>
+
+        <span class="s2"># When given the optional third</span>
+        <span class="s2"># surface, it would use the colors in that rather than the &quot;color&quot;</span>
+        <span class="s2"># specified in the function to check against.</span>
+
+        <span class="s2"># New in pygame 1.8</span>
+
+        <span class="s2">################################################################</span>
+        <span class="s2"># Sizes</span>
+        <span class="s1">(w</span><span class="s0">, </span><span class="s1">h) = size = (</span><span class="s3">32</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s2"># the original_color is within the threshold of the threshold_color</span>
+        <span class="s1">threshold = (</span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s1">)</span>
+
+        <span class="s1">original_color = (</span><span class="s3">25</span><span class="s0">,</span><span class="s3">25</span><span class="s0">,</span><span class="s3">25</span><span class="s0">,</span><span class="s3">25</span><span class="s1">)</span>
+        <span class="s1">threshold_color = (</span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s1">)</span>
+
+        <span class="s2"># Surfaces</span>
+        <span class="s1">original_surface = pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">dest_surface    = pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s2"># Third surface is used in lieu of 3rd position arg color</span>
+        <span class="s1">third_surface   = pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s2"># Color filling</span>
+        <span class="s1">original_surface.fill(original_color)</span>
+        <span class="s1">third_surface.fill(threshold_color)</span>
+
+        <span class="s2">################################################################</span>
+        <span class="s2"># All pixels for color should be within threshold</span>
+        <span class="s2">#</span>
+        <span class="s1">pixels_within_threshold = pygame.transform.threshold (</span>
+            <span class="s1">dest_surf=</span><span class="s0">None,</span>
+            <span class="s1">surf=original_surface</span><span class="s0">,</span>
+            <span class="s1">search_color=threshold_color</span><span class="s0">,</span>
+            <span class="s1">threshold=threshold</span><span class="s0">,</span>
+            <span class="s1">set_color=</span><span class="s0">None,</span>
+            <span class="s1">set_behavior=</span><span class="s3">0</span>
+        <span class="s1">)</span>
+
+        <span class="s1">self.assertEqual(w*h</span><span class="s0">, </span><span class="s1">pixels_within_threshold)</span>
+
+        <span class="s2">################################################################</span>
+        <span class="s2"># This should respect third_surface colors in place of 3rd arg</span>
+        <span class="s2"># color Should be the same as: surface.fill(threshold_color)</span>
+        <span class="s2"># all within threshold</span>
+
+        <span class="s1">pixels_within_threshold = pygame.transform.threshold (</span>
+            <span class="s1">dest_surf=</span><span class="s0">None,</span>
+            <span class="s1">surf=original_surface</span><span class="s0">,</span>
+            <span class="s1">search_color=</span><span class="s0">None,</span>
+            <span class="s1">threshold=threshold</span><span class="s0">,</span>
+            <span class="s1">set_color=</span><span class="s0">None,</span>
+            <span class="s1">set_behavior=</span><span class="s3">0</span><span class="s0">,</span>
+            <span class="s1">search_surf=third_surface</span><span class="s0">,</span>
+        <span class="s1">)</span>
+        <span class="s1">self.assertEqual(w*h</span><span class="s0">, </span><span class="s1">pixels_within_threshold)</span>
+
+    <span class="s0">def </span><span class="s1">test_threshold_dest_surf_not_change(self):</span>
+        <span class="s4">&quot;&quot;&quot; the pixels within the threshold. 
+ 
+        All pixels not within threshold are changed to set_color. 
+        So there should be none changed in this test. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">(w</span><span class="s0">, </span><span class="s1">h) = size = (</span><span class="s3">32</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">threshold = (</span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s1">)</span>
+        <span class="s1">original_color = (</span><span class="s3">25</span><span class="s0">, </span><span class="s3">25</span><span class="s0">, </span><span class="s3">25</span><span class="s0">, </span><span class="s3">25</span><span class="s1">)</span>
+        <span class="s1">original_dest_color = (</span><span class="s3">65</span><span class="s0">, </span><span class="s3">65</span><span class="s0">, </span><span class="s3">65</span><span class="s0">, </span><span class="s3">55</span><span class="s1">)</span>
+        <span class="s1">threshold_color = (</span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s1">)</span>
+        <span class="s1">set_color = (</span><span class="s3">255</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s1">)</span>
+
+        <span class="s1">surf = pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">dest_surf = pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">search_surf = pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s1">surf.fill(original_color)</span>
+        <span class="s1">search_surf.fill(threshold_color)</span>
+        <span class="s1">dest_surf.fill(original_dest_color)</span>
+
+        <span class="s2"># set_behavior=1, set dest_surface from set_color.</span>
+        <span class="s2"># all within threshold of third_surface, so no color is set.</span>
+
+        <span class="s1">THRESHOLD_BEHAVIOR_FROM_SEARCH_COLOR = </span><span class="s3">1</span>
+        <span class="s1">pixels_within_threshold = pygame.transform.threshold(</span>
+            <span class="s1">dest_surf=dest_surf</span><span class="s0">,</span>
+            <span class="s1">surf=surf</span><span class="s0">,</span>
+            <span class="s1">search_color=</span><span class="s0">None,</span>
+            <span class="s1">threshold=threshold</span><span class="s0">,</span>
+            <span class="s1">set_color=set_color</span><span class="s0">,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_COLOR</span><span class="s0">,</span>
+            <span class="s1">search_surf=search_surf</span><span class="s0">,</span>
+        <span class="s1">)</span>
+
+        <span class="s2"># # Return, of pixels within threshold is correct</span>
+        <span class="s1">self.assertEqual(w*h</span><span class="s0">, </span><span class="s1">pixels_within_threshold)</span>
+
+        <span class="s2"># # Size of dest surface is correct</span>
+        <span class="s1">dest_rect = dest_surf.get_rect()</span>
+        <span class="s1">dest_size = dest_rect.size</span>
+        <span class="s1">self.assertEqual(size</span><span class="s0">, </span><span class="s1">dest_size)</span>
+
+        <span class="s2"># The color is not the change_color specified for every pixel As all</span>
+        <span class="s2"># pixels are within threshold</span>
+
+        <span class="s0">for </span><span class="s1">pt </span><span class="s0">in </span><span class="s1">test_utils.rect_area_pts(dest_rect):</span>
+            <span class="s1">self.assertNotEqual(dest_surf.get_at(pt)</span><span class="s0">, </span><span class="s1">set_color)</span>
+            <span class="s1">self.assertEqual(dest_surf.get_at(pt)</span><span class="s0">, </span><span class="s1">original_dest_color)</span>
+
+    <span class="s0">def </span><span class="s1">test_threshold_dest_surf_all_changed(self):</span>
+        <span class="s4">&quot;&quot;&quot; Lowering the threshold, expecting changed surface 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">(w</span><span class="s0">, </span><span class="s1">h) = size = (</span><span class="s3">32</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">threshold = (</span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s1">)</span>
+        <span class="s1">original_color = (</span><span class="s3">25</span><span class="s0">, </span><span class="s3">25</span><span class="s0">, </span><span class="s3">25</span><span class="s0">, </span><span class="s3">25</span><span class="s1">)</span>
+        <span class="s1">original_dest_color = (</span><span class="s3">65</span><span class="s0">, </span><span class="s3">65</span><span class="s0">, </span><span class="s3">65</span><span class="s0">, </span><span class="s3">55</span><span class="s1">)</span>
+        <span class="s1">threshold_color = (</span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s1">)</span>
+        <span class="s1">set_color = (</span><span class="s3">255</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s1">)</span>
+
+        <span class="s1">surf = pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">dest_surf = pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">search_surf = pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s1">surf.fill(original_color)</span>
+        <span class="s1">search_surf.fill(threshold_color)</span>
+        <span class="s1">dest_surf.fill(original_dest_color)</span>
+
+        <span class="s1">THRESHOLD_BEHAVIOR_FROM_SEARCH_COLOR = </span><span class="s3">1</span>
+        <span class="s1">pixels_within_threshold = pygame.transform.threshold (</span>
+            <span class="s1">dest_surf</span><span class="s0">,</span>
+            <span class="s1">surf</span><span class="s0">,</span>
+            <span class="s1">search_color=</span><span class="s0">None,</span>
+            <span class="s1">set_color=set_color</span><span class="s0">,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_COLOR</span><span class="s0">,</span>
+            <span class="s1">search_surf=search_surf</span><span class="s0">,</span>
+        <span class="s1">)</span>
+
+        <span class="s1">self.assertEqual(</span><span class="s3">0</span><span class="s0">, </span><span class="s1">pixels_within_threshold)</span>
+
+        <span class="s1">dest_rect = dest_surf.get_rect()</span>
+        <span class="s1">dest_size = dest_rect.size</span>
+        <span class="s1">self.assertEqual(size</span><span class="s0">, </span><span class="s1">dest_size)</span>
+
+        <span class="s2"># The color is the set_color specified for every pixel As all</span>
+        <span class="s2"># pixels are not within threshold</span>
+        <span class="s0">for </span><span class="s1">pt </span><span class="s0">in </span><span class="s1">test_utils.rect_area_pts(dest_rect):</span>
+            <span class="s1">self.assertEqual(dest_surf.get_at(pt)</span><span class="s0">, </span><span class="s1">set_color)</span>
+
+    <span class="s0">def </span><span class="s1">test_threshold_count(self):</span>
+        <span class="s4">&quot;&quot;&quot; counts the colors, and not changes them. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">surf_size = (</span><span class="s3">32</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">surf = pygame.Surface(surf_size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">search_surf = pygame.Surface(surf_size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">search_color = (</span><span class="s3">55</span><span class="s0">, </span><span class="s3">55</span><span class="s0">, </span><span class="s3">55</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">original_color = (</span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+
+        <span class="s1">surf.fill(original_color)</span>
+        <span class="s2"># set 2 pixels to the color we are searching for.</span>
+        <span class="s1">surf.set_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">search_color)</span>
+        <span class="s1">surf.set_at((</span><span class="s3">12</span><span class="s0">, </span><span class="s3">5</span><span class="s1">)</span><span class="s0">, </span><span class="s1">search_color)</span>
+
+        <span class="s2"># There is no destination surface, but we ask to change it.</span>
+        <span class="s2">#   This should be an error.</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">pygame.transform.threshold</span><span class="s0">,</span>
+            <span class="s0">None,</span>
+            <span class="s1">surf</span><span class="s0">,</span>
+            <span class="s1">search_color)</span>
+        <span class="s2"># from pygame.transform import THRESHOLD_BEHAVIOR_COUNT</span>
+        <span class="s1">THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF = </span><span class="s3">2</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">pygame.transform.threshold</span><span class="s0">,</span>
+            <span class="s0">None,</span>
+            <span class="s1">surf</span><span class="s0">,</span>
+            <span class="s1">search_color</span><span class="s0">,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF)</span>
+
+        <span class="s1">THRESHOLD_BEHAVIOR_COUNT = </span><span class="s3">0</span>
+        <span class="s1">num_threshold_pixels = pygame.transform.threshold(</span>
+            <span class="s1">dest_surf=</span><span class="s0">None,</span>
+            <span class="s1">surf=surf</span><span class="s0">,</span>
+            <span class="s1">search_color=search_color</span><span class="s0">,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_COUNT)</span>
+        <span class="s1">self.assertEqual(num_threshold_pixels</span><span class="s0">, </span><span class="s3">2</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_threshold_search_surf(self):</span>
+        <span class="s1">surf_size = (</span><span class="s3">32</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">surf = pygame.Surface(surf_size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">search_surf = pygame.Surface(surf_size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">dest_surf = pygame.Surface(surf_size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s1">original_color = (</span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">search_color = (</span><span class="s3">55</span><span class="s0">, </span><span class="s3">55</span><span class="s0">, </span><span class="s3">55</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+
+        <span class="s1">surf.fill(original_color)</span>
+        <span class="s1">dest_surf.fill(original_color)</span>
+        <span class="s2"># set 2 pixels to the color we are searching for.</span>
+        <span class="s1">surf.set_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">search_color)</span>
+        <span class="s1">surf.set_at((</span><span class="s3">12</span><span class="s0">, </span><span class="s3">5</span><span class="s1">)</span><span class="s0">, </span><span class="s1">search_color)</span>
+
+        <span class="s1">search_surf.fill(search_color)</span>
+
+        <span class="s2"># We look in the other surface for matching colors.</span>
+        <span class="s2">#  Change it in dest_surf</span>
+        <span class="s1">THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF = </span><span class="s3">2</span>
+
+        <span class="s2"># TypeError: if search_surf is used, search_color should be None</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">pygame.transform.threshold</span><span class="s0">,</span>
+            <span class="s1">dest_surf</span><span class="s0">,</span>
+            <span class="s1">surf</span><span class="s0">,</span>
+            <span class="s1">search_color</span><span class="s0">,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF</span><span class="s0">,</span>
+            <span class="s1">search_surf=search_surf)</span>
+
+        <span class="s2"># surf, dest_surf, and search_surf should all be the same size.</span>
+        <span class="s2"># Check surface sizes are the same size.</span>
+        <span class="s1">different_sized_surf = pygame.Surface((</span><span class="s3">22</span><span class="s0">, </span><span class="s3">33</span><span class="s1">)</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">pygame.transform.threshold</span><span class="s0">,</span>
+            <span class="s1">different_sized_surf</span><span class="s0">,</span>
+            <span class="s1">surf</span><span class="s0">,</span>
+            <span class="s1">search_color=</span><span class="s0">None,</span>
+            <span class="s1">set_color=</span><span class="s0">None,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF</span><span class="s0">,</span>
+            <span class="s1">search_surf=search_surf)</span>
+
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">pygame.transform.threshold</span><span class="s0">,</span>
+            <span class="s1">dest_surf</span><span class="s0">,</span>
+            <span class="s1">surf</span><span class="s0">,</span>
+            <span class="s1">search_color=</span><span class="s0">None,</span>
+            <span class="s1">set_color=</span><span class="s0">None,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF</span><span class="s0">,</span>
+            <span class="s1">search_surf=different_sized_surf)</span>
+
+        <span class="s2"># We look to see if colors in search_surf are in surf.</span>
+        <span class="s1">num_threshold_pixels = pygame.transform.threshold(</span>
+            <span class="s1">dest_surf=dest_surf</span><span class="s0">,</span>
+            <span class="s1">surf=surf</span><span class="s0">,</span>
+            <span class="s1">search_color=</span><span class="s0">None,</span>
+            <span class="s1">set_color=</span><span class="s0">None,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF</span><span class="s0">,</span>
+            <span class="s1">search_surf=search_surf)</span>
+
+        <span class="s1">num_pixels_within = </span><span class="s3">2</span>
+        <span class="s1">self.assertEqual(num_threshold_pixels</span><span class="s0">, </span><span class="s1">num_pixels_within)</span>
+
+        <span class="s1">dest_surf.fill(original_color)</span>
+        <span class="s1">num_threshold_pixels = pygame.transform.threshold(</span>
+            <span class="s1">dest_surf</span><span class="s0">,</span>
+            <span class="s1">surf</span><span class="s0">,</span>
+            <span class="s1">search_color=</span><span class="s0">None,</span>
+            <span class="s1">set_color=</span><span class="s0">None,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF</span><span class="s0">,</span>
+            <span class="s1">search_surf=search_surf</span><span class="s0">,</span>
+            <span class="s1">inverse_set=</span><span class="s0">True</span><span class="s1">)</span>
+
+        <span class="s1">self.assertEqual(num_threshold_pixels</span><span class="s0">, </span><span class="s3">2</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_threshold_inverse_set(self):</span>
+        <span class="s4">&quot;&quot;&quot; changes the pixels within the threshold, and not outside. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">surf_size = (</span><span class="s3">32</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">_dest_surf = pygame.Surface(surf_size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">_surf = pygame.Surface(surf_size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s1">dest_surf = _dest_surf             </span><span class="s2"># surface we are changing.</span>
+        <span class="s1">surf = _surf                       </span><span class="s2"># surface we are looking at</span>
+        <span class="s1">search_color = (</span><span class="s3">55</span><span class="s0">, </span><span class="s3">55</span><span class="s0">, </span><span class="s3">55</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)   </span><span class="s2"># color we are searching for.</span>
+        <span class="s1">threshold = (</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)           </span><span class="s2"># within this distance from search_color.</span>
+        <span class="s1">set_color = (</span><span class="s3">245</span><span class="s0">, </span><span class="s3">245</span><span class="s0">, </span><span class="s3">245</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)         </span><span class="s2"># color we set.</span>
+        <span class="s1">inverse_set = </span><span class="s3">1                    </span><span class="s2"># pixels within threshold are changed to 'set_color'</span>
+
+
+        <span class="s1">original_color = (</span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">surf.fill(original_color)</span>
+        <span class="s2"># set 2 pixels to the color we are searching for.</span>
+        <span class="s1">surf.set_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">search_color)</span>
+        <span class="s1">surf.set_at((</span><span class="s3">12</span><span class="s0">, </span><span class="s3">5</span><span class="s1">)</span><span class="s0">, </span><span class="s1">search_color)</span>
+
+        <span class="s1">dest_surf.fill(original_color)</span>
+        <span class="s2"># set 2 pixels to the color we are searching for.</span>
+        <span class="s1">dest_surf.set_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">search_color)</span>
+        <span class="s1">dest_surf.set_at((</span><span class="s3">12</span><span class="s0">, </span><span class="s3">5</span><span class="s1">)</span><span class="s0">, </span><span class="s1">search_color)</span>
+
+
+        <span class="s1">THRESHOLD_BEHAVIOR_FROM_SEARCH_COLOR = </span><span class="s3">1</span>
+        <span class="s1">num_threshold_pixels = pygame.transform.threshold(</span>
+            <span class="s1">dest_surf</span><span class="s0">,</span>
+            <span class="s1">surf</span><span class="s0">,</span>
+            <span class="s1">search_color=search_color</span><span class="s0">,</span>
+            <span class="s1">threshold=threshold</span><span class="s0">,</span>
+            <span class="s1">set_color=set_color</span><span class="s0">,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_COLOR</span><span class="s0">,</span>
+            <span class="s1">inverse_set=</span><span class="s3">1</span><span class="s1">)</span>
+
+        <span class="s1">self.assertEqual(num_threshold_pixels</span><span class="s0">, </span><span class="s3">2</span><span class="s1">)</span>
+        <span class="s2"># only two pixels changed to diff_color.</span>
+        <span class="s1">self.assertEqual(dest_surf.get_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">set_color)</span>
+        <span class="s1">self.assertEqual(dest_surf.get_at((</span><span class="s3">12</span><span class="s0">, </span><span class="s3">5</span><span class="s1">))</span><span class="s0">, </span><span class="s1">set_color)</span>
+
+
+        <span class="s2"># other pixels should be the same as they were before.</span>
+        <span class="s2"># We just check one other pixel, not all of them.</span>
+        <span class="s1">self.assertEqual(dest_surf.get_at((</span><span class="s3">2</span><span class="s0">, </span><span class="s3">2</span><span class="s1">))</span><span class="s0">, </span><span class="s1">original_color)</span>
+
+<span class="s2">#XXX</span>
+    <span class="s0">def </span><span class="s1">test_threshold_non_src_alpha(self):</span>
+
+        <span class="s1">result  = pygame.Surface((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">10</span><span class="s1">))</span>
+        <span class="s1">s1 = pygame.Surface((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">10</span><span class="s1">))</span>
+        <span class="s1">s2 = pygame.Surface((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">10</span><span class="s1">))</span>
+        <span class="s1">s3 = pygame.Surface((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">10</span><span class="s1">))</span>
+        <span class="s1">s4 = pygame.Surface((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">10</span><span class="s1">))</span>
+
+        <span class="s1">x = s1.fill((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">s1.set_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">32</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">0 </span><span class="s1">))</span>
+
+        <span class="s1">x = s2.fill((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">20</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">x = s3.fill((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">x = s4.fill((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">s2.set_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">33</span><span class="s0">, </span><span class="s3">21</span><span class="s0">, </span><span class="s3">0 </span><span class="s1">))</span>
+        <span class="s1">s2.set_at((</span><span class="s3">3</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">63</span><span class="s0">, </span><span class="s3">61</span><span class="s0">, </span><span class="s3">0 </span><span class="s1">))</span>
+        <span class="s1">s3.set_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">112</span><span class="s0">, </span><span class="s3">31</span><span class="s0">, </span><span class="s3">0 </span><span class="s1">))</span>
+        <span class="s1">s4.set_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">11</span><span class="s0">, </span><span class="s3">31</span><span class="s0">, </span><span class="s3">0 </span><span class="s1">))</span>
+        <span class="s1">s4.set_at((</span><span class="s3">1</span><span class="s0">,</span><span class="s3">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">12</span><span class="s0">, </span><span class="s3">31</span><span class="s0">, </span><span class="s3">0 </span><span class="s1">))</span>
+
+        <span class="s1">self.assertEqual(s1.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">32</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(s2.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">33</span><span class="s0">, </span><span class="s3">21</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(s1.get_flags()</span><span class="s0">, </span><span class="s1">s2.get_flags()))</span>
+
+
+
+        <span class="s1">similar_color = (</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">diff_color = (</span><span class="s3">222</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">threshold_color = (</span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+
+        <span class="s1">THRESHOLD_BEHAVIOR_FROM_SEARCH_COLOR = </span><span class="s3">1</span>
+        <span class="s1">num_threshold_pixels = pygame.transform.threshold(</span>
+            <span class="s1">dest_surf=result</span><span class="s0">,</span>
+            <span class="s1">surf=s1</span><span class="s0">,</span>
+            <span class="s1">search_color=similar_color</span><span class="s0">,</span>
+            <span class="s1">threshold=threshold_color</span><span class="s0">,</span>
+            <span class="s1">set_color=diff_color</span><span class="s0">,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_COLOR)</span>
+        <span class="s1">self.assertEqual(num_threshold_pixels</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+
+        <span class="s1">num_threshold_pixels = pygame.transform.threshold(</span>
+            <span class="s1">dest_surf=result</span><span class="s0">,</span>
+            <span class="s1">surf=s1</span><span class="s0">,</span>
+            <span class="s1">search_color=(</span><span class="s3">40</span><span class="s0">, </span><span class="s3">40</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">threshold=threshold_color</span><span class="s0">,</span>
+            <span class="s1">set_color=diff_color</span><span class="s0">,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_COLOR)</span>
+        <span class="s1">self.assertEqual(num_threshold_pixels</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+
+
+        <span class="s1">self.assertEqual(result.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">diff_color)</span>
+
+
+    <span class="s0">def </span><span class="s1">test_threshold__uneven_colors(self):</span>
+        <span class="s1">(w</span><span class="s0">,</span><span class="s1">h) = size = (</span><span class="s3">16</span><span class="s0">, </span><span class="s3">16</span><span class="s1">)</span>
+
+        <span class="s1">original_surface = pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">dest_surface    = pygame.Surface(size</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s1">original_surface.fill(</span><span class="s3">0</span><span class="s1">)</span>
+
+        <span class="s1">threshold_color_template = [</span><span class="s3">5</span><span class="s0">, </span><span class="s3">5</span><span class="s0">, </span><span class="s3">5</span><span class="s0">, </span><span class="s3">5</span><span class="s1">]</span>
+        <span class="s1">threshold_template       = [</span><span class="s3">6</span><span class="s0">, </span><span class="s3">6</span><span class="s0">, </span><span class="s3">6</span><span class="s0">, </span><span class="s3">6</span><span class="s1">]</span>
+
+        <span class="s2">################################################################</span>
+
+        <span class="s0">for </span><span class="s1">pos </span><span class="s0">in </span><span class="s1">range(len(</span><span class="s5">'rgb'</span><span class="s1">)):</span>
+            <span class="s1">threshold_color = threshold_color_template[:]</span>
+            <span class="s1">threshold       = threshold_template[:]</span>
+
+            <span class="s1">threshold_color[pos] = </span><span class="s3">45</span>
+            <span class="s1">threshold[pos] = </span><span class="s3">50</span>
+
+            <span class="s1">pixels_within_threshold = pygame.transform.threshold (</span>
+                <span class="s0">None,</span>
+                <span class="s1">original_surface</span><span class="s0">,</span>
+                <span class="s1">threshold_color</span><span class="s0">,</span>
+                <span class="s1">threshold</span><span class="s0">,</span>
+                <span class="s1">set_color=</span><span class="s0">None,</span>
+                <span class="s1">set_behavior=</span><span class="s3">0</span>
+            <span class="s1">)</span>
+
+            <span class="s1">self.assertEqual(w*h</span><span class="s0">, </span><span class="s1">pixels_within_threshold)</span>
+
+        <span class="s2">################################################################</span>
+
+    <span class="s0">def </span><span class="s1">test_threshold_set_behavior2(self):</span>
+        <span class="s4">&quot;&quot;&quot; raises an error when set_behavior=2 and set_color is not None. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">from </span><span class="s1">pygame.transform </span><span class="s0">import </span><span class="s1">threshold</span>
+        <span class="s1">s1 = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">s2 = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF = </span><span class="s3">2</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">threshold</span><span class="s0">,</span>
+            <span class="s1">dest_surf=s2</span><span class="s0">,</span>
+            <span class="s1">surf=s1</span><span class="s0">,</span>
+            <span class="s1">search_color=(</span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">threshold=(</span><span class="s3">11</span><span class="s0">, </span><span class="s3">11</span><span class="s0">, </span><span class="s3">11</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">set_color=(</span><span class="s3">255</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF)</span>
+
+    <span class="s0">def </span><span class="s1">test_threshold_set_behavior0(self):</span>
+        <span class="s4">&quot;&quot;&quot; raises an error when set_behavior=1 
+                and set_color is not None, 
+                and dest_surf is not None. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">from </span><span class="s1">pygame.transform </span><span class="s0">import </span><span class="s1">threshold</span>
+        <span class="s1">s1 = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">s2 = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">THRESHOLD_BEHAVIOR_COUNT = </span><span class="s3">0</span>
+
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">threshold</span><span class="s0">,</span>
+            <span class="s1">dest_surf=</span><span class="s0">None,</span>
+            <span class="s1">surf=s2</span><span class="s0">,</span>
+            <span class="s1">search_color=(</span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">threshold=(</span><span class="s3">11</span><span class="s0">, </span><span class="s3">11</span><span class="s0">, </span><span class="s3">11</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">set_color=(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_COUNT)</span>
+
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">threshold</span><span class="s0">,</span>
+            <span class="s1">dest_surf=s1</span><span class="s0">,</span>
+            <span class="s1">surf=s2</span><span class="s0">,</span>
+            <span class="s1">search_color=(</span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">threshold=(</span><span class="s3">11</span><span class="s0">, </span><span class="s3">11</span><span class="s0">, </span><span class="s3">11</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">set_color=</span><span class="s0">None,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_COUNT)</span>
+
+        <span class="s1">threshold(</span>
+            <span class="s1">dest_surf=</span><span class="s0">None,</span>
+            <span class="s1">surf=s2</span><span class="s0">,</span>
+            <span class="s1">search_color=(</span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">threshold=(</span><span class="s3">11</span><span class="s0">, </span><span class="s3">11</span><span class="s0">, </span><span class="s3">11</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">set_color=</span><span class="s0">None,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_COUNT)</span>
+
+
+    <span class="s0">def </span><span class="s1">test_threshold_from_surface(self):</span>
+        <span class="s4">&quot;&quot;&quot; Set similar pixels in 'dest_surf' to color in the 'surf'. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">from </span><span class="s1">pygame.transform </span><span class="s0">import </span><span class="s1">threshold</span>
+
+        <span class="s1">surf = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">dest_surf = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">surf_color = (</span><span class="s3">40</span><span class="s0">, </span><span class="s3">40</span><span class="s0">, </span><span class="s3">40</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">dest_color = (</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">surf.fill(surf_color)</span>
+        <span class="s1">dest_surf.fill(dest_color)</span>
+        <span class="s1">THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF = </span><span class="s3">2</span>
+
+        <span class="s1">num_threshold_pixels = threshold(</span>
+            <span class="s1">dest_surf=dest_surf</span><span class="s0">,</span>
+            <span class="s1">surf=surf</span><span class="s0">,</span>
+            <span class="s1">search_color=(</span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">threshold=(</span><span class="s3">11</span><span class="s0">, </span><span class="s3">11</span><span class="s0">, </span><span class="s3">11</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">set_color=</span><span class="s0">None,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF</span><span class="s0">,</span>
+            <span class="s1">inverse_set=</span><span class="s3">1</span><span class="s1">)</span>
+
+        <span class="s1">self.assertEqual(num_threshold_pixels</span><span class="s0">, </span><span class="s1">dest_surf.get_height() * dest_surf.get_width())</span>
+        <span class="s1">self.assertEqual(dest_surf.get_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">surf_color)</span>
+
+
+    <span class="s0">def </span><span class="s1">test_threshold__surface(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        &quot;&quot;&quot;</span>
+        <span class="s0">from </span><span class="s1">pygame.transform </span><span class="s0">import </span><span class="s1">threshold</span>
+
+        <span class="s1">s1 = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">s2 = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">s3 = pygame.Surface((</span><span class="s3">1</span><span class="s0">,</span><span class="s3">1</span><span class="s1">)</span><span class="s0">, </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF = </span><span class="s3">2</span>
+
+        <span class="s2">#     # only one pixel should not be changed.</span>
+        <span class="s2">#     s1.fill((40,40,40))</span>
+        <span class="s2">#     s2.fill((255,255,255))</span>
+        <span class="s2">#     s1.set_at( (0,0), (170, 170, 170) )</span>
+        <span class="s2">#     # set the similar pixels in destination surface to the color</span>
+        <span class="s2">#     #     in the first surface.</span>
+        <span class="s2">#     num_threshold_pixels = threshold(</span>
+        <span class="s2">#         dest_surf=s2,</span>
+        <span class="s2">#         surf=s1,</span>
+        <span class="s2">#         search_color=(30,30,30),</span>
+        <span class="s2">#         threshold=(11,11,11),</span>
+        <span class="s2">#         set_color=None,</span>
+        <span class="s2">#         set_behavior=THRESHOLD_BEHAVIOR_FROM_SEARCH_SURF)</span>
+
+        <span class="s2">#     #num_threshold_pixels = threshold(s2, s1, (30,30,30))</span>
+        <span class="s2">#     self.assertEqual(num_threshold_pixels, (s1.get_height() * s1.get_width()) -1)</span>
+        <span class="s2">#     self.assertEqual(s2.get_at((0,0)), (0,0,0, 255))</span>
+        <span class="s2">#     self.assertEqual(s2.get_at((0,1)), (40, 40, 40, 255))</span>
+        <span class="s2">#     self.assertEqual(s2.get_at((17,1)), (40, 40, 40, 255))</span>
+
+
+        <span class="s2"># # abs(40 - 255) &lt; 100</span>
+        <span class="s2"># #(abs(c1[0] - r) &lt; tr)</span>
+
+        <span class="s2">#     s1.fill((160,160,160))</span>
+        <span class="s2">#     s2.fill((255,255,255))</span>
+        <span class="s2">#     num_threshold_pixels = threshold(s2, s1, (255,255,255), (100,100,100), (0,0,0), True)</span>
+
+        <span class="s2">#     self.assertEqual(num_threshold_pixels, (s1.get_height() * s1.get_width()))</span>
+
+
+        <span class="s2"># only one pixel should not be changed.</span>
+        <span class="s1">s1.fill((</span><span class="s3">40</span><span class="s0">, </span><span class="s3">40</span><span class="s0">, </span><span class="s3">40</span><span class="s1">))</span>
+        <span class="s1">s1.set_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">170</span><span class="s0">, </span><span class="s3">170</span><span class="s0">, </span><span class="s3">170</span><span class="s1">))</span>
+        <span class="s1">THRESHOLD_BEHAVIOR_COUNT = </span><span class="s3">0</span>
+
+        <span class="s1">num_threshold_pixels = threshold(</span>
+            <span class="s1">dest_surf=</span><span class="s0">None,</span>
+            <span class="s1">surf=s1</span><span class="s0">,</span>
+            <span class="s1">search_color=(</span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">threshold=(</span><span class="s3">11</span><span class="s0">, </span><span class="s3">11</span><span class="s0">, </span><span class="s3">11</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">set_color=</span><span class="s0">None,</span>
+            <span class="s1">set_behavior=THRESHOLD_BEHAVIOR_COUNT)</span>
+
+        <span class="s2">#num_threshold_pixels = threshold(s2, s1, (30,30,30))</span>
+        <span class="s1">self.assertEqual(num_threshold_pixels</span><span class="s0">, </span><span class="s1">(s1.get_height() * s1.get_width()) -</span><span class="s3">1</span><span class="s1">)</span>
+
+
+        <span class="s2"># test end markers.  0, and 255</span>
+
+        <span class="s2"># the pixels are different by 1.</span>
+        <span class="s1">s1.fill((</span><span class="s3">254</span><span class="s0">,</span><span class="s3">254</span><span class="s0">,</span><span class="s3">254</span><span class="s1">))</span>
+        <span class="s1">s2.fill((</span><span class="s3">255</span><span class="s0">,</span><span class="s3">255</span><span class="s0">,</span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">s3.fill((</span><span class="s3">255</span><span class="s0">,</span><span class="s3">255</span><span class="s0">,</span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">s1.set_at( (</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">170</span><span class="s0">, </span><span class="s3">170</span><span class="s0">, </span><span class="s3">170</span><span class="s1">) )</span>
+        <span class="s1">num_threshold_pixels = threshold(</span><span class="s0">None, </span><span class="s1">s1</span><span class="s0">, </span><span class="s1">(</span><span class="s3">254</span><span class="s0">,</span><span class="s3">254</span><span class="s0">,</span><span class="s3">254</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">1</span><span class="s0">,</span><span class="s3">1</span><span class="s0">,</span><span class="s3">1</span><span class="s1">)</span><span class="s0">,</span>
+                                         <span class="s0">None, </span><span class="s1">THRESHOLD_BEHAVIOR_COUNT)</span>
+        <span class="s1">self.assertEqual(num_threshold_pixels</span><span class="s0">, </span><span class="s1">(s1.get_height() * s1.get_width()) -</span><span class="s3">1</span><span class="s1">)</span>
+
+
+        <span class="s2"># compare the two surfaces.  Should be all but one matching.</span>
+        <span class="s1">num_threshold_pixels = threshold(</span><span class="s0">None, </span><span class="s1">s1</span><span class="s0">, None, </span><span class="s1">(</span><span class="s3">1</span><span class="s0">,</span><span class="s3">1</span><span class="s0">,</span><span class="s3">1</span><span class="s1">)</span><span class="s0">,</span>
+                                         <span class="s0">None, </span><span class="s1">THRESHOLD_BEHAVIOR_COUNT</span><span class="s0">, </span><span class="s1">s2)</span>
+        <span class="s1">self.assertEqual(num_threshold_pixels</span><span class="s0">, </span><span class="s1">(s1.get_height() * s1.get_width()) -</span><span class="s3">1</span><span class="s1">)</span>
+
+
+        <span class="s2"># within (0,0,0) threshold?  Should match no pixels.</span>
+        <span class="s1">num_threshold_pixels = threshold(</span><span class="s0">None, </span><span class="s1">s1</span><span class="s0">, </span><span class="s1">(</span><span class="s3">253</span><span class="s0">,</span><span class="s3">253</span><span class="s0">,</span><span class="s3">253</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                                         <span class="s0">None, </span><span class="s1">THRESHOLD_BEHAVIOR_COUNT)</span>
+        <span class="s1">self.assertEqual(num_threshold_pixels</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+
+
+        <span class="s2"># other surface within (0,0,0) threshold?  Should match no pixels.</span>
+        <span class="s1">num_threshold_pixels = threshold(</span><span class="s0">None, </span><span class="s1">s1</span><span class="s0">, None, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                                         <span class="s0">None, </span><span class="s1">THRESHOLD_BEHAVIOR_COUNT</span><span class="s0">, </span><span class="s1">s2)</span>
+        <span class="s1">self.assertEqual(num_threshold_pixels</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_threshold__subclassed_surface(self):</span>
+        <span class="s4">&quot;&quot;&quot;Ensure threshold accepts subclassed surfaces.&quot;&quot;&quot;</span>
+        <span class="s1">expected_size = (</span><span class="s3">13</span><span class="s0">, </span><span class="s3">11</span><span class="s1">)</span>
+        <span class="s1">expected_flags = </span><span class="s3">0</span>
+        <span class="s1">expected_depth = </span><span class="s3">32</span>
+        <span class="s1">expected_color = (</span><span class="s3">90</span><span class="s0">, </span><span class="s3">80</span><span class="s0">, </span><span class="s3">70</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">expected_count = </span><span class="s3">0</span>
+        <span class="s1">surface = test_utils.SurfaceSubclass(expected_size</span><span class="s0">, </span><span class="s1">expected_flags</span><span class="s0">,</span>
+                                             <span class="s1">expected_depth)</span>
+        <span class="s1">dest_surface = test_utils.SurfaceSubclass(expected_size</span><span class="s0">,</span>
+                                                  <span class="s1">expected_flags</span><span class="s0">,</span>
+                                                  <span class="s1">expected_depth)</span>
+        <span class="s1">search_surface = test_utils.SurfaceSubclass(expected_size</span><span class="s0">,</span>
+                                                    <span class="s1">expected_flags</span><span class="s0">,</span>
+                                                    <span class="s1">expected_depth)</span>
+        <span class="s1">surface.fill((</span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s1">))</span>
+        <span class="s1">dest_surface.fill((</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">search_surface.fill((</span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s1">))</span>
+
+        <span class="s1">count = pygame.transform.threshold(</span>
+            <span class="s1">dest_surf=dest_surface</span><span class="s0">, </span><span class="s1">surf=surface</span><span class="s0">, </span><span class="s1">threshold=(</span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">set_color=expected_color</span><span class="s0">, </span><span class="s1">search_color=</span><span class="s0">None,</span>
+            <span class="s1">search_surf=search_surface)</span>
+
+        <span class="s1">self.assertIsInstance(dest_surface</span><span class="s0">, </span><span class="s1">pygame.Surface)</span>
+        <span class="s1">self.assertIsInstance(dest_surface</span><span class="s0">, </span><span class="s1">test_utils.SurfaceSubclass)</span>
+        <span class="s1">self.assertEqual(count</span><span class="s0">, </span><span class="s1">expected_count)</span>
+        <span class="s1">self.assertEqual(dest_surface.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">expected_color)</span>
+        <span class="s1">self.assertEqual(dest_surface.get_bitsize()</span><span class="s0">, </span><span class="s1">expected_depth)</span>
+        <span class="s1">self.assertEqual(dest_surface.get_size()</span><span class="s0">, </span><span class="s1">expected_size)</span>
+        <span class="s1">self.assertEqual(dest_surface.get_flags()</span><span class="s0">, </span><span class="s1">expected_flags)</span>
+
+    <span class="s0">def </span><span class="s1">test_laplacian(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">SIZE = </span><span class="s3">32</span>
+        <span class="s1">s1 = pygame.Surface((SIZE</span><span class="s0">, </span><span class="s1">SIZE))</span>
+        <span class="s1">s2 = pygame.Surface((SIZE</span><span class="s0">, </span><span class="s1">SIZE))</span>
+        <span class="s1">s1.fill((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">10</span><span class="s0">,</span><span class="s3">70</span><span class="s1">))</span>
+        <span class="s1">pygame.draw.line(s1</span><span class="s0">, </span><span class="s1">(</span><span class="s3">255</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">3</span><span class="s0">,</span><span class="s3">10</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">20</span><span class="s0">,</span><span class="s3">20</span><span class="s1">))</span>
+
+        <span class="s2"># a line at the last row of the image.</span>
+        <span class="s1">pygame.draw.line(s1</span><span class="s0">, </span><span class="s1">(</span><span class="s3">255</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">,</span><span class="s3">31</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">31</span><span class="s0">,</span><span class="s3">31</span><span class="s1">))</span>
+
+
+        <span class="s1">pygame.transform.laplacian(s1</span><span class="s0">,</span><span class="s1">s2)</span>
+
+        <span class="s2">#show_image(s1)</span>
+        <span class="s2">#show_image(s2)</span>
+
+        <span class="s1">self.assertEqual(s2.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(s2.get_at((</span><span class="s3">3</span><span class="s0">,</span><span class="s3">10</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">255</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(s2.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">31</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">255</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(s2.get_at((</span><span class="s3">31</span><span class="s0">,</span><span class="s3">31</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">255</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">255</span><span class="s1">))</span>
+
+
+        <span class="s2"># here we create the return surface.</span>
+        <span class="s1">s2 = pygame.transform.laplacian(s1)</span>
+
+        <span class="s1">self.assertEqual(s2.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(s2.get_at((</span><span class="s3">3</span><span class="s0">,</span><span class="s3">10</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">255</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(s2.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">31</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">255</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(s2.get_at((</span><span class="s3">31</span><span class="s0">,</span><span class="s3">31</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">255</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">255</span><span class="s1">))</span>
+
+    <span class="s0">def </span><span class="s1">test_average_surfaces(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">SIZE = </span><span class="s3">32</span>
+        <span class="s1">s1 = pygame.Surface((SIZE</span><span class="s0">, </span><span class="s1">SIZE))</span>
+        <span class="s1">s2 = pygame.Surface((SIZE</span><span class="s0">, </span><span class="s1">SIZE))</span>
+        <span class="s1">s3 = pygame.Surface((SIZE</span><span class="s0">, </span><span class="s1">SIZE))</span>
+        <span class="s1">s1.fill((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">10</span><span class="s0">,</span><span class="s3">70</span><span class="s1">))</span>
+        <span class="s1">s2.fill((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">20</span><span class="s0">,</span><span class="s3">70</span><span class="s1">))</span>
+        <span class="s1">s3.fill((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">130</span><span class="s0">,</span><span class="s3">10</span><span class="s1">))</span>
+
+        <span class="s1">surfaces = [s1</span><span class="s0">, </span><span class="s1">s2</span><span class="s0">, </span><span class="s1">s3]</span>
+        <span class="s1">surfaces = [s1</span><span class="s0">, </span><span class="s1">s2]</span>
+        <span class="s1">sr = pygame.transform.average_surfaces(surfaces)</span>
+
+        <span class="s1">self.assertEqual(sr.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">10</span><span class="s0">,</span><span class="s3">15</span><span class="s0">,</span><span class="s3">70</span><span class="s0">,</span><span class="s3">255</span><span class="s1">))</span>
+
+
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">pygame.transform.average_surfaces</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">pygame.transform.average_surfaces</span><span class="s0">, </span><span class="s1">[])</span>
+
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">pygame.transform.average_surfaces</span><span class="s0">, </span><span class="s1">[</span><span class="s3">1</span><span class="s1">])</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">pygame.transform.average_surfaces</span><span class="s0">, </span><span class="s1">[s1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">])</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">pygame.transform.average_surfaces</span><span class="s0">, </span><span class="s1">[</span><span class="s3">1</span><span class="s0">, </span><span class="s1">s1])</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">pygame.transform.average_surfaces</span><span class="s0">, </span><span class="s1">[s1</span><span class="s0">, </span><span class="s1">s2</span><span class="s0">, </span><span class="s3">1</span><span class="s1">])</span>
+
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">pygame.transform.average_surfaces</span><span class="s0">, </span><span class="s1">(s </span><span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">[s1</span><span class="s0">, </span><span class="s1">s2</span><span class="s0">,</span><span class="s1">s3] ))</span>
+
+
+
+    <span class="s0">def </span><span class="s1">test_average_surfaces__24(self):</span>
+
+        <span class="s1">SIZE = </span><span class="s3">32</span>
+        <span class="s1">depth = </span><span class="s3">24</span>
+        <span class="s1">s1 = pygame.Surface((SIZE</span><span class="s0">, </span><span class="s1">SIZE)</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s1">depth)</span>
+        <span class="s1">s2 = pygame.Surface((SIZE</span><span class="s0">, </span><span class="s1">SIZE)</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s1">depth)</span>
+        <span class="s1">s3 = pygame.Surface((SIZE</span><span class="s0">, </span><span class="s1">SIZE)</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s1">depth)</span>
+        <span class="s1">s1.fill((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">10</span><span class="s0">,</span><span class="s3">70</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">s2.fill((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">20</span><span class="s0">,</span><span class="s3">70</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">s3.fill((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">130</span><span class="s0">,</span><span class="s3">10</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+
+        <span class="s1">surfaces = [s1</span><span class="s0">, </span><span class="s1">s2</span><span class="s0">, </span><span class="s1">s3]</span>
+        <span class="s1">sr = pygame.transform.average_surfaces(surfaces)</span>
+        <span class="s1">self.assertEqual( sr.get_masks()</span><span class="s0">, </span><span class="s1">s1.get_masks() )</span>
+        <span class="s1">self.assertEqual( sr.get_flags()</span><span class="s0">, </span><span class="s1">s1.get_flags() )</span>
+        <span class="s1">self.assertEqual( sr.get_losses()</span><span class="s0">, </span><span class="s1">s1.get_losses() )</span>
+
+        <span class="s0">if </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">print ( sr</span><span class="s0">, </span><span class="s1">s1 )</span>
+            <span class="s1">print ( sr.get_masks()</span><span class="s0">, </span><span class="s1">s1.get_masks() )</span>
+            <span class="s1">print ( sr.get_flags()</span><span class="s0">, </span><span class="s1">s1.get_flags() )</span>
+            <span class="s1">print ( sr.get_losses()</span><span class="s0">, </span><span class="s1">s1.get_losses() )</span>
+            <span class="s1">print ( sr.get_shifts()</span><span class="s0">, </span><span class="s1">s1.get_shifts() )</span>
+
+        <span class="s1">self.assertEqual(sr.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">10</span><span class="s0">,</span><span class="s3">53</span><span class="s0">,</span><span class="s3">50</span><span class="s0">,</span><span class="s3">255</span><span class="s1">))</span>
+
+    <span class="s0">def </span><span class="s1">test_average_surfaces__subclassed_surfaces(self):</span>
+        <span class="s4">&quot;&quot;&quot;Ensure average_surfaces accepts subclassed surfaces.&quot;&quot;&quot;</span>
+        <span class="s1">expected_size = (</span><span class="s3">23</span><span class="s0">, </span><span class="s3">17</span><span class="s1">)</span>
+        <span class="s1">expected_flags = </span><span class="s3">0</span>
+        <span class="s1">expected_depth = </span><span class="s3">32</span>
+        <span class="s1">expected_color = (</span><span class="s3">50</span><span class="s0">, </span><span class="s3">50</span><span class="s0">, </span><span class="s3">50</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">surfaces = []</span>
+
+        <span class="s0">for </span><span class="s1">color </span><span class="s0">in </span><span class="s1">((</span><span class="s3">40</span><span class="s0">, </span><span class="s3">60</span><span class="s0">, </span><span class="s3">40</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">60</span><span class="s0">, </span><span class="s3">40</span><span class="s0">, </span><span class="s3">60</span><span class="s1">)):</span>
+            <span class="s1">s = test_utils.SurfaceSubclass(expected_size</span><span class="s0">, </span><span class="s1">expected_flags</span><span class="s0">,</span>
+                                           <span class="s1">expected_depth)</span>
+            <span class="s1">s.fill(color)</span>
+            <span class="s1">surfaces.append(s)</span>
+
+        <span class="s1">surface = pygame.transform.average_surfaces(surfaces)</span>
+
+        <span class="s1">self.assertIsInstance(surface</span><span class="s0">, </span><span class="s1">pygame.Surface)</span>
+        <span class="s1">self.assertNotIsInstance(surface</span><span class="s0">, </span><span class="s1">test_utils.SurfaceSubclass)</span>
+        <span class="s1">self.assertEqual(surface.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">expected_color)</span>
+        <span class="s1">self.assertEqual(surface.get_bitsize()</span><span class="s0">, </span><span class="s1">expected_depth)</span>
+        <span class="s1">self.assertEqual(surface.get_size()</span><span class="s0">, </span><span class="s1">expected_size)</span>
+        <span class="s1">self.assertEqual(surface.get_flags()</span><span class="s0">, </span><span class="s1">expected_flags)</span>
+
+    <span class="s0">def </span><span class="s1">test_average_surfaces__subclassed_destination_surface(self):</span>
+        <span class="s4">&quot;&quot;&quot;Ensure average_surfaces accepts a destination subclassed surface.&quot;&quot;&quot;</span>
+        <span class="s1">expected_size = (</span><span class="s3">13</span><span class="s0">, </span><span class="s3">27</span><span class="s1">)</span>
+        <span class="s1">expected_flags = </span><span class="s3">0</span>
+        <span class="s1">expected_depth = </span><span class="s3">32</span>
+        <span class="s1">expected_color = (</span><span class="s3">15</span><span class="s0">, </span><span class="s3">15</span><span class="s0">, </span><span class="s3">15</span><span class="s0">, </span><span class="s3">255</span><span class="s1">)</span>
+        <span class="s1">surfaces = []</span>
+
+        <span class="s0">for </span><span class="s1">color </span><span class="s0">in </span><span class="s1">((</span><span class="s3">10</span><span class="s0">, </span><span class="s3">10</span><span class="s0">, </span><span class="s3">20</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">20</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">10</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s1">)):</span>
+            <span class="s1">s = test_utils.SurfaceSubclass(expected_size</span><span class="s0">, </span><span class="s1">expected_flags</span><span class="s0">,</span>
+                                           <span class="s1">expected_depth)</span>
+            <span class="s1">s.fill(color)</span>
+            <span class="s1">surfaces.append(s)</span>
+        <span class="s1">expected_dest_surface = surfaces.pop()</span>
+
+        <span class="s1">dest_surface = pygame.transform.average_surfaces(surfaces</span><span class="s0">,</span>
+                                                         <span class="s1">expected_dest_surface)</span>
+
+        <span class="s1">self.assertIsInstance(dest_surface</span><span class="s0">, </span><span class="s1">pygame.Surface)</span>
+        <span class="s1">self.assertIsInstance(dest_surface</span><span class="s0">, </span><span class="s1">test_utils.SurfaceSubclass)</span>
+        <span class="s1">self.assertIs(dest_surface</span><span class="s0">, </span><span class="s1">expected_dest_surface)</span>
+        <span class="s1">self.assertEqual(dest_surface.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">expected_color)</span>
+        <span class="s1">self.assertEqual(dest_surface.get_bitsize()</span><span class="s0">, </span><span class="s1">expected_depth)</span>
+        <span class="s1">self.assertEqual(dest_surface.get_size()</span><span class="s0">, </span><span class="s1">expected_size)</span>
+        <span class="s1">self.assertEqual(dest_surface.get_flags()</span><span class="s0">, </span><span class="s1">expected_flags)</span>
+
+    <span class="s0">def </span><span class="s1">test_average_color(self):</span>
+        <span class="s4">&quot;&quot;&quot; 
+        &quot;&quot;&quot;</span>
+
+        <span class="s1">a = [</span><span class="s3">24</span><span class="s0">, </span><span class="s3">32</span><span class="s1">]</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">a:</span>
+            <span class="s1">s = pygame.Surface((</span><span class="s3">32</span><span class="s0">,</span><span class="s3">32</span><span class="s1">)</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s1">i)</span>
+            <span class="s1">s.fill((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">100</span><span class="s0">,</span><span class="s3">200</span><span class="s1">))</span>
+            <span class="s1">s.fill((</span><span class="s3">10</span><span class="s0">,</span><span class="s3">50</span><span class="s0">,</span><span class="s3">100</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">16</span><span class="s0">,</span><span class="s3">32</span><span class="s1">))</span>
+
+            <span class="s1">self.assertEqual(pygame.transform.average_color(s)</span><span class="s0">,</span><span class="s1">(</span><span class="s3">5</span><span class="s0">,</span><span class="s3">75</span><span class="s0">,</span><span class="s3">150</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span>
+            <span class="s1">self.assertEqual(pygame.transform.average_color(s</span><span class="s0">, </span><span class="s1">(</span><span class="s3">16</span><span class="s0">,</span><span class="s3">0</span><span class="s0">,</span><span class="s3">16</span><span class="s0">,</span><span class="s3">32</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">,</span><span class="s3">100</span><span class="s0">,</span><span class="s3">200</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_rotate(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-06-25) for pygame.transform.rotate:</span>
+
+          <span class="s2"># pygame.transform.rotate(Surface, angle): return Surface</span>
+          <span class="s2"># rotate an image</span>
+
+        <span class="s2"># color = (128, 128, 128, 255)</span>
+        <span class="s2"># s = pygame.Surface((3, 3))</span>
+
+        <span class="s2"># s.set_at((2, 0), color)</span>
+
+        <span class="s2"># self.assertNotEqual(s.get_at((0, 0)), color)</span>
+        <span class="s2"># s = pygame.transform.rotate(s, 90)</span>
+        <span class="s2"># self.assertEqual(s.get_at((0, 0)), color)</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">test_rotate__lossless_at_90_degrees(self):</span>
+        <span class="s1">w</span><span class="s0">, </span><span class="s1">h = </span><span class="s3">32</span><span class="s0">, </span><span class="s3">32</span>
+        <span class="s1">s = pygame.Surface((w</span><span class="s0">, </span><span class="s1">h)</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA)</span>
+
+        <span class="s1">gradient = list(test_utils.gradient(w</span><span class="s0">, </span><span class="s1">h))</span>
+
+        <span class="s0">for </span><span class="s1">pt</span><span class="s0">, </span><span class="s1">color </span><span class="s0">in </span><span class="s1">gradient: s.set_at(pt</span><span class="s0">, </span><span class="s1">color)</span>
+
+        <span class="s0">for </span><span class="s1">rotation </span><span class="s0">in </span><span class="s1">(</span><span class="s3">90</span><span class="s0">, </span><span class="s1">-</span><span class="s3">90</span><span class="s1">):</span>
+            <span class="s1">s = pygame.transform.rotate(s</span><span class="s0">,</span><span class="s1">rotation)</span>
+
+        <span class="s0">for </span><span class="s1">pt</span><span class="s0">, </span><span class="s1">color </span><span class="s0">in </span><span class="s1">gradient:</span>
+            <span class="s1">self.assertTrue(s.get_at(pt) == color)</span>
+
+    <span class="s0">def </span><span class="s1">test_scale2x(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-06-25) for pygame.transform.scale2x:</span>
+
+          <span class="s2"># pygame.transform.scale2x(Surface, DestSurface = None): Surface</span>
+          <span class="s2"># specialized image doubler</span>
+
+        <span class="s1">w</span><span class="s0">, </span><span class="s1">h = </span><span class="s3">32</span><span class="s0">, </span><span class="s3">32</span>
+        <span class="s1">s = pygame.Surface((w</span><span class="s0">, </span><span class="s1">h)</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s2"># s.set_at((0,0), (20, 20, 20, 255))</span>
+
+        <span class="s1">s2 = pygame.transform.scale2x(s)</span>
+        <span class="s1">self.assertEqual(s2.get_rect().size</span><span class="s0">, </span><span class="s1">(</span><span class="s3">64</span><span class="s0">, </span><span class="s3">64</span><span class="s1">))</span>
+
+    <span class="s0">def </span><span class="s1">test_get_smoothscale_backend(self):</span>
+        <span class="s1">filter_type = pygame.transform.get_smoothscale_backend()</span>
+        <span class="s1">self.assertTrue(filter_type </span><span class="s0">in </span><span class="s1">[</span><span class="s5">'GENERIC'</span><span class="s0">, </span><span class="s5">'MMX'</span><span class="s0">, </span><span class="s5">'SSE'</span><span class="s1">])</span>
+        <span class="s2"># It would be nice to test if a non-generic type corresponds to an x86</span>
+        <span class="s2"># processor. But there is no simple test for this. platform.machine()</span>
+        <span class="s2"># returns process version specific information, like 'i686'.</span>
+
+    <span class="s0">def </span><span class="s1">test_set_smoothscale_backend(self):</span>
+        <span class="s2"># All machines should allow 'GENERIC'.</span>
+        <span class="s1">original_type = pygame.transform.get_smoothscale_backend()</span>
+        <span class="s1">pygame.transform.set_smoothscale_backend(</span><span class="s5">'GENERIC'</span><span class="s1">)</span>
+        <span class="s1">filter_type = pygame.transform.get_smoothscale_backend()</span>
+        <span class="s1">self.assertEqual(filter_type</span><span class="s0">, </span><span class="s5">'GENERIC'</span><span class="s1">)</span>
+        <span class="s2"># All machines should allow returning to original value.</span>
+        <span class="s2"># Also check that keyword argument works.</span>
+        <span class="s1">pygame.transform.set_smoothscale_backend(type=original_type)</span>
+        <span class="s2"># Something invalid.</span>
+        <span class="s0">def </span><span class="s1">change():</span>
+            <span class="s1">pygame.transform.set_smoothscale_backend(</span><span class="s5">'mmx'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">change)</span>
+        <span class="s2"># Invalid argument keyword.</span>
+        <span class="s0">def </span><span class="s1">change():</span>
+            <span class="s1">pygame.transform.set_smoothscale_backend(t=</span><span class="s5">'GENERIC'</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">change)</span>
+        <span class="s2"># Invalid argument type.</span>
+        <span class="s0">def </span><span class="s1">change():</span>
+            <span class="s1">pygame.transform.set_smoothscale_backend(</span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">change)</span>
+        <span class="s2"># Unsupported type, if possible.</span>
+        <span class="s0">if </span><span class="s1">original_type != </span><span class="s5">'SSE'</span><span class="s1">:</span>
+            <span class="s0">def </span><span class="s1">change():</span>
+                <span class="s1">pygame.transform.set_smoothscale_backend(</span><span class="s5">'SSE'</span><span class="s1">)</span>
+            <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">change)</span>
+        <span class="s2"># Should be back where we started.</span>
+        <span class="s1">filter_type = pygame.transform.get_smoothscale_backend()</span>
+        <span class="s1">self.assertEqual(filter_type</span><span class="s0">, </span><span class="s1">original_type)</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_chop(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.transform.chop:</span>
+
+          <span class="s2"># pygame.transform.chop(Surface, rect): return Surface</span>
+          <span class="s2"># gets a copy of an image with an interior area removed</span>
+          <span class="s2">#</span>
+          <span class="s2"># Extracts a portion of an image. All vertical and horizontal pixels</span>
+          <span class="s2"># surrounding the given rectangle area are removed. The corner areas</span>
+          <span class="s2"># (diagonal to the rect) are then brought together. (The original</span>
+          <span class="s2"># image is not altered by this operation.)</span>
+          <span class="s2">#</span>
+          <span class="s2"># NOTE: If you want a &quot;crop&quot; that returns the part of an image within</span>
+          <span class="s2"># a rect, you can blit with a rect to a new surface or copy a</span>
+          <span class="s2"># subsurface.</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_rotozoom(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.transform.rotozoom:</span>
+
+          <span class="s2"># pygame.transform.rotozoom(Surface, angle, scale): return Surface</span>
+          <span class="s2"># filtered scale and rotation</span>
+          <span class="s2">#</span>
+          <span class="s2"># This is a combined scale and rotation transform. The resulting</span>
+          <span class="s2"># Surface will be a filtered 32-bit Surface. The scale argument is a</span>
+          <span class="s2"># floating point value that will be multiplied by the current</span>
+          <span class="s2"># resolution. The angle argument is a floating point value that</span>
+          <span class="s2"># represents the counterclockwise degrees to rotate. A negative</span>
+          <span class="s2"># rotation angle will rotate clockwise.</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_smoothscale(self):</span>
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.transform.smoothscale:</span>
+
+          <span class="s2"># pygame.transform.smoothscale(Surface, (width, height), DestSurface =</span>
+          <span class="s2"># None): return Surface</span>
+          <span class="s2">#</span>
+          <span class="s2"># scale a surface to an arbitrary size smoothly</span>
+          <span class="s2">#</span>
+          <span class="s2"># Uses one of two different algorithms for scaling each dimension of</span>
+          <span class="s2"># the input surface as required.  For shrinkage, the output pixels are</span>
+          <span class="s2"># area averages of the colors they cover.  For expansion, a bilinear</span>
+          <span class="s2"># filter is used. For the amd64 and i686 architectures, optimized MMX</span>
+          <span class="s2"># routines are included and will run much faster than other machine</span>
+          <span class="s2"># types. The size is a 2 number sequence for (width, height). This</span>
+          <span class="s2"># function only works for 24-bit or 32-bit surfaces.  An exception</span>
+          <span class="s2"># will be thrown if the input surface bit depth is less than 24.</span>
+          <span class="s2">#</span>
+          <span class="s2"># New in pygame 1.8</span>
+
+        <span class="s1">self.fail()</span>
+
+
+<span class="s0">class </span><span class="s1">TransformDisplayModuleTest(unittest.TestCase):</span>
+
+    <span class="s0">def </span><span class="s1">setUp(self):</span>
+        <span class="s1">pygame.display.init()</span>
+
+    <span class="s0">def </span><span class="s1">tearDown(self):</span>
+        <span class="s1">pygame.display.quit()</span>
+
+    <span class="s0">def </span><span class="s1">test_flip(self):</span>
+        <span class="s4">&quot;&quot;&quot; honors the set_color key on the returned surface from flip. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">from </span><span class="s1">pygame.tests.test_utils </span><span class="s0">import </span><span class="s1">example_path</span>
+
+        <span class="s1">pygame.display.set_mode((</span><span class="s3">320</span><span class="s0">, </span><span class="s3">200</span><span class="s1">))</span>
+
+        <span class="s1">fullname = example_path(</span><span class="s5">'data/chimp.bmp'</span><span class="s1">)</span>
+        <span class="s1">image_loaded = pygame.image.load(fullname)</span>
+
+        <span class="s1">image = pygame.Surface(image_loaded.get_size()</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">image.blit(image_loaded</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+
+        <span class="s1">image_converted = image_loaded.convert()</span>
+
+        <span class="s1">self.assertFalse(image.get_flags() &amp; pygame.SRCALPHA)</span>
+        <span class="s1">self.assertFalse(image_converted.get_flags() &amp; pygame.SRCALPHA)</span>
+
+        <span class="s1">surf = pygame.Surface(image.get_size()</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">surf2 = pygame.Surface(image.get_size()</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s1">surf.fill((</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">surf2.fill((</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+
+        <span class="s1">colorkey = image.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">image.set_colorkey(colorkey</span><span class="s0">, </span><span class="s1">RLEACCEL)</span>
+        <span class="s1">timage = pygame.transform.flip(image</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+
+        <span class="s1">colorkey = image_converted.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">image_converted.set_colorkey(colorkey</span><span class="s0">, </span><span class="s1">RLEACCEL)</span>
+        <span class="s1">timage_converted = pygame.transform.flip(image_converted</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+
+        <span class="s2"># blit the flipped surface, and non flipped surface.</span>
+        <span class="s1">surf.blit(timage</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">surf2.blit(image</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+
+        <span class="s2"># the results should be the same.</span>
+        <span class="s1">self.assertEqual(surf.get_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">surf2.get_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)))</span>
+        <span class="s1">self.assertEqual(surf2.get_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+
+        <span class="s2"># now we test the convert() ed image also works.</span>
+        <span class="s1">surf.fill((</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">surf2.fill((</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">surf.blit(timage_converted</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">surf2.blit(image_converted</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(surf.get_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">surf2.get_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)))</span>
+
+    <span class="s0">def </span><span class="s1">test_flip_alpha(self):</span>
+        <span class="s4">&quot;&quot;&quot; returns a surface with the same properties as the input. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">from </span><span class="s1">pygame.tests.test_utils </span><span class="s0">import </span><span class="s1">example_path</span>
+
+        <span class="s1">pygame.display.set_mode((</span><span class="s3">320</span><span class="s0">, </span><span class="s3">200</span><span class="s1">))</span>
+
+        <span class="s1">fullname = example_path(</span><span class="s5">'data/chimp.bmp'</span><span class="s1">)</span>
+        <span class="s1">image_loaded = pygame.image.load(fullname)</span>
+
+        <span class="s1">image_alpha = pygame.Surface(image_loaded.get_size()</span><span class="s0">, </span><span class="s1">pygame.SRCALPHA</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">image_alpha.blit(image_loaded</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+
+        <span class="s1">surf = pygame.Surface(image_loaded.get_size()</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">surf2 = pygame.Surface(image_loaded.get_size()</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s1">colorkey = image_alpha.get_at((</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">image_alpha.set_colorkey(colorkey</span><span class="s0">, </span><span class="s1">RLEACCEL)</span>
+        <span class="s1">timage_alpha = pygame.transform.flip(image_alpha</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+
+        <span class="s1">self.assertTrue(image_alpha.get_flags() &amp; pygame.SRCALPHA)</span>
+        <span class="s1">self.assertTrue(timage_alpha.get_flags() &amp; pygame.SRCALPHA)</span>
+
+        <span class="s2"># now we test the alpha image works.</span>
+        <span class="s1">surf.fill((</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">surf2.fill((</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">surf.blit(timage_alpha</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">surf2.blit(image_alpha</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">self.assertEqual(surf.get_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">surf2.get_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)))</span>
+        <span class="s1">self.assertEqual(surf2.get_at((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span><span class="s0">, </span><span class="s1">(</span><span class="s3">255</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s5">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

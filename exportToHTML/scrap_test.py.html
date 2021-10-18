@@ -1,0 +1,313 @@
+<html>
+<head>
+<title>scrap_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+.s5 { color: #629755; font-style: italic;}
+.s6 { color: #a5c261;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+scrap_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">os</span>
+<span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">if </span><span class="s1">os.environ.get(</span><span class="s2">'SDL_VIDEODRIVER'</span><span class="s1">) == </span><span class="s2">'dummy'</span><span class="s1">:</span>
+    <span class="s1">__tags__ = (</span><span class="s2">'ignore'</span><span class="s0">, </span><span class="s2">'subprocess_ignore'</span><span class="s1">)</span>
+<span class="s0">import </span><span class="s1">unittest</span>
+<span class="s0">from </span><span class="s1">pygame.tests.test_utils </span><span class="s0">import </span><span class="s1">trunk_relative_path</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+<span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">scrap</span>
+<span class="s0">from </span><span class="s1">pygame.compat </span><span class="s0">import </span><span class="s1">as_bytes</span>
+
+<span class="s0">class </span><span class="s1">ScrapModuleTest(unittest.TestCase):</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">setUpClass(cls):</span>
+        <span class="s1">pygame.display.init()</span>
+        <span class="s1">pygame.display.set_mode((</span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">))</span>
+        <span class="s1">scrap.init()</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">tearDownClass(cls):</span>
+        <span class="s4"># scrap.quit()  # Does not exist!</span>
+        <span class="s1">pygame.display.quit()</span>
+
+    <span class="s0">def </span><span class="s1">test_init(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures scrap module still initialized after multiple init calls.&quot;&quot;&quot;</span>
+        <span class="s1">scrap.init()</span>
+        <span class="s1">scrap.init()</span>
+
+        <span class="s1">self.assertTrue(scrap.get_init())</span>
+
+    <span class="s0">def </span><span class="s1">test_get_init(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures get_init gets the init state.&quot;&quot;&quot;</span>
+        <span class="s1">self.assertTrue(scrap.get_init())</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_contains(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures contains works as expected.&quot;&quot;&quot;</span>
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_get(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures get works as expected.&quot;&quot;&quot;</span>
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">test_get__owned_empty_type(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures get works when there is no data of the requested type 
+        in the clipboard and the clipboard is owned by the pygame application. 
+        &quot;&quot;&quot;</span>
+        <span class="s4"># Use a unique data type identifier to ensure there is no preexisting</span>
+        <span class="s4"># data.</span>
+        <span class="s1">DATA_TYPE = </span><span class="s2">'test_get__owned_empty_type'</span>
+
+        <span class="s0">if </span><span class="s1">scrap.lost():</span>
+            <span class="s4"># Try to acquire the clipboard.</span>
+            <span class="s1">scrap.put(pygame.SCRAP_TEXT</span><span class="s0">, </span><span class="s6">b'text to clipboard'</span><span class="s1">)</span>
+
+            <span class="s0">if </span><span class="s1">scrap.lost():</span>
+                <span class="s1">self.skipTest(</span><span class="s2">'requires the pygame application to own the '</span>
+                              <span class="s2">'clipboard'</span><span class="s1">)</span>
+
+        <span class="s1">data = scrap.get(DATA_TYPE)</span>
+
+        <span class="s1">self.assertIsNone(data)</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_get_types(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures get_types works as expected.&quot;&quot;&quot;</span>
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_lost(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures lost works as expected.&quot;&quot;&quot;</span>
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">test_set_mode(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures set_mode works as expected.&quot;&quot;&quot;</span>
+        <span class="s1">scrap.set_mode(pygame.SCRAP_SELECTION)</span>
+        <span class="s1">scrap.set_mode(pygame.SCRAP_CLIPBOARD)</span>
+
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">scrap.set_mode</span><span class="s0">, </span><span class="s3">1099</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_put__text(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures put can place text into the clipboard.&quot;&quot;&quot;</span>
+        <span class="s1">scrap.put(pygame.SCRAP_TEXT</span><span class="s0">, </span><span class="s1">as_bytes(</span><span class="s2">&quot;Hello world&quot;</span><span class="s1">))</span>
+
+        <span class="s1">self.assertEqual(scrap.get(pygame.SCRAP_TEXT)</span><span class="s0">, </span><span class="s1">as_bytes(</span><span class="s2">&quot;Hello world&quot;</span><span class="s1">))</span>
+
+        <span class="s1">scrap.put(pygame.SCRAP_TEXT</span><span class="s0">, </span><span class="s1">as_bytes(</span><span class="s2">&quot;Another String&quot;</span><span class="s1">))</span>
+
+        <span class="s1">self.assertEqual(scrap.get(pygame.SCRAP_TEXT)</span><span class="s0">,</span>
+                         <span class="s1">as_bytes(</span><span class="s2">&quot;Another String&quot;</span><span class="s1">))</span>
+
+    <span class="s1">@unittest.skipIf(</span><span class="s2">'pygame.image' </span><span class="s0">not in </span><span class="s1">sys.modules</span><span class="s0">,</span>
+                     <span class="s2">'requires pygame.image module'</span><span class="s1">)</span>
+    <span class="s0">def </span><span class="s1">test_put__bmp_image(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures put can place a BMP image into the clipboard.&quot;&quot;&quot;</span>
+        <span class="s1">sf = pygame.image.load(trunk_relative_path(</span>
+            <span class="s2">&quot;examples/data/asprite.bmp&quot;</span><span class="s1">))</span>
+        <span class="s1">expected_string = pygame.image.tostring(sf</span><span class="s0">, </span><span class="s2">&quot;RGBA&quot;</span><span class="s1">)</span>
+        <span class="s1">scrap.put(pygame.SCRAP_BMP</span><span class="s0">, </span><span class="s1">expected_string)</span>
+
+        <span class="s1">self.assertEqual(scrap.get(pygame.SCRAP_BMP)</span><span class="s0">, </span><span class="s1">expected_string)</span>
+
+    <span class="s0">def </span><span class="s1">test_put(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures put can place data into the clipboard 
+        when using a user defined type identifier. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">DATA_TYPE = </span><span class="s2">'arbitrary buffer'</span>
+
+        <span class="s1">scrap.put(DATA_TYPE</span><span class="s0">, </span><span class="s1">as_bytes(</span><span class="s2">'buf'</span><span class="s1">))</span>
+        <span class="s1">r = scrap.get(DATA_TYPE)</span>
+
+        <span class="s1">self.assertEqual(r</span><span class="s0">, </span><span class="s1">as_bytes(</span><span class="s2">'buf'</span><span class="s1">))</span>
+
+
+<span class="s0">class </span><span class="s1">ScrapModuleClipboardNotOwnedTest(unittest.TestCase):</span>
+    <span class="s5">&quot;&quot;&quot;Test the scrap module's functionality when the pygame application is 
+    not the current owner of the clipboard. 
+ 
+    A separate class is used to prevent tests that acquire the clipboard from 
+    interfering with these tests. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">setUpClass(cls):</span>
+        <span class="s1">pygame.display.init()</span>
+        <span class="s1">pygame.display.set_mode((</span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">))</span>
+        <span class="s1">scrap.init()</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">tearDownClass(cls):</span>
+        <span class="s4"># scrap.quit()  # Does not exist!</span>
+        <span class="s1">pygame.quit()</span>
+        <span class="s1">pygame.display.quit()</span>
+
+    <span class="s0">def </span><span class="s1">_skip_if_clipboard_owned(self):</span>
+        <span class="s4"># Skip test if the pygame application owns the clipboard. Currently,</span>
+        <span class="s4"># there is no way to give up ownership.</span>
+        <span class="s0">if not </span><span class="s1">scrap.lost():</span>
+            <span class="s1">self.skipTest(</span><span class="s2">'requires the pygame application to not own the '</span>
+                          <span class="s2">'clipboard'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_get__not_owned(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures get works when there is no data of the requested type 
+        in the clipboard and the clipboard is not owned by the pygame 
+        application. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self._skip_if_clipboard_owned()</span>
+
+        <span class="s4"># Use a unique data type identifier to ensure there is no preexisting</span>
+        <span class="s4"># data.</span>
+        <span class="s1">DATA_TYPE = </span><span class="s2">'test_get__not_owned'</span>
+
+        <span class="s1">data = scrap.get(DATA_TYPE)</span>
+
+        <span class="s1">self.assertIsNone(data)</span>
+
+    <span class="s0">def </span><span class="s1">test_get_types__not_owned(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures get_types works when the clipboard is not owned 
+        by the pygame application. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self._skip_if_clipboard_owned()</span>
+
+        <span class="s1">data_types = scrap.get_types()</span>
+
+        <span class="s1">self.assertIsInstance(data_types</span><span class="s0">, </span><span class="s1">list)</span>
+
+    <span class="s0">def </span><span class="s1">test_contains__not_owned(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures contains works when the clipboard is not owned 
+        by the pygame application. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self._skip_if_clipboard_owned()</span>
+
+        <span class="s4"># Use a unique data type identifier to ensure there is no preexisting</span>
+        <span class="s4"># data.</span>
+        <span class="s1">DATA_TYPE = </span><span class="s2">'test_contains__not_owned'</span>
+
+        <span class="s1">contains = scrap.contains(DATA_TYPE)</span>
+
+        <span class="s1">self.assertFalse(contains)</span>
+
+    <span class="s0">def </span><span class="s1">test_lost__not_owned(self):</span>
+        <span class="s5">&quot;&quot;&quot;Ensures lost works when the clipboard is not owned 
+        by the pygame application. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self._skip_if_clipboard_owned()</span>
+
+        <span class="s1">lost = scrap.lost()</span>
+
+        <span class="s1">self.assertTrue(lost)</span>
+
+
+<span class="s0">class </span><span class="s1">X11InteractiveTest(unittest.TestCase):</span>
+    <span class="s1">__tags__ = [</span><span class="s2">'ignore'</span><span class="s0">, </span><span class="s2">'subprocess_ignore'</span><span class="s1">]</span>
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s1">pygame.display.init()</span>
+    <span class="s0">except </span><span class="s1">Exception:</span>
+        <span class="s0">pass</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">if </span><span class="s1">pygame.display.get_driver() == </span><span class="s2">'x11'</span><span class="s1">:</span>
+            <span class="s1">__tags__ = [</span><span class="s2">'interactive'</span><span class="s1">]</span>
+        <span class="s1">pygame.display.quit()</span>
+
+    <span class="s0">def </span><span class="s1">test_issue_208(self):</span>
+        <span class="s5">&quot;&quot;&quot;PATCH: pygame.scrap on X11, fix copying into PRIMARY selection 
+ 
+           Copying into theX11 PRIMARY selection (mouse copy/paste) would not 
+           work due to a confusion between content type and clipboard type. 
+ 
+        &quot;&quot;&quot;</span>
+
+        <span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">display</span><span class="s0">, </span><span class="s1">event</span><span class="s0">, </span><span class="s1">freetype</span>
+        <span class="s0">from </span><span class="s1">pygame.locals </span><span class="s0">import </span><span class="s1">SCRAP_SELECTION</span><span class="s0">, </span><span class="s1">SCRAP_TEXT</span>
+        <span class="s0">from </span><span class="s1">pygame.locals </span><span class="s0">import </span><span class="s1">KEYDOWN</span><span class="s0">, </span><span class="s1">K_y</span><span class="s0">, </span><span class="s1">QUIT</span>
+
+        <span class="s1">success = </span><span class="s0">False</span>
+        <span class="s1">freetype.init()</span>
+        <span class="s1">font = freetype.Font(</span><span class="s0">None, </span><span class="s3">24</span><span class="s1">)</span>
+        <span class="s1">display.init()</span>
+        <span class="s1">display.set_caption(</span><span class="s2">&quot;Interactive X11 Paste Test&quot;</span><span class="s1">)</span>
+        <span class="s1">screen = display.set_mode((</span><span class="s3">600</span><span class="s0">, </span><span class="s3">200</span><span class="s1">))</span>
+        <span class="s1">screen.fill(pygame.Color(</span><span class="s2">'white'</span><span class="s1">))</span>
+        <span class="s1">text = </span><span class="s2">&quot;Scrap put() succeeded.&quot;</span>
+        <span class="s1">msg = (</span><span class="s2">'Some text has been placed into the X11 clipboard.'</span>
+               <span class="s2">' Please click the center mouse button in an open'</span>
+               <span class="s2">' text window to retrieve it.'</span>
+               <span class="s2">'</span><span class="s0">\n\n</span><span class="s2">Did you get &quot;{}&quot;? (y/n)'</span><span class="s1">).format(text)</span>
+        <span class="s1">word_wrap(screen</span><span class="s0">, </span><span class="s1">msg</span><span class="s0">, </span><span class="s1">font</span><span class="s0">, </span><span class="s3">6</span><span class="s1">)</span>
+        <span class="s1">display.flip()</span>
+        <span class="s1">event.pump()</span>
+        <span class="s1">scrap.init()</span>
+        <span class="s1">scrap.set_mode(SCRAP_SELECTION)</span>
+        <span class="s1">scrap.put(SCRAP_TEXT</span><span class="s0">, </span><span class="s1">text.encode(</span><span class="s2">'UTF-8'</span><span class="s1">))</span>
+        <span class="s0">while True</span><span class="s1">:</span>
+            <span class="s1">e = event.wait()</span>
+            <span class="s0">if </span><span class="s1">e.type == QUIT:</span>
+                <span class="s0">break</span>
+            <span class="s0">if </span><span class="s1">e.type == KEYDOWN:</span>
+                <span class="s1">success = (e.key == K_y)</span>
+                <span class="s0">break</span>
+        <span class="s1">pygame.display.quit()</span>
+        <span class="s1">self.assertTrue(success)</span>
+
+<span class="s0">def </span><span class="s1">word_wrap(surf</span><span class="s0">, </span><span class="s1">text</span><span class="s0">, </span><span class="s1">font</span><span class="s0">, </span><span class="s1">margin=</span><span class="s3">0</span><span class="s0">, </span><span class="s1">color=(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)):</span>
+    <span class="s1">font.origin = </span><span class="s0">True</span>
+    <span class="s1">surf_width</span><span class="s0">, </span><span class="s1">surf_height = surf.get_size()</span>
+    <span class="s1">width = surf_width - </span><span class="s3">2 </span><span class="s1">* margin</span>
+    <span class="s1">height = surf_height - </span><span class="s3">2 </span><span class="s1">* margin</span>
+    <span class="s1">line_spacing = int(</span><span class="s3">1.25 </span><span class="s1">* font.get_sized_height())</span>
+    <span class="s1">x</span><span class="s0">, </span><span class="s1">y = margin</span><span class="s0">, </span><span class="s1">margin + line_spacing</span>
+    <span class="s1">space = font.get_rect(</span><span class="s2">' '</span><span class="s1">)</span>
+    <span class="s0">for </span><span class="s1">word </span><span class="s0">in </span><span class="s1">iwords(text):</span>
+        <span class="s0">if </span><span class="s1">word == </span><span class="s2">'</span><span class="s0">\n</span><span class="s2">'</span><span class="s1">:</span>
+            <span class="s1">x</span><span class="s0">, </span><span class="s1">y = margin</span><span class="s0">, </span><span class="s1">y + line_spacing</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">bounds = font.get_rect(word)</span>
+            <span class="s0">if </span><span class="s1">x + bounds.width + bounds.x &gt;= width:</span>
+                <span class="s1">x</span><span class="s0">, </span><span class="s1">y = margin</span><span class="s0">, </span><span class="s1">y + line_spacing</span>
+            <span class="s0">if </span><span class="s1">x + bounds.width + bounds.x &gt;= width:</span>
+                <span class="s0">raise </span><span class="s1">ValueError(</span><span class="s2">&quot;word too wide for the surface&quot;</span><span class="s1">)</span>
+            <span class="s0">if </span><span class="s1">y + bounds.height - bounds.y &gt;= height:</span>
+                <span class="s0">raise </span><span class="s1">ValueError(</span><span class="s2">&quot;text to long for the surface&quot;</span><span class="s1">)</span>
+            <span class="s1">font.render_to(surf</span><span class="s0">, </span><span class="s1">(x</span><span class="s0">, </span><span class="s1">y)</span><span class="s0">, None, </span><span class="s1">color)</span>
+            <span class="s1">x += bounds.width + space.width</span>
+    <span class="s0">return </span><span class="s1">x</span><span class="s0">, </span><span class="s1">y</span>
+
+<span class="s0">def </span><span class="s1">iwords(text):</span>
+    <span class="s4">#  r&quot;\n|[^ ]+&quot;</span>
+    <span class="s4">#</span>
+    <span class="s1">head = </span><span class="s3">0</span>
+    <span class="s1">tail = head</span>
+    <span class="s1">end = len(text)</span>
+    <span class="s0">while </span><span class="s1">head &lt; end:</span>
+        <span class="s0">if </span><span class="s1">text[head] == </span><span class="s2">' '</span><span class="s1">:</span>
+            <span class="s1">head += </span><span class="s3">1</span>
+            <span class="s1">tail = head + </span><span class="s3">1</span>
+        <span class="s0">elif </span><span class="s1">text[head] == </span><span class="s2">'</span><span class="s0">\n</span><span class="s2">'</span><span class="s1">:</span>
+            <span class="s1">head += </span><span class="s3">1</span>
+            <span class="s0">yield </span><span class="s2">'</span><span class="s0">\n</span><span class="s2">'</span>
+            <span class="s1">tail = head + </span><span class="s3">1</span>
+        <span class="s0">elif </span><span class="s1">tail == end:</span>
+            <span class="s0">yield </span><span class="s1">text[head:]</span>
+            <span class="s1">head = end</span>
+        <span class="s0">elif </span><span class="s1">text[tail] == </span><span class="s2">'</span><span class="s0">\n</span><span class="s2">'</span><span class="s1">:</span>
+            <span class="s0">yield </span><span class="s1">text[head:tail]</span>
+            <span class="s1">head = tail</span>
+        <span class="s0">elif </span><span class="s1">text[tail] == </span><span class="s2">' '</span><span class="s1">:</span>
+            <span class="s0">yield </span><span class="s1">text[head:tail]</span>
+            <span class="s1">head = tail</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">tail += </span><span class="s3">1</span>
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s2">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

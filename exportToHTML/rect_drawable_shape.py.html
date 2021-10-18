@@ -1,0 +1,264 @@
+<html>
+<head>
+<title>rect_drawable_shape.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+rect_drawable_shape.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">math</span>
+<span class="s0">import </span><span class="s1">warnings</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Dict</span><span class="s0">, </span><span class="s1">List</span><span class="s0">, </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Tuple</span><span class="s0">, </span><span class="s1">Any</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IUIManagerInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.colour_gradient </span><span class="s0">import </span><span class="s1">ColourGradient</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.drawable_shapes.drawable_shape </span><span class="s0">import </span><span class="s1">DrawableShape</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">basic_blit</span>
+
+
+<span class="s0">class </span><span class="s1">RectDrawableShape(DrawableShape):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A rectangle shape for UI elements has theming options for a border, a shadow, colour 
+    gradients and text. 
+ 
+    :param containing_rect: The layout rectangle that surrounds and controls the size of this shape. 
+    :param theming_parameters: Various styling parameters that control the final look of the shape. 
+    :param states: The different UI states the shape can be in. Shapes have different surfaces 
+                   for each state. 
+    :param manager: The UI manager. 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">containing_rect: pygame.Rect</span><span class="s0">,</span>
+                 <span class="s1">theming_parameters: Dict[str</span><span class="s0">, </span><span class="s1">Any]</span><span class="s0">,</span>
+                 <span class="s1">states: List[str]</span><span class="s0">,</span>
+                 <span class="s1">manager: IUIManagerInterface):</span>
+        <span class="s1">super().__init__(containing_rect</span><span class="s0">, </span><span class="s1">theming_parameters</span><span class="s0">, </span><span class="s1">states</span><span class="s0">, </span><span class="s1">manager)</span>
+
+        <span class="s1">self.has_been_resized = </span><span class="s0">False</span>
+
+        <span class="s1">self.full_rebuild_on_size_change()</span>
+
+    <span class="s0">def </span><span class="s1">full_rebuild_on_size_change(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Completely rebuilds the rectangle shape from it's dimensions and parameters. 
+ 
+        Everything needs rebuilding if we change the size of the containing rectangle. 
+ 
+        &quot;&quot;&quot;</span>
+
+        <span class="s3"># clamping border and shadow widths so we can't form impossible negative sized surfaces</span>
+        <span class="s1">super().full_rebuild_on_size_change()</span>
+
+        <span class="s0">if </span><span class="s1">self.shadow_width &gt; min(math.floor(self.containing_rect.width / </span><span class="s4">2</span><span class="s1">)</span><span class="s0">,</span>
+                                   <span class="s1">math.floor(self.containing_rect.height / </span><span class="s4">2</span><span class="s1">)):</span>
+            <span class="s1">self.shadow_width = min(math.floor(self.containing_rect.width / </span><span class="s4">2</span><span class="s1">)</span><span class="s0">,</span>
+                                    <span class="s1">math.floor(self.containing_rect.height / </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s0">if </span><span class="s1">self.shadow_width &lt; </span><span class="s4">0</span><span class="s1">:</span>
+            <span class="s1">self.shadow_width = </span><span class="s4">0</span>
+
+        <span class="s0">if </span><span class="s1">self.border_width &gt; min(math.floor((self.containing_rect.width -</span>
+                                               <span class="s1">(self.shadow_width * </span><span class="s4">2</span><span class="s1">)) / </span><span class="s4">2</span><span class="s1">)</span><span class="s0">,</span>
+                                   <span class="s1">math.floor((self.containing_rect.height -</span>
+                                               <span class="s1">(self.shadow_width * </span><span class="s4">2</span><span class="s1">)) / </span><span class="s4">2</span><span class="s1">)):</span>
+            <span class="s1">self.border_width = min(math.floor((self.containing_rect.width -</span>
+                                                <span class="s1">(self.shadow_width * </span><span class="s4">2</span><span class="s1">)) / </span><span class="s4">2</span><span class="s1">)</span><span class="s0">,</span>
+                                    <span class="s1">math.floor((self.containing_rect.height -</span>
+                                                <span class="s1">(self.shadow_width * </span><span class="s4">2</span><span class="s1">)) / </span><span class="s4">2</span><span class="s1">))</span>
+        <span class="s0">if </span><span class="s1">self.border_width &lt; </span><span class="s4">0</span><span class="s1">:</span>
+            <span class="s1">self.border_width = </span><span class="s4">0</span>
+
+        <span class="s0">if </span><span class="s1">self.shadow_width &gt; </span><span class="s4">0</span><span class="s1">:</span>
+            <span class="s1">self.click_area_shape = pygame.Rect((self.containing_rect.x + self.shadow_width</span><span class="s0">,</span>
+                                                 <span class="s1">self.containing_rect.y + self.shadow_width)</span><span class="s0">,</span>
+                                                <span class="s1">(self.containing_rect.width -</span>
+                                                 <span class="s1">(</span><span class="s4">2 </span><span class="s1">* self.shadow_width)</span><span class="s0">,</span>
+                                                 <span class="s1">self.containing_rect.height -</span>
+                                                 <span class="s1">(</span><span class="s4">2 </span><span class="s1">* self.shadow_width)))</span>
+            <span class="s1">shadow = self.ui_manager.get_shadow(self.containing_rect.size</span><span class="s0">,</span>
+                                                <span class="s1">shadow_width=self.shadow_width</span><span class="s0">,</span>
+                                                <span class="s1">corner_radius=self.shadow_width)</span>
+            <span class="s0">if </span><span class="s1">shadow </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">self.base_surface = shadow</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">warnings.warn(</span>
+                    <span class="s5">&quot;shape created too small to fit in selected shadow width and corner radius&quot;</span><span class="s1">)</span>
+                <span class="s1">self.base_surface = pygame.surface.Surface(self.containing_rect.size</span><span class="s0">,</span>
+                                                           <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                           <span class="s1">depth=</span><span class="s4">32</span><span class="s1">)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.click_area_shape = self.containing_rect.copy()</span>
+            <span class="s1">self.base_surface = pygame.surface.Surface(self.containing_rect.size</span><span class="s0">,</span>
+                                                       <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                       <span class="s1">depth=</span><span class="s4">32</span><span class="s1">)</span>
+
+        <span class="s1">self.compute_aligned_text_rect()</span>
+
+        <span class="s1">self.border_rect = pygame.Rect((self.shadow_width</span><span class="s0">,</span>
+                                        <span class="s1">self.shadow_width)</span><span class="s0">,</span>
+                                       <span class="s1">(self.click_area_shape.width</span><span class="s0">, </span><span class="s1">self.click_area_shape.height))</span>
+
+        <span class="s1">self.background_rect = pygame.Rect((self.border_width + self.shadow_width</span><span class="s0">,</span>
+                                            <span class="s1">self.border_width + self.shadow_width)</span><span class="s0">,</span>
+                                           <span class="s1">(self.click_area_shape.width - (</span><span class="s4">2 </span><span class="s1">* self.border_width)</span><span class="s0">,</span>
+                                            <span class="s1">self.click_area_shape.height - (</span><span class="s4">2 </span><span class="s1">* self.border_width)))</span>
+        <span class="s1">self.redraw_all_states()</span>
+
+    <span class="s0">def </span><span class="s1">collide_point(self</span><span class="s0">, </span><span class="s1">point: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                         <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                         <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Tests if a point is colliding with our Drawable shape's 'click area' hot spot. 
+ 
+        :param point: The point to test. 
+ 
+        :return: True if we are colliding. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">bool(self.click_area_shape.collidepoint(int(point[</span><span class="s4">0</span><span class="s1">])</span><span class="s0">, </span><span class="s1">int(point[</span><span class="s4">1</span><span class="s1">])))</span>
+
+    <span class="s0">def </span><span class="s1">set_dimensions(self</span><span class="s0">, </span><span class="s1">dimensions: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Changes the size of the rectangle shape. Relatively expensive to do. 
+ 
+        :param dimensions: The new dimensions. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">(dimensions[</span><span class="s4">0</span><span class="s1">] == self.containing_rect.width </span><span class="s0">and</span>
+                <span class="s1">dimensions[</span><span class="s4">1</span><span class="s1">] == self.containing_rect.height):</span>
+            <span class="s0">return</span>
+        <span class="s1">self.containing_rect.width = dimensions[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">self.containing_rect.height = dimensions[</span><span class="s4">1</span><span class="s1">]</span>
+        <span class="s1">self.click_area_shape.width = dimensions[</span><span class="s4">0</span><span class="s1">] - (</span><span class="s4">2 </span><span class="s1">* self.shadow_width)</span>
+        <span class="s1">self.click_area_shape.height = dimensions[</span><span class="s4">1</span><span class="s1">] - (</span><span class="s4">2 </span><span class="s1">* self.shadow_width)</span>
+
+        <span class="s1">self.has_been_resized = </span><span class="s0">True</span>
+
+        <span class="s1">self.full_rebuild_on_size_change()</span>
+
+    <span class="s0">def </span><span class="s1">set_position(self</span><span class="s0">, </span><span class="s1">point: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                        <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                        <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Move the shape. Only really impacts the position of the 'click_area' hot spot. 
+ 
+        :param point: The new position to move it to. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.containing_rect.x = point[</span><span class="s4">0</span><span class="s1">]</span>
+        <span class="s1">self.containing_rect.y = point[</span><span class="s4">1</span><span class="s1">]</span>
+        <span class="s1">self.click_area_shape.x = point[</span><span class="s4">0</span><span class="s1">] + self.shadow_width</span>
+        <span class="s1">self.click_area_shape.y = point[</span><span class="s4">1</span><span class="s1">] + self.shadow_width</span>
+
+    <span class="s0">def </span><span class="s1">redraw_state(self</span><span class="s0">, </span><span class="s1">state_str: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Redraws the shape's surface for a given UI state. 
+ 
+        :param state_str: The ID string of the state to rebuild. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">border_colour_state_str = state_str + </span><span class="s5">'_border'</span>
+        <span class="s1">bg_colour_state_str = state_str + </span><span class="s5">'_bg'</span>
+        <span class="s1">text_colour_state_str = state_str + </span><span class="s5">'_text'</span>
+        <span class="s1">image_state_str = state_str + </span><span class="s5">'_image'</span>
+
+        <span class="s1">found_shape = </span><span class="s0">None</span>
+        <span class="s1">shape_id = </span><span class="s0">None</span>
+        <span class="s0">if </span><span class="s5">'filled_bar' </span><span class="s0">not in </span><span class="s1">self.theming </span><span class="s0">and </span><span class="s5">'filled_bar_width_percentage' </span><span class="s0">not in </span><span class="s1">self.theming:</span>
+            <span class="s1">shape_id = self.shape_cache.build_cache_id(</span><span class="s5">'rectangle'</span><span class="s0">, </span><span class="s1">self.containing_rect.size</span><span class="s0">,</span>
+                                                       <span class="s1">self.shadow_width</span><span class="s0">,</span>
+                                                       <span class="s1">self.border_width</span><span class="s0">,</span>
+                                                       <span class="s1">self.theming[border_colour_state_str]</span><span class="s0">,</span>
+                                                       <span class="s1">self.theming[bg_colour_state_str])</span>
+
+            <span class="s1">found_shape = self.shape_cache.find_surface_in_cache(shape_id)</span>
+        <span class="s0">if </span><span class="s1">found_shape </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.states[state_str].surface = found_shape.copy()</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.states[state_str].surface = self.base_surface.copy()</span>
+
+            <span class="s0">if </span><span class="s1">self.border_width &gt; </span><span class="s4">0</span><span class="s1">:</span>
+
+                <span class="s0">if </span><span class="s1">isinstance(self.theming[border_colour_state_str]</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+                    <span class="s1">border_shape_surface = pygame.surface.Surface(self.border_rect.size</span><span class="s0">,</span>
+                                                                  <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s4">32</span><span class="s1">)</span>
+                    <span class="s1">border_shape_surface.fill(pygame.Color(</span><span class="s5">'#FFFFFFFF'</span><span class="s1">))</span>
+                    <span class="s1">self.states[state_str].surface.blit(border_shape_surface</span><span class="s0">,</span>
+                                                        <span class="s1">self.border_rect</span><span class="s0">,</span>
+                                                        <span class="s1">special_flags=pygame.BLEND_RGBA_SUB)</span>
+                    <span class="s1">self.theming[border_colour_state_str].apply_gradient_to_surface(</span>
+                        <span class="s1">border_shape_surface)</span>
+                    <span class="s1">basic_blit(self.states[state_str].surface</span><span class="s0">,</span>
+                               <span class="s1">border_shape_surface</span><span class="s0">, </span><span class="s1">self.border_rect)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">self.states[state_str].surface.fill(self.theming[border_colour_state_str]</span><span class="s0">,</span>
+                                                        <span class="s1">self.border_rect)</span>
+
+            <span class="s0">if </span><span class="s1">isinstance(self.theming[bg_colour_state_str]</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+                <span class="s1">background_shape_surface = pygame.surface.Surface(self.background_rect.size</span><span class="s0">,</span>
+                                                                  <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s4">32</span><span class="s1">)</span>
+                <span class="s1">background_shape_surface.fill(pygame.Color(</span><span class="s5">'#FFFFFFFF'</span><span class="s1">))</span>
+                <span class="s1">self.states[state_str].surface.blit(background_shape_surface</span><span class="s0">,</span>
+                                                    <span class="s1">self.background_rect</span><span class="s0">,</span>
+                                                    <span class="s1">special_flags=pygame.BLEND_RGBA_SUB)</span>
+                <span class="s1">self.theming[bg_colour_state_str].apply_gradient_to_surface(</span>
+                    <span class="s1">background_shape_surface)</span>
+                <span class="s1">basic_blit(self.states[state_str].surface</span><span class="s0">,</span>
+                           <span class="s1">background_shape_surface</span><span class="s0">, </span><span class="s1">self.background_rect)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.states[state_str].surface.fill(self.theming[bg_colour_state_str]</span><span class="s0">,</span>
+                                                    <span class="s1">self.background_rect)</span>
+
+            <span class="s0">if </span><span class="s5">'filled_bar' </span><span class="s0">in </span><span class="s1">self.theming </span><span class="s0">and </span><span class="s5">'filled_bar_width_percentage' </span><span class="s0">in </span><span class="s1">self.theming:</span>
+                <span class="s1">bar_rect = pygame.Rect(self.background_rect.topleft</span><span class="s0">,</span>
+                                       <span class="s1">(int(self.theming[</span><span class="s5">'filled_bar_width_percentage'</span><span class="s1">] *</span>
+                                            <span class="s1">self.background_rect.width)</span><span class="s0">,</span>
+                                        <span class="s1">self.background_rect.height))</span>
+                <span class="s0">if </span><span class="s1">isinstance(self.theming[</span><span class="s5">'filled_bar'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+                    <span class="s1">bar_shape_surface = pygame.surface.Surface(bar_rect.size</span><span class="s0">,</span>
+                                                               <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">,</span>
+                                                               <span class="s1">depth=</span><span class="s4">32</span><span class="s1">)</span>
+                    <span class="s1">bar_shape_surface.fill(pygame.Color(</span><span class="s5">'#FFFFFFFF'</span><span class="s1">))</span>
+                    <span class="s1">self.states[state_str].surface.blit(bar_shape_surface</span><span class="s0">, </span><span class="s1">bar_rect</span><span class="s0">,</span>
+                                                        <span class="s1">special_flags=pygame.BLEND_RGBA_SUB)</span>
+                    <span class="s1">self.theming[</span><span class="s5">'filled_bar'</span><span class="s1">].apply_gradient_to_surface(bar_shape_surface)</span>
+                    <span class="s1">basic_blit(self.states[state_str].surface</span><span class="s0">,</span>
+                               <span class="s1">bar_shape_surface</span><span class="s0">, </span><span class="s1">bar_rect)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">self.states[state_str].surface.fill(self.theming[</span><span class="s5">'filled_bar'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">bar_rect)</span>
+
+            <span class="s0">if </span><span class="s1">self.states[state_str].cached_background_id </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">self.shape_cache.remove_user_from_cache_item(</span>
+                    <span class="s1">self.states[state_str].cached_background_id)</span>
+            <span class="s0">if </span><span class="s1">(</span><span class="s0">not </span><span class="s1">self.has_been_resized</span>
+                    <span class="s0">and </span><span class="s1">((self.containing_rect.width * self.containing_rect.height) &lt; </span><span class="s4">40000</span><span class="s1">)</span>
+                    <span class="s0">and </span><span class="s1">(shape_id </span><span class="s0">is not None</span>
+                         <span class="s0">and </span><span class="s1">self.states[state_str].surface.get_width() &lt;= </span><span class="s4">1024</span>
+                         <span class="s0">and </span><span class="s1">self.states[state_str].surface.get_height() &lt;= </span><span class="s4">1024</span><span class="s1">)):</span>
+                <span class="s1">self.shape_cache.add_surface_to_cache(self.states[state_str].surface.copy()</span><span class="s0">,</span>
+                                                      <span class="s1">shape_id)</span>
+                <span class="s1">self.states[state_str].cached_background_id = shape_id</span>
+
+        <span class="s1">self.rebuild_images_and_text(image_state_str</span><span class="s0">, </span><span class="s1">state_str</span><span class="s0">, </span><span class="s1">text_colour_state_str)</span>
+
+        <span class="s1">self.states[state_str].has_fresh_surface = </span><span class="s0">True</span>
+        <span class="s1">self.states[state_str].generated = </span><span class="s0">True</span>
+</pre>
+</body>
+</html>

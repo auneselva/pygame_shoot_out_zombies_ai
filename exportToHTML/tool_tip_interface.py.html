@@ -1,0 +1,107 @@
+<html>
+<head>
+<title>tool_tip_interface.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+tool_tip_interface.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">abc </span><span class="s0">import </span><span class="s1">ABCMeta</span><span class="s0">, </span><span class="s1">abstractmethod</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Tuple</span><span class="s0">, </span><span class="s1">Union</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+
+<span class="s0">class </span><span class="s1">IUITooltipInterface(metaclass=ABCMeta):</span>
+    <span class="s2">&quot;&quot;&quot; 
+       A meta class that defines the interface that a UI Tool tip uses. 
+ 
+       Interfaces like this help us evade cyclical import problems by allowing us to define the 
+       actual manager class later on and have it make use of the classes that use the interface. 
+       &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">rebuild(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Rebuild anything that might need rebuilding. 
+ 
+        &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">kill(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Overrides the UIElement's default kill method to also kill the text block element that 
+        helps make up the complete tool tip. 
+        &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">find_valid_position(self</span><span class="s0">, </span><span class="s1">position: pygame.math.Vector2) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Finds a valid position for the tool tip inside the root container of the UI. 
+ 
+        The algorithm starts from the position of the target we are providing a tool tip for then it 
+        tries to fit the rectangle for the tool tip onto the screen by moving it above, below, to 
+        the left and to the right, until we find a position that fits the whole tooltip rectangle 
+        on the screen at once. 
+ 
+        If we fail to manage this then the method will return False. Otherwise it returns True and 
+        set the position of the tool tip to our valid position. 
+ 
+        :param position: A 2D vector representing the position of the target this tool tip is for. 
+ 
+        :return: returns True if we find a valid (visible) position and False if we do not. 
+ 
+        &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">rebuild_from_changed_theme_data(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Called by the UIManager to check the theming data and rebuild whatever needs rebuilding for 
+        this element when the theme data has changed. 
+        &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">set_position(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                           <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                           <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Sets the absolute screen position of this tool tip, updating it's subordinate text box at 
+        the same time. 
+ 
+        :param position: The absolute screen position to set. 
+ 
+        &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">set_relative_position(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                                    <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                                    <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Sets the relative screen position of this tool tip, updating it's subordinate text box at 
+        the same time. 
+ 
+        :param position: The relative screen position to set. 
+ 
+        &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">set_dimensions(self</span><span class="s0">, </span><span class="s1">dimensions: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Directly sets the dimensions of this tool tip. This will overwrite the normal theming. 
+ 
+        :param dimensions: The new dimensions to set 
+ 
+        &quot;&quot;&quot;</span>
+</pre>
+</body>
+</html>

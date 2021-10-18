@@ -1,0 +1,51 @@
+<html>
+<head>
+<title>filesystem.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6a8759;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+filesystem.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">os</span>
+<span class="s0">import </span><span class="s1">os.path</span>
+
+<span class="s0">from </span><span class="s1">pip._internal.utils.compat </span><span class="s0">import </span><span class="s1">get_path_uid</span>
+
+
+<span class="s0">def </span><span class="s1">check_path_owner(path):</span>
+    <span class="s2"># type: (str) -&gt; bool</span>
+    <span class="s2"># If we don't have a way to check the effective uid of this process, then</span>
+    <span class="s2"># we'll just assume that we own the directory.</span>
+    <span class="s0">if not </span><span class="s1">hasattr(os</span><span class="s0">, </span><span class="s3">&quot;geteuid&quot;</span><span class="s1">):</span>
+        <span class="s0">return True</span>
+
+    <span class="s1">previous = </span><span class="s0">None</span>
+    <span class="s0">while </span><span class="s1">path != previous:</span>
+        <span class="s0">if </span><span class="s1">os.path.lexists(path):</span>
+            <span class="s2"># Check if path is writable by current user.</span>
+            <span class="s0">if </span><span class="s1">os.geteuid() == </span><span class="s4">0</span><span class="s1">:</span>
+                <span class="s2"># Special handling for root user in order to handle properly</span>
+                <span class="s2"># cases where users use sudo without -H flag.</span>
+                <span class="s0">try</span><span class="s1">:</span>
+                    <span class="s1">path_uid = get_path_uid(path)</span>
+                <span class="s0">except </span><span class="s1">OSError:</span>
+                    <span class="s0">return False</span>
+                <span class="s0">return </span><span class="s1">path_uid == </span><span class="s4">0</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s0">return </span><span class="s1">os.access(path</span><span class="s0">, </span><span class="s1">os.W_OK)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">previous</span><span class="s0">, </span><span class="s1">path = path</span><span class="s0">, </span><span class="s1">os.path.dirname(path)</span>
+    <span class="s0">return False  </span><span class="s2"># assume we don't own the path</span>
+</pre>
+</body>
+</html>

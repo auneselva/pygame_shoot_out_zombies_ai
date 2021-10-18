@@ -1,0 +1,123 @@
+<html>
+<head>
+<title>fonty.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #cc7832;}
+.s4 { color: #6897bb;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+fonty.py</font>
+</center></td></tr></table>
+<pre><span class="s0">#!/usr/bin/env python</span>
+
+<span class="s2">&quot;&quot;&quot;Here we load a .TTF font file, and display it in 
+a basic pygame window. It demonstrates several of the 
+Font object attributes. Nothing exciting in here, but 
+it makes a great example for basic window, event, and 
+font management.&quot;&quot;&quot;</span>
+
+
+<span class="s3">import </span><span class="s1">pygame</span>
+<span class="s3">from </span><span class="s1">pygame.locals </span><span class="s3">import </span><span class="s1">*</span>
+<span class="s3">from </span><span class="s1">pygame.compat </span><span class="s3">import </span><span class="s1">unichr_</span><span class="s3">, </span><span class="s1">unicode_</span>
+<span class="s3">import </span><span class="s1">sys</span>
+<span class="s3">import </span><span class="s1">locale</span>
+
+
+<span class="s3">if </span><span class="s1">sys.version_info &gt;= (</span><span class="s4">3</span><span class="s3">,</span><span class="s1">):</span>
+    <span class="s3">def </span><span class="s1">print_unicode(s):</span>
+        <span class="s1">e = locale.getpreferredencoding()</span>
+        <span class="s1">print (s.encode(e</span><span class="s3">, </span><span class="s5">'backslashreplace'</span><span class="s1">).decode())</span>
+<span class="s3">else</span><span class="s1">:</span>
+    <span class="s3">def </span><span class="s1">print_unicode(s):</span>
+        <span class="s1">e = locale.getpreferredencoding()</span>
+        <span class="s1">print (s.encode(e</span><span class="s3">, </span><span class="s5">'backslashreplace'</span><span class="s1">))</span>
+
+<span class="s3">def </span><span class="s1">main():</span>
+    <span class="s0">#initialize</span>
+    <span class="s1">pygame.init()</span>
+    <span class="s1">resolution = </span><span class="s4">400</span><span class="s3">, </span><span class="s4">200</span>
+    <span class="s1">screen = pygame.display.set_mode(resolution)</span>
+
+<span class="s0">##    pygame.mouse.set_cursor(*pygame.cursors.diamond)</span>
+
+    <span class="s1">fg = </span><span class="s4">250</span><span class="s3">, </span><span class="s4">240</span><span class="s3">, </span><span class="s4">230</span>
+    <span class="s1">bg = </span><span class="s4">5</span><span class="s3">, </span><span class="s4">5</span><span class="s3">, </span><span class="s4">5</span>
+    <span class="s1">wincolor = </span><span class="s4">40</span><span class="s3">, </span><span class="s4">40</span><span class="s3">, </span><span class="s4">90</span>
+
+    <span class="s0">#fill background</span>
+    <span class="s1">screen.fill(wincolor)</span>
+
+    <span class="s0">#load font, prepare values</span>
+    <span class="s1">font = pygame.font.Font(</span><span class="s3">None, </span><span class="s4">80</span><span class="s1">)</span>
+    <span class="s1">text = </span><span class="s5">'Fonty'</span>
+    <span class="s1">size = font.size(text)</span>
+
+    <span class="s0">#no AA, no transparancy, normal</span>
+    <span class="s1">ren = font.render(text</span><span class="s3">, </span><span class="s4">0</span><span class="s3">, </span><span class="s1">fg</span><span class="s3">, </span><span class="s1">bg)</span>
+    <span class="s1">screen.blit(ren</span><span class="s3">, </span><span class="s1">(</span><span class="s4">10</span><span class="s3">, </span><span class="s4">10</span><span class="s1">))</span>
+
+    <span class="s0">#no AA, transparancy, underline</span>
+    <span class="s1">font.set_underline(</span><span class="s4">1</span><span class="s1">)</span>
+    <span class="s1">ren = font.render(text</span><span class="s3">, </span><span class="s4">0</span><span class="s3">, </span><span class="s1">fg)</span>
+    <span class="s1">screen.blit(ren</span><span class="s3">, </span><span class="s1">(</span><span class="s4">10</span><span class="s3">, </span><span class="s4">40 </span><span class="s1">+ size[</span><span class="s4">1</span><span class="s1">]))</span>
+    <span class="s1">font.set_underline(</span><span class="s4">0</span><span class="s1">)</span>
+
+
+    <span class="s1">a_sys_font = pygame.font.SysFont(</span><span class="s5">&quot;Arial&quot;</span><span class="s3">, </span><span class="s4">60</span><span class="s1">)</span>
+
+
+    <span class="s0">#AA, no transparancy, bold</span>
+    <span class="s1">a_sys_font.set_bold(</span><span class="s4">1</span><span class="s1">)</span>
+    <span class="s1">ren = a_sys_font.render(text</span><span class="s3">, </span><span class="s4">1</span><span class="s3">, </span><span class="s1">fg</span><span class="s3">, </span><span class="s1">bg)</span>
+    <span class="s1">screen.blit(ren</span><span class="s3">, </span><span class="s1">(</span><span class="s4">30 </span><span class="s1">+ size[</span><span class="s4">0</span><span class="s1">]</span><span class="s3">, </span><span class="s4">10</span><span class="s1">))</span>
+    <span class="s1">a_sys_font.set_bold(</span><span class="s4">0</span><span class="s1">)</span>
+
+    <span class="s0">#AA, transparancy, italic</span>
+    <span class="s1">a_sys_font.set_italic(</span><span class="s4">1</span><span class="s1">)</span>
+    <span class="s1">ren = a_sys_font.render(text</span><span class="s3">, </span><span class="s4">1</span><span class="s3">, </span><span class="s1">fg)</span>
+    <span class="s1">screen.blit(ren</span><span class="s3">, </span><span class="s1">(</span><span class="s4">30 </span><span class="s1">+ size[</span><span class="s4">0</span><span class="s1">]</span><span class="s3">, </span><span class="s4">40 </span><span class="s1">+ size[</span><span class="s4">1</span><span class="s1">]))</span>
+    <span class="s1">a_sys_font.set_italic(</span><span class="s4">0</span><span class="s1">)</span>
+
+
+    <span class="s0"># Get some metrics.</span>
+    <span class="s1">print (</span><span class="s5">&quot;Font metrics for 'Fonty':  %s&quot; </span><span class="s1">% a_sys_font.metrics (text))</span>
+    <span class="s1">ch = unicode_(</span><span class="s5">&quot;%c&quot;</span><span class="s1">) % </span><span class="s4">0x3060</span>
+    <span class="s1">msg = (unicode_(</span><span class="s5">&quot;Font metrics for '%s':  %s&quot;</span><span class="s1">) %</span>
+           <span class="s1">(ch</span><span class="s3">, </span><span class="s1">a_sys_font.metrics (ch)))</span>
+    <span class="s1">print_unicode(msg)</span>
+
+    <span class="s0">## #some_japanese_unicode = u&quot;\u304b\u3070\u306b&quot;</span>
+    <span class="s0">##some_japanese_unicode = unicode_('%c%c%c') % (0x304b, 0x3070, 0x306b)</span>
+    
+    <span class="s0">#AA, transparancy, italic</span>
+    <span class="s0">##ren = a_sys_font.render(some_japanese_unicode, 1, fg)</span>
+    <span class="s0">##screen.blit(ren, (30 + size[0], 40 + size[1]))</span>
+    
+
+
+
+
+    <span class="s0">#show the surface and await user quit</span>
+    <span class="s1">pygame.display.flip()</span>
+    <span class="s3">while </span><span class="s4">1</span><span class="s1">:</span>
+        <span class="s0">#use event.wait to keep from polling 100% cpu</span>
+        <span class="s3">if </span><span class="s1">pygame.event.wait().type </span><span class="s3">in </span><span class="s1">(QUIT</span><span class="s3">, </span><span class="s1">KEYDOWN</span><span class="s3">, </span><span class="s1">MOUSEBUTTONDOWN):</span>
+            <span class="s3">break</span>
+
+
+
+<span class="s3">if </span><span class="s1">__name__ == </span><span class="s5">'__main__'</span><span class="s1">: main()</span>
+    
+</pre>
+</body>
+</html>

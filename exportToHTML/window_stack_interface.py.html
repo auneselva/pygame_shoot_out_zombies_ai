@@ -1,0 +1,85 @@
+<html>
+<head>
+<title>window_stack_interface.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+window_stack_interface.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">abc </span><span class="s0">import </span><span class="s1">ABCMeta</span><span class="s0">, </span><span class="s1">abstractmethod</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">List</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces.window_interface </span><span class="s0">import </span><span class="s1">IWindowInterface</span>
+
+
+<span class="s0">class </span><span class="s1">IUIWindowStackInterface(metaclass=ABCMeta):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A class for managing a stack of GUI windows so that only one is 'in front' at a time and the 
+    rest are sorted based on the last time they were interacted with/created. 
+ 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">clear(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Empties the whole stack removing and killing all windows. 
+        &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">add_new_window(self</span><span class="s0">, </span><span class="s1">window: IWindowInterface):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Adds a window to the top of the stack. 
+ 
+        :param window: The window to add. 
+ 
+        &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">remove_window(self</span><span class="s0">, </span><span class="s1">window_to_remove: IWindowInterface):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Removes a window from the stack and resorts the remaining windows to adjust for 
+        it's absence. 
+ 
+        :param window_to_remove: the window to remove. 
+ 
+        &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">move_window_to_front(self</span><span class="s0">, </span><span class="s1">window_to_front: IWindowInterface):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Moves the passed in window to the top of the window stack and resorts the other windows 
+        to deal with the change. 
+ 
+        :param window_to_front: the window to move to the front. 
+ 
+        &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">is_window_at_top(self</span><span class="s0">, </span><span class="s1">window: IWindowInterface) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Checks if a window is at the top of the window stack or not. 
+ 
+        :param window: The window to check. 
+ 
+        :return: returns True if this window is at the top of the stack. 
+ 
+        &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">get_stack(self) -&gt; List[IWindowInterface]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Return the internal window stack directly. 
+ 
+        :return: a list of Windows 
+        &quot;&quot;&quot;</span>
+</pre>
+</body>
+</html>

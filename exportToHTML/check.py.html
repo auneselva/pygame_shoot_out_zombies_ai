@@ -1,0 +1,176 @@
+<html>
+<head>
+<title>check.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #808080;}
+.s4 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+check.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Validation of dependencies of packages 
+&quot;&quot;&quot;</span>
+
+<span class="s2">import </span><span class="s1">logging</span>
+<span class="s2">from </span><span class="s1">collections </span><span class="s2">import </span><span class="s1">namedtuple</span>
+
+<span class="s2">from </span><span class="s1">pip._vendor.packaging.utils </span><span class="s2">import </span><span class="s1">canonicalize_name</span>
+<span class="s2">from </span><span class="s1">pip._vendor.pkg_resources </span><span class="s2">import </span><span class="s1">RequirementParseError</span>
+
+<span class="s2">from </span><span class="s1">pip._internal.operations.prepare </span><span class="s2">import </span><span class="s1">make_abstract_dist</span>
+<span class="s2">from </span><span class="s1">pip._internal.utils.misc </span><span class="s2">import </span><span class="s1">get_installed_distributions</span>
+<span class="s2">from </span><span class="s1">pip._internal.utils.typing </span><span class="s2">import </span><span class="s1">MYPY_CHECK_RUNNING</span>
+
+<span class="s1">logger = logging.getLogger(__name__)</span>
+
+<span class="s2">if </span><span class="s1">MYPY_CHECK_RUNNING:</span>
+    <span class="s2">from </span><span class="s1">pip._internal.req.req_install </span><span class="s2">import </span><span class="s1">InstallRequirement  </span><span class="s3"># noqa: F401</span>
+    <span class="s2">from </span><span class="s1">typing </span><span class="s2">import </span><span class="s1">(  </span><span class="s3"># noqa: F401</span>
+        <span class="s1">Any</span><span class="s2">, </span><span class="s1">Callable</span><span class="s2">, </span><span class="s1">Dict</span><span class="s2">, </span><span class="s1">Optional</span><span class="s2">, </span><span class="s1">Set</span><span class="s2">, </span><span class="s1">Tuple</span><span class="s2">, </span><span class="s1">List</span>
+    <span class="s1">)</span>
+
+    <span class="s3"># Shorthands</span>
+    <span class="s1">PackageSet = Dict[str</span><span class="s2">, </span><span class="s4">'PackageDetails'</span><span class="s1">]</span>
+    <span class="s1">Missing = Tuple[str</span><span class="s2">, </span><span class="s1">Any]</span>
+    <span class="s1">Conflicting = Tuple[str</span><span class="s2">, </span><span class="s1">str</span><span class="s2">, </span><span class="s1">Any]</span>
+
+    <span class="s1">MissingDict = Dict[str</span><span class="s2">, </span><span class="s1">List[Missing]]</span>
+    <span class="s1">ConflictingDict = Dict[str</span><span class="s2">, </span><span class="s1">List[Conflicting]]</span>
+    <span class="s1">CheckResult = Tuple[MissingDict</span><span class="s2">, </span><span class="s1">ConflictingDict]</span>
+
+<span class="s1">PackageDetails = namedtuple(</span><span class="s4">'PackageDetails'</span><span class="s2">, </span><span class="s1">[</span><span class="s4">'version'</span><span class="s2">, </span><span class="s4">'requires'</span><span class="s1">])</span>
+
+
+<span class="s2">def </span><span class="s1">create_package_set_from_installed(**kwargs):</span>
+    <span class="s3"># type: (**Any) -&gt; Tuple[PackageSet, bool]</span>
+    <span class="s0">&quot;&quot;&quot;Converts a list of distributions into a PackageSet. 
+    &quot;&quot;&quot;</span>
+    <span class="s3"># Default to using all packages installed on the system</span>
+    <span class="s2">if </span><span class="s1">kwargs == {}:</span>
+        <span class="s1">kwargs = {</span><span class="s4">&quot;local_only&quot;</span><span class="s1">: </span><span class="s2">False, </span><span class="s4">&quot;skip&quot;</span><span class="s1">: ()}</span>
+
+    <span class="s1">package_set = {}</span>
+    <span class="s1">problems = </span><span class="s2">False</span>
+    <span class="s2">for </span><span class="s1">dist </span><span class="s2">in </span><span class="s1">get_installed_distributions(**kwargs):</span>
+        <span class="s1">name = canonicalize_name(dist.project_name)</span>
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s1">package_set[name] = PackageDetails(dist.version</span><span class="s2">, </span><span class="s1">dist.requires())</span>
+        <span class="s2">except </span><span class="s1">RequirementParseError </span><span class="s2">as </span><span class="s1">e:</span>
+            <span class="s3"># Don't crash on broken metadata</span>
+            <span class="s1">logging.warning(</span><span class="s4">&quot;Error parsing requirements for %s: %s&quot;</span><span class="s2">, </span><span class="s1">name</span><span class="s2">, </span><span class="s1">e)</span>
+            <span class="s1">problems = </span><span class="s2">True</span>
+    <span class="s2">return </span><span class="s1">package_set</span><span class="s2">, </span><span class="s1">problems</span>
+
+
+<span class="s2">def </span><span class="s1">check_package_set(package_set</span><span class="s2">, </span><span class="s1">should_ignore=</span><span class="s2">None</span><span class="s1">):</span>
+    <span class="s3"># type: (PackageSet, Optional[Callable[[str], bool]]) -&gt; CheckResult</span>
+    <span class="s0">&quot;&quot;&quot;Check if a package set is consistent 
+ 
+    If should_ignore is passed, it should be a callable that takes a 
+    package name and returns a boolean. 
+    &quot;&quot;&quot;</span>
+    <span class="s2">if </span><span class="s1">should_ignore </span><span class="s2">is None</span><span class="s1">:</span>
+        <span class="s2">def </span><span class="s1">should_ignore(name):</span>
+            <span class="s2">return False</span>
+
+    <span class="s1">missing = dict()</span>
+    <span class="s1">conflicting = dict()</span>
+
+    <span class="s2">for </span><span class="s1">package_name </span><span class="s2">in </span><span class="s1">package_set:</span>
+        <span class="s3"># Info about dependencies of package_name</span>
+        <span class="s1">missing_deps = set()  </span><span class="s3"># type: Set[Missing]</span>
+        <span class="s1">conflicting_deps = set()  </span><span class="s3"># type: Set[Conflicting]</span>
+
+        <span class="s2">if </span><span class="s1">should_ignore(package_name):</span>
+            <span class="s2">continue</span>
+
+        <span class="s2">for </span><span class="s1">req </span><span class="s2">in </span><span class="s1">package_set[package_name].requires:</span>
+            <span class="s1">name = canonicalize_name(req.project_name)  </span><span class="s3"># type: str</span>
+
+            <span class="s3"># Check if it's missing</span>
+            <span class="s2">if </span><span class="s1">name </span><span class="s2">not in </span><span class="s1">package_set:</span>
+                <span class="s1">missed = </span><span class="s2">True</span>
+                <span class="s2">if </span><span class="s1">req.marker </span><span class="s2">is not None</span><span class="s1">:</span>
+                    <span class="s1">missed = req.marker.evaluate()</span>
+                <span class="s2">if </span><span class="s1">missed:</span>
+                    <span class="s1">missing_deps.add((name</span><span class="s2">, </span><span class="s1">req))</span>
+                <span class="s2">continue</span>
+
+            <span class="s3"># Check if there's a conflict</span>
+            <span class="s1">version = package_set[name].version  </span><span class="s3"># type: str</span>
+            <span class="s2">if not </span><span class="s1">req.specifier.contains(version</span><span class="s2">, </span><span class="s1">prereleases=</span><span class="s2">True</span><span class="s1">):</span>
+                <span class="s1">conflicting_deps.add((name</span><span class="s2">, </span><span class="s1">version</span><span class="s2">, </span><span class="s1">req))</span>
+
+        <span class="s2">if </span><span class="s1">missing_deps:</span>
+            <span class="s1">missing[package_name] = sorted(missing_deps</span><span class="s2">, </span><span class="s1">key=str)</span>
+        <span class="s2">if </span><span class="s1">conflicting_deps:</span>
+            <span class="s1">conflicting[package_name] = sorted(conflicting_deps</span><span class="s2">, </span><span class="s1">key=str)</span>
+
+    <span class="s2">return </span><span class="s1">missing</span><span class="s2">, </span><span class="s1">conflicting</span>
+
+
+<span class="s2">def </span><span class="s1">check_install_conflicts(to_install):</span>
+    <span class="s3"># type: (List[InstallRequirement]) -&gt; Tuple[PackageSet, CheckResult]</span>
+    <span class="s0">&quot;&quot;&quot;For checking if the dependency graph would be consistent after \ 
+    installing given requirements 
+    &quot;&quot;&quot;</span>
+    <span class="s3"># Start from the current state</span>
+    <span class="s1">package_set</span><span class="s2">, </span><span class="s1">_ = create_package_set_from_installed()</span>
+    <span class="s3"># Install packages</span>
+    <span class="s1">would_be_installed = _simulate_installation_of(to_install</span><span class="s2">, </span><span class="s1">package_set)</span>
+
+    <span class="s3"># Only warn about directly-dependent packages; create a whitelist of them</span>
+    <span class="s1">whitelist = _create_whitelist(would_be_installed</span><span class="s2">, </span><span class="s1">package_set)</span>
+
+    <span class="s2">return </span><span class="s1">(</span>
+        <span class="s1">package_set</span><span class="s2">,</span>
+        <span class="s1">check_package_set(</span>
+            <span class="s1">package_set</span><span class="s2">, </span><span class="s1">should_ignore=</span><span class="s2">lambda </span><span class="s1">name: name </span><span class="s2">not in </span><span class="s1">whitelist</span>
+        <span class="s1">)</span>
+    <span class="s1">)</span>
+
+
+<span class="s2">def </span><span class="s1">_simulate_installation_of(to_install</span><span class="s2">, </span><span class="s1">package_set):</span>
+    <span class="s3"># type: (List[InstallRequirement], PackageSet) -&gt; Set[str]</span>
+    <span class="s0">&quot;&quot;&quot;Computes the version of packages after installing to_install. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s3"># Keep track of packages that were installed</span>
+    <span class="s1">installed = set()</span>
+
+    <span class="s3"># Modify it as installing requirement_set would (assuming no errors)</span>
+    <span class="s2">for </span><span class="s1">inst_req </span><span class="s2">in </span><span class="s1">to_install:</span>
+        <span class="s1">dist = make_abstract_dist(inst_req).dist()</span>
+        <span class="s1">name = canonicalize_name(dist.key)</span>
+        <span class="s1">package_set[name] = PackageDetails(dist.version</span><span class="s2">, </span><span class="s1">dist.requires())</span>
+
+        <span class="s1">installed.add(name)</span>
+
+    <span class="s2">return </span><span class="s1">installed</span>
+
+
+<span class="s2">def </span><span class="s1">_create_whitelist(would_be_installed</span><span class="s2">, </span><span class="s1">package_set):</span>
+    <span class="s3"># type: (Set[str], PackageSet) -&gt; Set[str]</span>
+    <span class="s1">packages_affected = set(would_be_installed)</span>
+
+    <span class="s2">for </span><span class="s1">package_name </span><span class="s2">in </span><span class="s1">package_set:</span>
+        <span class="s2">if </span><span class="s1">package_name </span><span class="s2">in </span><span class="s1">packages_affected:</span>
+            <span class="s2">continue</span>
+
+        <span class="s2">for </span><span class="s1">req </span><span class="s2">in </span><span class="s1">package_set[package_name].requires:</span>
+            <span class="s2">if </span><span class="s1">canonicalize_name(req.name) </span><span class="s2">in </span><span class="s1">packages_affected:</span>
+                <span class="s1">packages_affected.add(package_name)</span>
+                <span class="s2">break</span>
+
+    <span class="s2">return </span><span class="s1">packages_affected</span>
+</pre>
+</body>
+</html>

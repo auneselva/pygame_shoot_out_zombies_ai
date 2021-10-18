@@ -1,0 +1,123 @@
+<html>
+<head>
+<title>box.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6a8759;}
+.s4 { color: #808080;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+box.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">thorpy.elements.element </span><span class="s0">import </span><span class="s1">Element</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.storage </span><span class="s0">import </span><span class="s1">Storer</span><span class="s0">, </span><span class="s1">store</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">functions</span><span class="s0">, </span><span class="s1">style</span><span class="s0">, </span><span class="s1">painterstyle</span>
+
+
+<span class="s0">class </span><span class="s1">Box(Element):</span>
+    <span class="s2">&quot;&quot;&quot;Box containing other elements.&quot;&quot;&quot;</span>
+
+    <span class="s1">@staticmethod</span>
+    <span class="s0">def </span><span class="s1">make(elements</span><span class="s0">, </span><span class="s1">size=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">box = Box(elements=elements</span><span class="s0">, </span><span class="s1">size=size</span><span class="s0">, </span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">box.finish()</span>
+        <span class="s0">return </span><span class="s1">box</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">elements=</span><span class="s0">None, </span><span class="s1">normal_params=</span><span class="s0">None,</span>
+                 <span class="s1">storer_params=</span><span class="s0">None, </span><span class="s1">size=</span><span class="s0">None, </span><span class="s1">put_lift=</span><span class="s0">True, </span><span class="s1">finish=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot;Box containing other elements. 
+        &lt;bartext&gt;: the text of the box bar. If no text, no bar is added. 
+        &lt;size&gt;: if not None, force the size of the box. Else the box 
+            automatically fit children.&quot;&quot;&quot;</span>
+        <span class="s1">Element.__init__(self</span><span class="s0">, </span><span class="s3">&quot;&quot;</span><span class="s0">, </span><span class="s1">elements</span><span class="s0">, </span><span class="s1">normal_params</span><span class="s0">, </span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">self.storer_params = storer_params</span>
+        <span class="s0">if </span><span class="s1">self.storer_params </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">self.storer_params = dict()</span>
+        <span class="s1">self._size = size</span>
+        <span class="s1">self._has_lift = </span><span class="s0">False</span>
+        <span class="s1">self._put_lift = put_lift</span>
+        <span class="s1">painter = functions.obtain_valid_painter(painterstyle.BOX_PAINTER</span><span class="s0">,</span>
+                                                 <span class="s1">pressed=</span><span class="s0">True,</span>
+                                                 <span class="s1">size=size</span><span class="s0">,</span>
+                                                 <span class="s1">radius_ext=style.BOX_RADIUS)</span>
+        <span class="s1">self.set_painter(painter)</span>
+        <span class="s0">if </span><span class="s1">finish:</span>
+            <span class="s1">self.finish()</span>
+
+    <span class="s0">def </span><span class="s1">add_lift(self</span><span class="s0">, </span><span class="s1">axis=</span><span class="s3">&quot;vertical&quot;</span><span class="s0">, </span><span class="s1">type_=</span><span class="s3">&quot;normal&quot;</span><span class="s1">):</span>
+        <span class="s1">Element.add_lift(self</span><span class="s0">, </span><span class="s1">axis</span><span class="s0">, </span><span class="s1">type_)</span>
+        <span class="s1">self._has_lift = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">store(self</span><span class="s0">, </span><span class="s1">size=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        size: 
+            'auto' or None : autoset_framesize 
+            elif size : set_size and center. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">size = self._size </span><span class="s0">if not </span><span class="s1">size </span><span class="s0">else </span><span class="s1">size</span>
+        <span class="s1">storer = Storer(self</span><span class="s0">, </span><span class="s1">**self.storer_params)</span>
+        <span class="s0">if </span><span class="s1">size </span><span class="s0">and not </span><span class="s1">size == </span><span class="s3">&quot;auto&quot;</span><span class="s1">:</span>
+            <span class="s1">self.set_size(size)</span>
+            <span class="s1">storer.center()</span>
+        <span class="s0">elif </span><span class="s1">size == </span><span class="s3">&quot;auto&quot; </span><span class="s0">or </span><span class="s1">size </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">storer.autoset_framesize()</span>
+        <span class="s1">(x</span><span class="s0">, </span><span class="s1">y) = self.is_family_bigger()</span>
+        <span class="s0">if </span><span class="s1">y </span><span class="s0">and not </span><span class="s1">self._put_lift:</span>
+            <span class="s1">self.add_lift(</span><span class="s3">&quot;vertical&quot;</span><span class="s1">)</span>
+<span class="s4">##            self._lift.active_wheel = True</span>
+            <span class="s1">self._lift.active_wheel = </span><span class="s0">False</span>
+        <span class="s1">self.set_prison()</span>
+
+    <span class="s0">def </span><span class="s1">set_size(self</span><span class="s0">, </span><span class="s1">size</span><span class="s0">, </span><span class="s1">state=</span><span class="s0">None, </span><span class="s1">center_title=</span><span class="s0">True, </span><span class="s1">adapt_text=</span><span class="s0">True,</span>
+                 <span class="s1">cut=</span><span class="s0">None, </span><span class="s1">margins=</span><span class="s0">None, </span><span class="s1">refresh_title=</span><span class="s0">False</span><span class="s1">):</span>
+        <span class="s0">if </span><span class="s1">margins </span><span class="s0">is None</span><span class="s1">: margins=style.MARGINS</span>
+        <span class="s1">Element.set_size(self</span><span class="s0">, </span><span class="s1">size</span><span class="s0">, </span><span class="s1">state</span><span class="s0">, </span><span class="s1">center_title</span><span class="s0">, </span><span class="s1">adapt_text</span><span class="s0">, </span><span class="s1">cut</span><span class="s0">, </span><span class="s1">margins</span><span class="s0">,</span>
+                         <span class="s1">refresh_title)</span>
+        <span class="s0">if </span><span class="s1">self._lift:</span>
+            <span class="s1">self.remove_elements([self._lift])</span>
+            <span class="s1">self.refresh_lift()</span>
+
+    <span class="s0">def </span><span class="s1">finish(self):</span>
+        <span class="s1">Element.finish(self)</span>
+        <span class="s1">self.store()</span>
+
+
+<span class="s0">from </span><span class="s1">thorpy.elements.element </span><span class="s0">import </span><span class="s1">Element</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.storage </span><span class="s0">import </span><span class="s1">Storer</span><span class="s0">, </span><span class="s1">store</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">functions</span><span class="s0">, </span><span class="s1">style</span><span class="s0">, </span><span class="s1">painterstyle</span>
+
+
+<span class="s0">class </span><span class="s1">BarBox(Element):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">elements=</span><span class="s0">None, </span><span class="s1">normal_params=</span><span class="s0">None, </span><span class="s1">height=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">Element.__init__(self</span><span class="s0">, </span><span class="s3">&quot;&quot;</span><span class="s0">, </span><span class="s1">elements</span><span class="s0">, </span><span class="s1">normal_params)</span>
+        <span class="s1">h = max([e.get_storer_rect().height </span><span class="s0">for </span><span class="s1">e </span><span class="s0">in </span><span class="s1">self.get_elements()]) + </span><span class="s5">2</span>
+        <span class="s1">store(self</span><span class="s0">, </span><span class="s1">mode=</span><span class="s3">&quot;h&quot;</span><span class="s0">, </span><span class="s1">x=</span><span class="s5">1</span><span class="s0">, </span><span class="s1">y=h/</span><span class="s5">2</span><span class="s0">, </span><span class="s1">align=</span><span class="s3">&quot;center&quot;</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">self.father:</span>
+            <span class="s1">w = self.father.get_storer_rect().width</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">w = functions.get_screen_size()[</span><span class="s5">0</span><span class="s1">]</span>
+        <span class="s1">size = (w</span><span class="s0">, </span><span class="s1">h)</span>
+        <span class="s1">painter = functions.obtain_valid_painter(painterstyle.BOX_PAINTER</span><span class="s0">,</span>
+                                                 <span class="s1">pressed=</span><span class="s0">True,</span>
+                                                 <span class="s1">size=size</span><span class="s0">,</span>
+                                                 <span class="s1">radius=style.BOX_RADIUS)</span>
+        <span class="s1">self.set_painter(painter)</span>
+
+    <span class="s0">def </span><span class="s1">set_standard_style(self):</span>
+        <span class="s0">from </span><span class="s1">thorpy.painting.fusionner </span><span class="s0">import </span><span class="s1">_Fusionner</span>
+        <span class="s0">for </span><span class="s1">e </span><span class="s0">in </span><span class="s1">self.get_elements():</span>
+            <span class="s1">painter = functions.obtain_valid_painter(painterstyle.BASIC_PAINTER</span><span class="s0">,</span>
+                                    <span class="s1">size=e.get_fus_rect().size)</span>
+            <span class="s1">fusionner = _Fusionner(painter</span><span class="s0">, </span><span class="s1">e.get_title())</span>
+            <span class="s1">e.set_image(fusionner.img)</span></pre>
+</body>
+</html>

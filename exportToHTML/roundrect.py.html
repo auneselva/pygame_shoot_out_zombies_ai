@@ -1,0 +1,92 @@
+<html>
+<head>
+<title>roundrect.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6897bb;}
+.s3 { color: #629755; font-style: italic;}
+.s4 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+roundrect.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">SRCALPHA</span><span class="s0">, </span><span class="s1">BLEND_RGBA_MAX</span><span class="s0">, </span><span class="s1">BLEND_RGBA_MIN</span><span class="s0">, </span><span class="s1">Rect</span><span class="s0">, </span><span class="s1">Color</span>
+<span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">Surface</span><span class="s0">, </span><span class="s1">draw</span><span class="s0">, </span><span class="s1">transform</span>
+
+<span class="s0">from </span><span class="s1">thorpy.painting.painters.basicframe </span><span class="s0">import </span><span class="s1">BasicFrame</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">style</span>
+
+
+<span class="s0">class </span><span class="s1">RoundRect(BasicFrame):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">size=</span><span class="s0">None, </span><span class="s1">color=</span><span class="s0">None, </span><span class="s1">clip=</span><span class="s0">None,</span>
+                 <span class="s1">radius=</span><span class="s2">0.</span><span class="s1">):</span>
+        <span class="s3">&quot;&quot;&quot;If radius is in the range [0, 1], self.radius_value is the fraction 
+        of radius * min(size), else it is interpreted as a raw pixel value. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">BasicFrame.__init__(self</span><span class="s0">, </span><span class="s1">size</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">clip)</span>
+        <span class="s1">self.radius_value = style.DEF_RADIUS </span><span class="s0">if </span><span class="s1">radius </span><span class="s0">is None else </span><span class="s1">radius</span>
+        <span class="s0">if </span><span class="s2">0. </span><span class="s1">&lt;= radius &lt;= </span><span class="s2">1.</span><span class="s1">:</span>
+            <span class="s1">self.radius_value = min(self.size) * radius</span>
+
+<span class="s4">##    def draw(self):</span>
+<span class="s4">##        from pygame import gfxdraw as gfx</span>
+<span class="s4">##        surface = Surface(self.size, flags=SRCALPHA).convert_alpha()</span>
+<span class="s4">##        surface.fill((0,0,0,0))</span>
+<span class="s4">##        rect = surface.get_rect()</span>
+<span class="s4">##        radius = int(self.radius * min(self.size))</span>
+<span class="s4">##        intern_rect = rect.inflate((-2*radius, -2*radius))</span>
+<span class="s4">##        gfx.filled_circle(surface, intern_rect.left, intern_rect.top, radius, self.color)</span>
+<span class="s4">##        gfx.filled_circle(surface, intern_rect.right, intern_rect.top, radius, self.color)</span>
+<span class="s4">##        gfx.filled_circle(surface, intern_rect.left, intern_rect.bottom, radius, self.color)</span>
+<span class="s4">##        gfx.filled_circle(surface, intern_rect.right, intern_rect.bottom, radius, self.color)</span>
+<span class="s4">####        draw.rect(surface, self.color, intern_rect)</span>
+<span class="s4">##        draw.rect(surface, self.color, Rect(0, radius, radius, rect.h - 2*radius))</span>
+<span class="s4">####        draw.rect(surface, self.color, intern_rect.inflate(2*radius, 0))</span>
+<span class="s4">##        return surface</span>
+
+    <span class="s0">def </span><span class="s1">draw(self):</span>
+        <span class="s1">surface = Surface(self.size</span><span class="s0">, </span><span class="s1">flags=SRCALPHA).convert_alpha()</span>
+        <span class="s1">rect = Rect((</span><span class="s2">0</span><span class="s0">, </span><span class="s2">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">self.size)</span>
+        <span class="s1">color = Color(*self.color)</span>
+        <span class="s1">alpha = color.a</span>
+        <span class="s1">color.a = </span><span class="s2">0</span>
+        <span class="s1">rectangle = Surface(rect.size</span><span class="s0">, </span><span class="s1">SRCALPHA)</span>
+        <span class="s4">#ex: [h*3, h*3]</span>
+        <span class="s1">circle = Surface([min(rect.size) * </span><span class="s2">5</span><span class="s1">] * </span><span class="s2">2</span><span class="s0">, </span><span class="s1">SRCALPHA)</span>
+        <span class="s1">draw.ellipse(circle</span><span class="s0">, </span><span class="s1">(</span><span class="s2">0</span><span class="s0">, </span><span class="s2">0</span><span class="s0">, </span><span class="s2">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">circle.get_rect()</span><span class="s0">, </span><span class="s2">0</span><span class="s1">)</span>
+        <span class="s4">#ex: [h*0.5, h*.05]</span>
+        <span class="s1">circle = transform.smoothscale(circle</span><span class="s0">,</span>
+                                       <span class="s1">[int(self.radius_value)] * </span><span class="s2">2</span><span class="s1">)</span>
+        <span class="s4">#now circle is just a small circle of radius self.radius*h (for example)</span>
+        <span class="s4">#blit topleft circle:</span>
+        <span class="s1">radius = rectangle.blit(circle</span><span class="s0">, </span><span class="s1">(</span><span class="s2">0</span><span class="s0">, </span><span class="s2">0</span><span class="s1">))</span>
+        <span class="s4">#now radius = Rect((0, 0), circle.size), rect=Rect((0, 0), self.size)</span>
+        <span class="s4">#blit bottomright circle:</span>
+        <span class="s1">radius.bottomright = rect.bottomright </span><span class="s4">#radius is growing</span>
+        <span class="s1">rectangle.blit(circle</span><span class="s0">, </span><span class="s1">radius)</span>
+        <span class="s4">#blit topright circle:</span>
+        <span class="s1">radius.topright = rect.topright</span>
+        <span class="s1">rectangle.blit(circle</span><span class="s0">, </span><span class="s1">radius)</span>
+        <span class="s4">#blit bottomleft circle:</span>
+        <span class="s1">radius.bottomleft = rect.bottomleft</span>
+        <span class="s1">rectangle.blit(circle</span><span class="s0">, </span><span class="s1">radius)</span>
+        <span class="s4">#black-fill of the internal rect</span>
+        <span class="s1">rectangle.fill((</span><span class="s2">0</span><span class="s0">, </span><span class="s2">0</span><span class="s0">, </span><span class="s2">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">rect.inflate(-radius.w</span><span class="s0">, </span><span class="s2">0</span><span class="s1">))</span>
+        <span class="s1">rectangle.fill((</span><span class="s2">0</span><span class="s0">, </span><span class="s2">0</span><span class="s0">, </span><span class="s2">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">rect.inflate(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">-radius.h))</span>
+        <span class="s4">#fill with color using blend_rgba_max</span>
+        <span class="s1">rectangle.fill(color</span><span class="s0">, </span><span class="s1">special_flags=BLEND_RGBA_MAX)</span>
+        <span class="s4">#fill with alpha-withe using blend_rgba_min in order to make transparent</span>
+        <span class="s4">#the</span>
+        <span class="s1">rectangle.fill((</span><span class="s2">255</span><span class="s0">, </span><span class="s2">255</span><span class="s0">, </span><span class="s2">255</span><span class="s0">, </span><span class="s1">alpha)</span><span class="s0">, </span><span class="s1">special_flags=BLEND_RGBA_MIN)</span>
+        <span class="s1">surface.blit(rectangle</span><span class="s0">, </span><span class="s1">rect.topleft)</span>
+        <span class="s0">return </span><span class="s1">surface</span>
+</pre>
+</body>
+</html>

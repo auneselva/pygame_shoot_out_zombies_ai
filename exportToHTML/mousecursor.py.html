@@ -1,0 +1,422 @@
+<html>
+<head>
+<title>mousecursor.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+mousecursor.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">constants</span>
+
+<span class="s2"># default pygame black arrow</span>
+<span class="s1">arrow = (</span>
+    <span class="s1">(</span><span class="s3">16</span><span class="s0">,</span>
+     <span class="s3">16</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x40</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x60</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x70</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x78</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x7C</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x7E</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x7F</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x7F</span><span class="s0">,</span>
+     <span class="s3">0x80</span><span class="s0">,</span>
+     <span class="s3">0x7C</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x6C</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x46</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x06</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x03</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x03</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s3">0x40</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0xE0</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0xF0</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0xF8</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0xFC</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0xFE</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0xFF</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0xFF</span><span class="s0">,</span>
+     <span class="s3">0x80</span><span class="s0">,</span>
+     <span class="s3">0xFF</span><span class="s0">,</span>
+     <span class="s3">0xC0</span><span class="s0">,</span>
+     <span class="s3">0xFF</span><span class="s0">,</span>
+     <span class="s3">0x80</span><span class="s0">,</span>
+     <span class="s3">0xFE</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0xEF</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x4F</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s0">,</span>
+     <span class="s3">0x07</span><span class="s0">,</span>
+     <span class="s3">0x80</span><span class="s0">,</span>
+     <span class="s3">0x07</span><span class="s0">,</span>
+     <span class="s3">0x80</span><span class="s0">,</span>
+     <span class="s3">0x03</span><span class="s0">,</span>
+     <span class="s3">0x00</span><span class="s1">))</span>
+
+<span class="s1">diamond = ((</span><span class="s3">16</span><span class="s0">, </span><span class="s3">16</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">7</span><span class="s0">, </span><span class="s3">7</span><span class="s1">)</span><span class="s0">,</span>
+           <span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">3</span><span class="s0">, </span><span class="s3">128</span><span class="s0">, </span><span class="s3">7</span><span class="s0">, </span><span class="s3">192</span><span class="s0">, </span><span class="s3">14</span><span class="s0">, </span><span class="s3">224</span><span class="s0">, </span><span class="s3">28</span><span class="s0">, </span><span class="s3">112</span><span class="s0">, </span><span class="s3">56</span><span class="s0">, </span><span class="s3">56</span><span class="s0">, </span><span class="s3">112</span><span class="s0">, </span><span class="s3">28</span><span class="s0">, </span><span class="s3">56</span><span class="s0">,</span>
+            <span class="s3">56</span><span class="s0">, </span><span class="s3">28</span><span class="s0">, </span><span class="s3">112</span><span class="s0">, </span><span class="s3">14</span><span class="s0">, </span><span class="s3">224</span><span class="s0">, </span><span class="s3">7</span><span class="s0">, </span><span class="s3">192</span><span class="s0">, </span><span class="s3">3</span><span class="s0">, </span><span class="s3">128</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+           <span class="s1">(</span><span class="s3">1</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">3</span><span class="s0">, </span><span class="s3">128</span><span class="s0">, </span><span class="s3">7</span><span class="s0">, </span><span class="s3">192</span><span class="s0">, </span><span class="s3">15</span><span class="s0">, </span><span class="s3">224</span><span class="s0">, </span><span class="s3">31</span><span class="s0">, </span><span class="s3">240</span><span class="s0">, </span><span class="s3">62</span><span class="s0">, </span><span class="s3">248</span><span class="s0">, </span><span class="s3">124</span><span class="s0">, </span><span class="s3">124</span><span class="s0">, </span><span class="s3">248</span><span class="s0">, </span><span class="s3">62</span><span class="s0">,</span>
+            <span class="s3">124</span><span class="s0">, </span><span class="s3">124</span><span class="s0">, </span><span class="s3">62</span><span class="s0">, </span><span class="s3">248</span><span class="s0">, </span><span class="s3">31</span><span class="s0">, </span><span class="s3">240</span><span class="s0">, </span><span class="s3">15</span><span class="s0">, </span><span class="s3">224</span><span class="s0">, </span><span class="s3">7</span><span class="s0">, </span><span class="s3">192</span><span class="s0">, </span><span class="s3">3</span><span class="s0">, </span><span class="s3">128</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+
+<span class="s1">ball = ((</span><span class="s3">16</span><span class="s0">, </span><span class="s3">16</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">7</span><span class="s0">, </span><span class="s3">7</span><span class="s1">)</span><span class="s0">,</span>
+        <span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">3</span><span class="s0">, </span><span class="s3">192</span><span class="s0">, </span><span class="s3">15</span><span class="s0">, </span><span class="s3">240</span><span class="s0">, </span><span class="s3">24</span><span class="s0">, </span><span class="s3">248</span><span class="s0">, </span><span class="s3">51</span><span class="s0">, </span><span class="s3">252</span><span class="s0">, </span><span class="s3">55</span><span class="s0">, </span><span class="s3">252</span><span class="s0">, </span><span class="s3">127</span><span class="s0">, </span><span class="s3">254</span><span class="s0">, </span><span class="s3">127</span><span class="s0">, </span><span class="s3">254</span><span class="s0">,</span>
+         <span class="s3">127</span><span class="s0">, </span><span class="s3">254</span><span class="s0">, </span><span class="s3">127</span><span class="s0">, </span><span class="s3">254</span><span class="s0">, </span><span class="s3">63</span><span class="s0">, </span><span class="s3">252</span><span class="s0">, </span><span class="s3">63</span><span class="s0">, </span><span class="s3">252</span><span class="s0">, </span><span class="s3">31</span><span class="s0">, </span><span class="s3">248</span><span class="s0">, </span><span class="s3">15</span><span class="s0">, </span><span class="s3">240</span><span class="s0">, </span><span class="s3">3</span><span class="s0">, </span><span class="s3">192</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+        <span class="s1">(</span><span class="s3">3</span><span class="s0">, </span><span class="s3">192</span><span class="s0">, </span><span class="s3">15</span><span class="s0">, </span><span class="s3">240</span><span class="s0">, </span><span class="s3">31</span><span class="s0">, </span><span class="s3">248</span><span class="s0">, </span><span class="s3">63</span><span class="s0">, </span><span class="s3">252</span><span class="s0">, </span><span class="s3">127</span><span class="s0">, </span><span class="s3">254</span><span class="s0">, </span><span class="s3">127</span><span class="s0">, </span><span class="s3">254</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">,</span>
+         <span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">127</span><span class="s0">, </span><span class="s3">254</span><span class="s0">, </span><span class="s3">127</span><span class="s0">, </span><span class="s3">254</span><span class="s0">, </span><span class="s3">63</span><span class="s0">, </span><span class="s3">252</span><span class="s0">, </span><span class="s3">31</span><span class="s0">, </span><span class="s3">248</span><span class="s0">, </span><span class="s3">15</span><span class="s0">, </span><span class="s3">240</span><span class="s0">,</span>
+         <span class="s3">3</span><span class="s0">, </span><span class="s3">192</span><span class="s1">))</span>
+
+<span class="s1">broken_x = ((</span><span class="s3">16</span><span class="s0">, </span><span class="s3">16</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">7</span><span class="s0">, </span><span class="s3">7</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">96</span><span class="s0">, </span><span class="s3">6</span><span class="s0">, </span><span class="s3">112</span><span class="s0">, </span><span class="s3">14</span><span class="s0">, </span><span class="s3">56</span><span class="s0">, </span><span class="s3">28</span><span class="s0">, </span><span class="s3">28</span><span class="s0">, </span><span class="s3">56</span><span class="s0">, </span><span class="s3">12</span><span class="s0">, </span><span class="s3">48</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">,</span>
+             <span class="s3">12</span><span class="s0">, </span><span class="s3">48</span><span class="s0">, </span><span class="s3">28</span><span class="s0">, </span><span class="s3">56</span><span class="s0">, </span><span class="s3">56</span><span class="s0">, </span><span class="s3">28</span><span class="s0">, </span><span class="s3">112</span><span class="s0">, </span><span class="s3">14</span><span class="s0">, </span><span class="s3">96</span><span class="s0">, </span><span class="s3">6</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+            <span class="s1">(</span><span class="s3">224</span><span class="s0">, </span><span class="s3">7</span><span class="s0">, </span><span class="s3">240</span><span class="s0">, </span><span class="s3">15</span><span class="s0">, </span><span class="s3">248</span><span class="s0">, </span><span class="s3">31</span><span class="s0">, </span><span class="s3">124</span><span class="s0">, </span><span class="s3">62</span><span class="s0">, </span><span class="s3">62</span><span class="s0">, </span><span class="s3">124</span><span class="s0">, </span><span class="s3">30</span><span class="s0">, </span><span class="s3">120</span><span class="s0">, </span><span class="s3">14</span><span class="s0">, </span><span class="s3">112</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">,</span>
+             <span class="s3">0</span><span class="s0">, </span><span class="s3">14</span><span class="s0">, </span><span class="s3">112</span><span class="s0">, </span><span class="s3">30</span><span class="s0">, </span><span class="s3">120</span><span class="s0">, </span><span class="s3">62</span><span class="s0">, </span><span class="s3">124</span><span class="s0">, </span><span class="s3">124</span><span class="s0">, </span><span class="s3">62</span><span class="s0">, </span><span class="s3">248</span><span class="s0">, </span><span class="s3">31</span><span class="s0">, </span><span class="s3">240</span><span class="s0">, </span><span class="s3">15</span><span class="s0">, </span><span class="s3">224</span><span class="s0">, </span><span class="s3">7</span><span class="s1">))</span>
+
+
+<span class="s1">tri_left = (</span>
+    <span class="s1">(</span><span class="s3">16</span><span class="s0">,</span>
+     <span class="s3">16</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">96</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">120</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">62</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">63</span><span class="s0">,</span>
+     <span class="s3">128</span><span class="s0">,</span>
+     <span class="s3">31</span><span class="s0">,</span>
+     <span class="s3">224</span><span class="s0">,</span>
+     <span class="s3">31</span><span class="s0">,</span>
+     <span class="s3">248</span><span class="s0">,</span>
+     <span class="s3">15</span><span class="s0">,</span>
+     <span class="s3">254</span><span class="s0">,</span>
+     <span class="s3">15</span><span class="s0">,</span>
+     <span class="s3">254</span><span class="s0">,</span>
+     <span class="s3">7</span><span class="s0">,</span>
+     <span class="s3">128</span><span class="s0">,</span>
+     <span class="s3">7</span><span class="s0">,</span>
+     <span class="s3">128</span><span class="s0">,</span>
+     <span class="s3">3</span><span class="s0">,</span>
+     <span class="s3">128</span><span class="s0">,</span>
+     <span class="s3">3</span><span class="s0">,</span>
+     <span class="s3">128</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">128</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">128</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s3">224</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">248</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">254</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">127</span><span class="s0">,</span>
+     <span class="s3">128</span><span class="s0">,</span>
+     <span class="s3">127</span><span class="s0">,</span>
+     <span class="s3">224</span><span class="s0">,</span>
+     <span class="s3">63</span><span class="s0">,</span>
+     <span class="s3">248</span><span class="s0">,</span>
+     <span class="s3">63</span><span class="s0">,</span>
+     <span class="s3">254</span><span class="s0">,</span>
+     <span class="s3">31</span><span class="s0">,</span>
+     <span class="s3">255</span><span class="s0">,</span>
+     <span class="s3">31</span><span class="s0">,</span>
+     <span class="s3">255</span><span class="s0">,</span>
+     <span class="s3">15</span><span class="s0">,</span>
+     <span class="s3">254</span><span class="s0">,</span>
+     <span class="s3">15</span><span class="s0">,</span>
+     <span class="s3">192</span><span class="s0">,</span>
+     <span class="s3">7</span><span class="s0">,</span>
+     <span class="s3">192</span><span class="s0">,</span>
+     <span class="s3">7</span><span class="s0">,</span>
+     <span class="s3">192</span><span class="s0">,</span>
+     <span class="s3">3</span><span class="s0">,</span>
+     <span class="s3">192</span><span class="s0">,</span>
+     <span class="s3">3</span><span class="s0">,</span>
+     <span class="s3">192</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">128</span><span class="s1">))</span>
+
+<span class="s1">tri_right = (</span>
+    <span class="s1">(</span><span class="s3">16</span><span class="s0">,</span>
+     <span class="s3">16</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s3">14</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">6</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">30</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">124</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">252</span><span class="s0">,</span>
+     <span class="s3">7</span><span class="s0">,</span>
+     <span class="s3">248</span><span class="s0">,</span>
+     <span class="s3">31</span><span class="s0">,</span>
+     <span class="s3">248</span><span class="s0">,</span>
+     <span class="s3">127</span><span class="s0">,</span>
+     <span class="s3">240</span><span class="s0">,</span>
+     <span class="s3">127</span><span class="s0">,</span>
+     <span class="s3">240</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">224</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">224</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">192</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">192</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">128</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">128</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s1">(</span><span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">7</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">31</span><span class="s0">,</span>
+     <span class="s3">0</span><span class="s0">,</span>
+     <span class="s3">127</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">254</span><span class="s0">,</span>
+     <span class="s3">7</span><span class="s0">,</span>
+     <span class="s3">254</span><span class="s0">,</span>
+     <span class="s3">31</span><span class="s0">,</span>
+     <span class="s3">252</span><span class="s0">,</span>
+     <span class="s3">127</span><span class="s0">,</span>
+     <span class="s3">252</span><span class="s0">,</span>
+     <span class="s3">255</span><span class="s0">,</span>
+     <span class="s3">248</span><span class="s0">,</span>
+     <span class="s3">255</span><span class="s0">,</span>
+     <span class="s3">248</span><span class="s0">,</span>
+     <span class="s3">127</span><span class="s0">,</span>
+     <span class="s3">240</span><span class="s0">,</span>
+     <span class="s3">3</span><span class="s0">,</span>
+     <span class="s3">240</span><span class="s0">,</span>
+     <span class="s3">3</span><span class="s0">,</span>
+     <span class="s3">224</span><span class="s0">,</span>
+     <span class="s3">3</span><span class="s0">,</span>
+     <span class="s3">224</span><span class="s0">,</span>
+     <span class="s3">3</span><span class="s0">,</span>
+     <span class="s3">192</span><span class="s0">,</span>
+     <span class="s3">3</span><span class="s0">,</span>
+     <span class="s3">192</span><span class="s0">,</span>
+     <span class="s3">1</span><span class="s0">,</span>
+     <span class="s3">128</span><span class="s1">))</span>
+
+<span class="s1">tower = (  </span><span class="s2"># sized 24x24</span>
+    <span class="s4">&quot;XXXXXXXXXXXXXXXXXXXXXXXX&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X                      X&quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XXXXXXXXXXXXXXXXXXXXXXXX&quot;</span><span class="s0">,</span>
+<span class="s1">)</span>
+
+
+<span class="s1">strings_chablon = (  </span><span class="s2"># sized 24x24</span>
+    <span class="s4">&quot;XX                      &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XXX                     &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XXXX                    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX.XX                   &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX..XX                  &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX...XX                 &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX....XX                &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX.....XX               &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX......XX              &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX.......XX             &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX........XX            &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX........XXX           &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX......XXXXX           &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX.XXX..XX              &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XXXX XX..XX             &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX   XX..XX             &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;     XX..XX             &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;      XX..XX            &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;      XX..XX            &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;       XXXX             &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;       XX               &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                        &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                        &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                        &quot;</span><span class="s0">,</span>
+<span class="s1">)</span>
+
+<span class="s1">strings_sizerX = (  </span><span class="s2"># sized 24x16</span>
+    <span class="s4">&quot;     X      X           &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;    XX      XX          &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   X.X      X.X         &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;  X..X      X..X        &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot; X...XXXXXXXX...X       &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X................X      &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot; X...XXXXXXXX...X       &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;  X..X      X..X        &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   X.X      X.X         &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;    XX      XX          &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;     X      X           &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                        &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                        &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                        &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                        &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                        &quot;</span><span class="s0">,</span>
+<span class="s1">)</span>
+<span class="s1">strings_sizerY = (  </span><span class="s2"># sized 16x24</span>
+    <span class="s4">&quot;     X          &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;    X.X         &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   X...X        &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;  X.....X       &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot; X.......X      &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XXXXX.XXXXX     &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;    X.X         &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;    X.X         &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;    X.X         &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;    X.X         &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;    X.X         &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;    X.X         &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;    X.X         &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XXXXX.XXXXX     &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot; X.......X      &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;  X.....X       &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   X...X        &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;    X.X         &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;     X          &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                &quot;</span><span class="s0">,</span>
+<span class="s1">)</span>
+<span class="s1">strings_sizerXY = (  </span><span class="s2"># sized 24x16</span>
+    <span class="s4">&quot;XXXXXXXX                &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X.....X                 &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X....X                  &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X...X                   &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X..X.X                  &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X.X X.X                 &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;XX   X.X    X           &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;X     X.X  XX           &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;       X.XX.X           &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;        X...X           &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;        X...X           &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;       X....X           &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;      X.....X           &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;     XXXXXXXX           &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                        &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;                        &quot;</span><span class="s0">,</span>
+<span class="s1">)</span>
+
+<span class="s1">strings_txt = (  </span><span class="s2"># sized 8x16</span>
+    <span class="s4">&quot;ooo ooo &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   o    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   o    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   o    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   o    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   o    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   o    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   o    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   o    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   o    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   o    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   o    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;   o    &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;ooo ooo &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;        &quot;</span><span class="s0">,</span>
+    <span class="s4">&quot;        &quot;</span><span class="s0">,</span>
+<span class="s1">)</span>
+
+
+<span class="s0">class </span><span class="s1">MouseCursor:</span>
+    <span class="s5">&quot;&quot;&quot;Object defining a cursor that can be used in place of the standard mouse 
+    cursor, through the function mousecursor.change_cursor(cursor). 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">strings</span><span class="s0">, </span><span class="s1">size</span><span class="s0">, </span><span class="s1">hotspot):</span>
+        <span class="s1">self.strings = strings</span>
+        <span class="s1">self.size = size</span>
+        <span class="s1">self.hotspot = hotspot</span>
+
+    <span class="s0">def </span><span class="s1">get_cursor(self):</span>
+        <span class="s1">curs</span><span class="s0">, </span><span class="s1">mask = pygame.cursors.compile(self.strings</span><span class="s0">, </span><span class="s4">'X'</span><span class="s0">, </span><span class="s4">'.'</span><span class="s0">, </span><span class="s4">'o'</span><span class="s1">)</span>
+        <span class="s0">return </span><span class="s1">(self.size</span><span class="s0">, </span><span class="s1">self.hotspot</span><span class="s0">, </span><span class="s1">curs</span><span class="s0">, </span><span class="s1">mask)</span>
+
+
+<span class="s1">text_cursor = MouseCursor(strings_txt</span><span class="s0">, </span><span class="s1">(</span><span class="s3">8</span><span class="s0">, </span><span class="s3">16</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)).get_cursor()</span>
+<span class="s1">tower_cursor = MouseCursor(tower</span><span class="s0">, </span><span class="s1">(</span><span class="s3">24</span><span class="s0">,</span><span class="s3">24</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">,</span><span class="s3">0</span><span class="s1">)).get_cursor()</span>
+
+<span class="s1">cursors = {constants.CURSOR_NORMAL: arrow</span><span class="s0">,</span>
+           <span class="s1">constants.CURSOR_TEXT: text_cursor</span><span class="s0">,</span>
+           <span class="s1">constants.CURSOR_BROKEN: broken_x</span><span class="s0">,</span>
+           <span class="s1">constants.CURSOR_BALL: ball}</span>
+
+
+<span class="s0">def </span><span class="s1">change_cursor(cursor):</span>
+    <span class="s0">if </span><span class="s1">isinstance(cursor</span><span class="s0">, </span><span class="s1">int):</span>
+        <span class="s1">cursor = cursors[cursor]</span>
+    <span class="s1">pygame.mouse.set_cursor(*cursor)</span>
+</pre>
+</body>
+</html>

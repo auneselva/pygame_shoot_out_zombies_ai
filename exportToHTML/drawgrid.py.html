@@ -1,0 +1,135 @@
+<html>
+<head>
+<title>drawgrid.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6897bb;}
+.s3 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+drawgrid.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">thorpy.gamestools.grid </span><span class="s0">import </span><span class="s1">PygameGrid</span><span class="s0">, </span><span class="s1">Grid</span>
+<span class="s0">from </span><span class="s1">thorpy.elements.element </span><span class="s0">import </span><span class="s1">Element</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">constants</span><span class="s0">, </span><span class="s1">style</span><span class="s0">, </span><span class="s1">painterstyle</span>
+<span class="s0">from </span><span class="s1">thorpy.painting.painters.basicframe </span><span class="s0">import </span><span class="s1">BasicFrame</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui.reaction </span><span class="s0">import </span><span class="s1">Reaction</span>
+
+
+<span class="s0">class </span><span class="s1">BasicGridPainter(BasicFrame):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">size</span><span class="s0">, </span><span class="s1">color1</span><span class="s0">, </span><span class="s1">color2</span><span class="s0">, </span><span class="s1">nx</span><span class="s0">, </span><span class="s1">ny):</span>
+        <span class="s1">BasicFrame.__init__(self</span><span class="s0">, </span><span class="s1">size=size</span><span class="s0">, </span><span class="s1">color=color1)</span>
+        <span class="s1">self.color2 = color2</span>
+        <span class="s1">self.color1 = color1</span>
+        <span class="s1">self.nx = nx</span>
+        <span class="s1">self.ny = ny</span>
+        <span class="s1">self.frame = </span><span class="s0">True</span>
+        <span class="s1">self.xinternal = </span><span class="s0">True</span>
+        <span class="s1">self.yinternal = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">draw(self):</span>
+        <span class="s1">surface = pygame.Surface(self.size).convert()</span>
+        <span class="s1">surface.fill(self.color)</span>
+        <span class="s1">w</span><span class="s0">,</span><span class="s1">h = self.size</span>
+        <span class="s1">dx</span><span class="s0">, </span><span class="s1">dy = w/self.nx</span><span class="s0">, </span><span class="s1">h/self.ny</span>
+        <span class="s0">if </span><span class="s1">self.xinternal:</span>
+            <span class="s0">for </span><span class="s1">x </span><span class="s0">in </span><span class="s1">range(</span><span class="s2">1</span><span class="s0">,</span><span class="s1">self.nx):</span>
+                <span class="s1">xpix = x*dx-</span><span class="s2">1</span>
+                <span class="s1">pygame.draw.line(surface</span><span class="s0">, </span><span class="s1">self.color2</span><span class="s0">, </span><span class="s1">(xpix</span><span class="s0">, </span><span class="s2">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(xpix</span><span class="s0">, </span><span class="s1">h))</span>
+        <span class="s0">if </span><span class="s1">self.yinternal:</span>
+            <span class="s0">for </span><span class="s1">y </span><span class="s0">in </span><span class="s1">range(</span><span class="s2">1</span><span class="s0">,</span><span class="s1">self.ny):</span>
+                <span class="s1">ypix = y*dy</span>
+                <span class="s1">pygame.draw.line(surface</span><span class="s0">, </span><span class="s1">self.color2</span><span class="s0">, </span><span class="s1">(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">ypix)</span><span class="s0">, </span><span class="s1">(w</span><span class="s0">, </span><span class="s1">ypix))</span>
+        <span class="s0">if </span><span class="s1">self.frame:</span>
+            <span class="s1">pygame.draw.rect(surface</span><span class="s0">, </span><span class="s1">self.color2</span><span class="s0">, </span><span class="s1">pygame.Rect(</span><span class="s2">0</span><span class="s0">,</span><span class="s2">0</span><span class="s0">,</span><span class="s1">w</span><span class="s0">,</span><span class="s1">h)</span><span class="s0">, </span><span class="s2">1</span><span class="s1">)</span>
+        <span class="s0">return </span><span class="s1">surface</span>
+
+<span class="s0">class </span><span class="s1">RealGridPainter(BasicFrame):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">grid</span><span class="s0">, </span><span class="s1">color1</span><span class="s0">, </span><span class="s1">color2</span><span class="s0">, </span><span class="s1">frame=</span><span class="s0">True, </span><span class="s1">rects=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s0">if </span><span class="s1">frame:</span>
+            <span class="s1">grid.move((</span><span class="s2">1</span><span class="s0">,</span><span class="s2">1</span><span class="s1">))</span>
+            <span class="s1">size = grid.frame.inflate((</span><span class="s2">2</span><span class="s0">,</span><span class="s2">2</span><span class="s1">)).size</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">size = grid.frame.size</span>
+        <span class="s1">BasicFrame.__init__(self</span><span class="s0">, </span><span class="s1">size=size</span><span class="s0">, </span><span class="s1">color=color1)</span>
+        <span class="s1">self.color2 = color2</span>
+        <span class="s1">self.color1 = color1</span>
+        <span class="s1">self.grid = grid</span>
+        <span class="s1">self.frame = frame</span>
+        <span class="s1">self.rects = rects</span>
+
+    <span class="s0">def </span><span class="s1">draw(self):</span>
+        <span class="s1">surface = pygame.Surface(self.size).convert()</span>
+        <span class="s1">surface.fill(self.color)</span>
+        <span class="s0">if </span><span class="s1">self.rects:</span>
+            <span class="s0">for </span><span class="s1">rect </span><span class="s0">in </span><span class="s1">self.grid.iterrects():</span>
+                <span class="s1">pygame.draw.rect(surface</span><span class="s0">, </span><span class="s1">self.color2</span><span class="s0">, </span><span class="s1">rect</span><span class="s0">, </span><span class="s2">1</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">self.frame:</span>
+            <span class="s1">pygame.draw.rect(surface</span><span class="s0">, </span><span class="s1">self.color2</span><span class="s0">, </span><span class="s1">self.grid.frame.inflate((</span><span class="s2">2</span><span class="s0">,</span><span class="s2">2</span><span class="s1">))</span><span class="s0">, </span><span class="s2">1</span><span class="s1">)</span>
+        <span class="s0">return </span><span class="s1">surface</span>
+
+
+<span class="s0">class </span><span class="s1">DrawGrid(Element):</span>
+
+    <span class="s1">@staticmethod</span>
+    <span class="s0">def </span><span class="s1">make(nx</span><span class="s0">, </span><span class="s1">ny</span><span class="s0">, </span><span class="s1">cell_size):</span>
+        <span class="s1">dg = DrawGrid(nx</span><span class="s0">, </span><span class="s1">ny</span><span class="s0">, </span><span class="s1">cell_size)</span>
+        <span class="s1">dg.finish()</span>
+        <span class="s0">return </span><span class="s1">dg</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">nx</span><span class="s0">, </span><span class="s1">ny</span><span class="s0">, </span><span class="s1">cell_size):</span>
+        <span class="s1">Element.__init__(self)</span>
+        <span class="s1">self.grid = Grid(nx</span><span class="s0">, </span><span class="s1">ny</span><span class="s0">, </span><span class="s1">cell_size)</span>
+        <span class="s1">self.margins = style.MARGINS</span>
+        <span class="s1">self.current_coord = </span><span class="s0">None</span>
+        <span class="s1">self.current_rect = </span><span class="s0">None</span>
+        <span class="s1">reac_mousemotion = Reaction(pygame.MOUSEMOTION</span><span class="s0">, </span><span class="s1">self.func_mousemotion)</span>
+        <span class="s1">self.add_reaction(reac_mousemotion)</span>
+
+    <span class="s0">def </span><span class="s1">finish(self):</span>
+<span class="s3">##        painter = BasicGridPainter(size, style.DEF_COLOR, style.DEF_DARK,</span>
+<span class="s3">##                                    self.grid.nx, self.grid.ny)</span>
+        <span class="s1">painter = RealGridPainter(self.grid</span><span class="s0">, </span><span class="s1">style.DEF_COLOR</span><span class="s0">, </span><span class="s1">style.DEF_DARK)</span>
+        <span class="s1">self.set_painter(painter)</span>
+        <span class="s1">Element.finish(self)</span>
+
+    <span class="s0">def </span><span class="s1">draw_values(self</span><span class="s0">, </span><span class="s1">value):</span>
+        <span class="s0">for </span><span class="s1">x </span><span class="s0">in </span><span class="s1">range(self.grid.nx):</span>
+            <span class="s0">for </span><span class="s1">y </span><span class="s0">in </span><span class="s1">range(self.grid.ny):</span>
+                <span class="s0">if </span><span class="s1">self.grid[x</span><span class="s0">,</span><span class="s1">y] == value:</span>
+                    <span class="s1">print((x</span><span class="s0">,</span><span class="s1">y))</span>
+
+    <span class="s0">def </span><span class="s1">get_rect_at_coord(self</span><span class="s0">, </span><span class="s1">coord):</span>
+        <span class="s1">rect = self.grid.get_rect_at_coord(coord).inflate((-</span><span class="s2">2</span><span class="s0">,</span><span class="s1">-</span><span class="s2">2</span><span class="s1">))</span>
+        <span class="s0">return </span><span class="s1">rect</span>
+
+    <span class="s0">def </span><span class="s1">func_mousemotion(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s1">coord = self.grid.get_coord_at_pix(event.pos)</span>
+        <span class="s0">if </span><span class="s1">coord != self.current_coord:</span>
+            <span class="s0">if </span><span class="s1">self.grid.is_inside(coord):</span>
+<span class="s3">##                print(coord)</span>
+                <span class="s0">if </span><span class="s1">self.current_coord:</span>
+                    <span class="s1">self.partial_blit(</span><span class="s0">None, </span><span class="s1">self.current_rect)</span>
+                <span class="s1">pygame.display.update(self.current_rect)</span>
+                <span class="s1">self.current_coord = coord</span>
+                <span class="s1">self.current_rect = self.get_rect_at_coord(self.current_coord)</span>
+                <span class="s1">pygame.draw.rect(self.surface</span><span class="s0">, </span><span class="s1">style.DEF_DARK</span><span class="s0">, </span><span class="s1">self.current_rect)</span>
+                <span class="s1">pygame.display.update(self.current_rect)</span>
+
+    <span class="s0">def </span><span class="s1">move(self</span><span class="s0">, </span><span class="s1">shift):</span>
+        <span class="s1">Element.move(self</span><span class="s0">, </span><span class="s1">shift)</span>
+        <span class="s1">self.grid.move(shift)</span>
+
+</pre>
+</body>
+</html>

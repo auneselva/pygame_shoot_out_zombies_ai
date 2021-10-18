@@ -1,0 +1,191 @@
+<html>
+<head>
+<title>style.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #808080;}
+.s4 { color: #6a8759;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+style.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+This module stores the variables that define the style of the GUI. 
+Note that the module &quot;painterstyle&quot; also define the default painters. 
+Default painters are in a separate module because they need to import painters, 
+and painters need to import style. 
+&quot;&quot;&quot;</span>
+
+<span class="s2">import </span><span class="s1">os</span>
+
+<span class="s2">from </span><span class="s1">thorpy </span><span class="s2">import </span><span class="s1">THORPY_PATH</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui </span><span class="s2">import </span><span class="s1">constants</span>
+
+<span class="s3"># Default Texts</span>
+<span class="s1">OK_TXT = </span><span class="s4">&quot;Ok&quot;</span>
+<span class="s1">CANCEL_TXT = </span><span class="s4">&quot;Cancel&quot;</span>
+
+<span class="s3"># default font (distributed with thorpy) - NOT USED FOR THE MOMENT</span>
+<span class="s1">DEFAULT_FONT_PATH = os.path.join(THORPY_PATH</span><span class="s2">,</span><span class="s4">&quot;data/Carlito/Carlito-Regular.ttf&quot;</span><span class="s1">)</span>
+
+<span class="s3"># Default Fonts : the program will try to use the fonts in the order of FONTS</span>
+<span class="s1">FONTS = (</span><span class="s4">&quot;verdana&quot;</span><span class="s2">, </span><span class="s4">&quot;comicsansms&quot;</span><span class="s2">, </span><span class="s4">&quot;arial&quot;</span><span class="s2">, </span><span class="s4">&quot;timesnewroman&quot;</span><span class="s2">,</span>
+         <span class="s4">&quot;dejavusansserif&quot;</span><span class="s2">, </span><span class="s4">&quot;ubuntu&quot;</span><span class="s2">, </span><span class="s4">&quot;century&quot;</span><span class="s1">)</span>
+<span class="s1">FONT_SIZE = </span><span class="s5">12</span>
+<span class="s1">FONT_COLOR = constants.BLACK</span>
+<span class="s1">ITALIC = </span><span class="s2">False</span>
+<span class="s1">BOLD = </span><span class="s2">False</span>
+<span class="s1">UNDERLINE = </span><span class="s2">False</span>
+<span class="s1">FONT_AA = </span><span class="s2">True</span>
+<span class="s1">FONT_BCKGR = </span><span class="s2">None</span>
+
+<span class="s1">FONT_SIZE_INCREMENTS = {</span><span class="s4">&quot;bar&quot;</span><span class="s1">:</span><span class="s5">0</span><span class="s2">, </span><span class="s4">&quot;title&quot;</span><span class="s1">:</span><span class="s5">3</span><span class="s2">, </span><span class="s4">&quot;path&quot;</span><span class="s1">:-</span><span class="s5">2</span><span class="s1">}</span>
+
+<span class="s3"># Default fonts for titles (bar) texts</span>
+<span class="s1">BAR_FONTS = (</span><span class="s4">&quot;verdana&quot;</span><span class="s2">, </span><span class="s4">&quot;comicsansms&quot;</span><span class="s2">, </span><span class="s4">&quot;arial&quot;</span><span class="s2">, </span><span class="s4">&quot;timesnewroman&quot;</span><span class="s2">,</span>
+             <span class="s4">&quot;dejavusansserif&quot;</span><span class="s2">, </span><span class="s4">&quot;ubuntu&quot;</span><span class="s2">, </span><span class="s4">&quot;century&quot;</span><span class="s1">)</span>
+<span class="s1">FONT_BAR_SIZE = </span><span class="s5">12</span>
+<span class="s1">FONT_BAR_COLOR = constants.YELLOW</span>
+<span class="s1">BAR_ITALIC = </span><span class="s2">False</span>
+<span class="s1">BAR_BOLD = </span><span class="s2">False</span>
+<span class="s1">BAR_UNDERLINE = </span><span class="s2">False</span>
+<span class="s1">FONT_BAR_AA = </span><span class="s2">True</span>
+<span class="s1">FONT_BAR_BCKGR = </span><span class="s2">None</span>
+
+<span class="s3">#storage</span>
+<span class="s1">STORE_MODE = </span><span class="s4">&quot;vertical&quot;</span>
+<span class="s1">STORE_ALIGN = </span><span class="s4">&quot;center&quot;</span>
+
+<span class="s1">MARGINS = (</span><span class="s5">5</span><span class="s2">, </span><span class="s5">5</span><span class="s1">)</span>
+<span class="s1">GAPS = (</span><span class="s5">5</span><span class="s2">, </span><span class="s5">5</span><span class="s1">)</span>
+<span class="s1">NAME_SPACING = </span><span class="s5">5  </span><span class="s3"># space between the name and the value</span>
+
+<span class="s3"># default element color:</span>
+<span class="s1">DEF_COLOR = constants.BRAY  </span><span class="s3"># base color</span>
+<span class="s1">DEF_COLOR2 = constants.ULTRABRIGHT  </span><span class="s3"># color of elements bckgr</span>
+<span class="s1">DEF_COLOR3 = constants.BRIGHT</span>
+<span class="s1">DEF_HELP_COLOR = tuple(list(constants.ULTRABRIGHT) + [</span><span class="s5">220</span><span class="s1">])</span>
+<span class="s1">DARK_FACTOR = </span><span class="s5">0.5</span>
+<span class="s1">LIGHT_FACTOR = </span><span class="s5">1.2</span>
+<span class="s1">BORDER_FACT = </span><span class="s5">0.3</span>
+<span class="s1">DEF_RADIUS = </span><span class="s5">10</span>
+<span class="s1">DEF_DARK = constants.DARK</span>
+
+<span class="s3"># default colors</span>
+<span class="s1">COLOR_TXT_HOVER = constants.BLUE  </span><span class="s3"># hover highlight</span>
+<span class="s1">COLOR_BULK_HOVER = constants.GREEN</span>
+<span class="s1">COLOR_HOVER_DRAGGER = constants.BRIGHT  </span><span class="s3"># hover highlight for lift draggers</span>
+<span class="s1">COLOR_HOVER_CHECK = constants.BRIGHT  </span><span class="s3"># hover highlight for check and radio</span>
+<span class="s1">BAR_COLOR = constants.LIGHTBLUE  </span><span class="s3"># head bar</span>
+
+<span class="s3">#title</span>
+<span class="s1">TITLE_SPACE = </span><span class="s5">3</span>
+<span class="s1">TITLE_ALIGN = </span><span class="s4">&quot;left&quot;</span>
+<span class="s1">CUT_WORD = </span><span class="s4">&quot;..&quot;</span>
+<span class="s1">TITLE_POS = (</span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s1">)</span>
+<span class="s1">TITLE_FONT_SIZE = </span><span class="s5">15</span>
+<span class="s1">TITLE_FONT_COLOR = (</span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">255</span><span class="s1">)</span>
+<span class="s3"># default elements size</span>
+<span class="s1">SIZE = (</span><span class="s5">80</span><span class="s2">, </span><span class="s5">30</span><span class="s1">)</span>
+<span class="s1">SMALL_SIZE = (</span><span class="s5">16</span><span class="s2">, </span><span class="s5">16</span><span class="s1">)</span>
+<span class="s1">LARGE_SIZE = (</span><span class="s5">150</span><span class="s2">, </span><span class="s5">30</span><span class="s1">)</span>
+<span class="s1">XLARGE_SIZE = (</span><span class="s5">250</span><span class="s2">, </span><span class="s5">30</span><span class="s1">)</span>
+<span class="s1">Y_SMALL_SIZE = </span><span class="s5">20</span>
+<span class="s1">CHECK_SIZE = (</span><span class="s5">14</span><span class="s2">, </span><span class="s5">14</span><span class="s1">)  </span><span class="s3"># check and radio boxes</span>
+<span class="s1">FILE_WIDTH = </span><span class="s5">100  </span><span class="s3"># width for filenames</span>
+
+<span class="s3"># box</span>
+<span class="s1">BOX_SIZE = (</span><span class="s5">250</span><span class="s2">, </span><span class="s5">150</span><span class="s1">)</span>
+<span class="s1">BOX_RADIUS = </span><span class="s5">8</span>
+
+<span class="s3">#help</span>
+<span class="s1">HELP_SIZE = (</span><span class="s5">80</span><span class="s2">, </span><span class="s5">30</span><span class="s1">)</span>
+
+<span class="s3"># slider (also affects lift)</span>
+<span class="s1">SLIDER_MARGINS = (</span><span class="s5">2</span><span class="s2">, </span><span class="s5">2</span><span class="s1">)</span>
+<span class="s1">SLIDER_THICK = </span><span class="s5">8</span>
+<span class="s1">SLIDERX_DRAG_SIZE = (</span><span class="s5">8</span><span class="s2">, </span><span class="s5">20</span><span class="s1">)</span>
+<span class="s1">SLIDERY_DRAG_SIZE = (</span><span class="s5">20</span><span class="s2">, </span><span class="s5">8</span><span class="s1">)</span>
+
+<span class="s3"># lift</span>
+<span class="s1">LIFT_DRAG_SIZE = (</span><span class="s5">14</span><span class="s2">, </span><span class="s5">20</span><span class="s1">)</span>
+<span class="s1">LIFT_BUTTON_SIZE = (</span><span class="s5">16</span><span class="s2">, </span><span class="s5">16</span><span class="s1">)</span>
+<span class="s1">LIFT_MARGINS = (</span><span class="s5">1</span><span class="s2">, </span><span class="s5">1</span><span class="s1">)</span>
+<span class="s1">BUTTON_MARGINS = (</span><span class="s5">2</span><span class="s2">, </span><span class="s5">2</span><span class="s1">)</span>
+<span class="s1">ARROW_COLOR = constants.BLACK</span>
+
+<span class="s3"># dropdown lists</span>
+<span class="s1">DDL_SIZE = (</span><span class="s5">100</span><span class="s2">, </span><span class="s5">250</span><span class="s1">)</span>
+<span class="s1">DDL_MARGINS = (</span><span class="s5">1</span><span class="s2">, </span><span class="s5">1</span><span class="s1">)</span>
+<span class="s1">DDL_MAX_SIZE = (</span><span class="s5">200</span><span class="s2">, </span><span class="s5">250</span><span class="s1">)</span>
+
+<span class="s3"># browserlight</span>
+<span class="s1">BROWSERLIGHT_SIZE = (</span><span class="s5">300</span><span class="s2">, </span><span class="s5">300</span><span class="s1">)</span>
+<span class="s1">BROWSERLIGHT_DDL_SIZE = (</span><span class="s5">200</span><span class="s2">, </span><span class="s5">200</span><span class="s1">)</span>
+<span class="s3"># only used to determine the size of father</span>
+<span class="s1">BROWSERLIGHT_STORE_MARGINS = (</span><span class="s5">20</span><span class="s2">, </span><span class="s5">5</span><span class="s1">)</span>
+<span class="s1">BROWSERLIGHT_STORE_GAPS = (</span><span class="s5">2</span><span class="s2">, </span><span class="s5">5</span><span class="s1">)</span>
+<span class="s1">BROWSERLIGHT_LEFT_SHIFT = </span><span class="s5">20</span>
+
+<span class="s3"># browser</span>
+<span class="s1">BROWSER_SIZE = (</span><span class="s5">300</span><span class="s2">, </span><span class="s5">300</span><span class="s1">)</span>
+<span class="s1">BROWSER_DDL_SIZE = (</span><span class="s5">280</span><span class="s2">, </span><span class="s5">280</span><span class="s1">)</span>
+<span class="s1">PATH_FONT_SIZE = </span><span class="s5">10</span>
+
+<span class="s3"># dirviewer</span>
+<span class="s1">DIRVIEWER_GAP = </span><span class="s5">5  </span><span class="s3"># gap between lines</span>
+<span class="s1">DIRVIEWER_X = </span><span class="s2">None  </span><span class="s3"># x margin</span>
+
+<span class="s3"># inserter</span>
+<span class="s1">MAX_INSERTER_WIDTH = </span><span class="s5">100</span>
+<span class="s1">CURS_FACT = </span><span class="s5">0.8</span>
+<span class="s1">CURS_THICK = </span><span class="s5">1</span>
+<span class="s1">CURS_COLOR = constants.BLACK</span>
+<span class="s1">INSERTWRITER_MARGIN = </span><span class="s5">2</span>
+
+<span class="s3">#Shadow</span>
+<span class="s1">SHADOW_ALTITUDE = </span><span class="s5">5</span>
+
+<span class="s3"># default images</span>
+<span class="s1">CHECKBOX_IMG = os.path.join(THORPY_PATH</span><span class="s2">, </span><span class="s4">&quot;data/check_box.bmp&quot;</span><span class="s1">)</span>
+<span class="s1">CHECKBOX_IMG_COLORKEY = (</span><span class="s5">255</span><span class="s2">, </span><span class="s5">255</span><span class="s2">, </span><span class="s5">255</span><span class="s1">)</span>
+<span class="s1">CHECKBOX_SPACE = </span><span class="s5">4</span>
+<span class="s3">#for the moment, same colorkey has to be used for checkbox and radio</span>
+<span class="s1">RADIO_IMG = os.path.join(THORPY_PATH</span><span class="s2">, </span><span class="s4">&quot;data/check_radio.bmp&quot;</span><span class="s1">)</span>
+
+<span class="s1">ARROW_IMG = os.path.join(THORPY_PATH</span><span class="s2">, </span><span class="s4">&quot;data/arrow.bmp&quot;</span><span class="s1">)</span>
+<span class="s1">ARROW_IMG_COLORKEY = (</span><span class="s5">255</span><span class="s2">, </span><span class="s5">255</span><span class="s2">, </span><span class="s5">255</span><span class="s1">)</span>
+<span class="s1">ARROW_IMG_COLORSOURCE = (</span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s2">, </span><span class="s5">0</span><span class="s1">)</span>
+
+<span class="s1">FOLDER_IMG = os.path.join(THORPY_PATH</span><span class="s2">, </span><span class="s4">&quot;data/folder.png&quot;</span><span class="s1">)</span>
+<span class="s1">FOLDER_IMG_COLORKEY = (</span><span class="s5">255</span><span class="s2">, </span><span class="s5">255</span><span class="s2">, </span><span class="s5">255</span><span class="s1">)</span>
+
+<span class="s1">EXAMPLE_IMG = os.path.join(THORPY_PATH</span><span class="s2">, </span><span class="s4">&quot;data/painting.jpg&quot;</span><span class="s1">)</span>
+
+<span class="s1">DEFAULT_ICON = os.path.join(THORPY_PATH</span><span class="s2">, </span><span class="s4">&quot;data/thorpy_icon.png&quot;</span><span class="s1">)</span>
+
+<span class="s1">SMOKE_IMG = os.path.join(THORPY_PATH</span><span class="s2">, </span><span class="s4">&quot;data/smoke.png&quot;</span><span class="s1">)</span>
+
+<span class="s1">HEART_FULL = os.path.join(THORPY_PATH</span><span class="s2">, </span><span class="s4">&quot;data/heart_full.png&quot;</span><span class="s1">)</span>
+<span class="s1">HEART_EMPTY = os.path.join(THORPY_PATH</span><span class="s2">, </span><span class="s4">&quot;data/heart_empty.png&quot;</span><span class="s1">)</span>
+
+<span class="s3"># default styles</span>
+<span class="s1">STYLE = </span><span class="s4">&quot;normal&quot;</span>
+<span class="s1">STYLE_NAME = </span><span class="s4">&quot;text&quot;</span>
+<span class="s1">STYLE_INSERTER_NAME = </span><span class="s4">&quot;text&quot;</span>
+<span class="s1">STYLE_CHECKER_NAME = </span><span class="s4">&quot;text&quot;</span>
+<span class="s1">STYLE_SLIDER_NAME = </span><span class="s4">&quot;text&quot;</span>
+<span class="s1">STYLE_SLIDER_VALUE = </span><span class="s4">&quot;text&quot;</span>
+<span class="s1">STYLE_BROWSER_LAUNCHER = </span><span class="s4">&quot;normal&quot;</span>
+<span class="s1">MAKE_SIZE = </span><span class="s4">&quot;scaled&quot;</span>
+</pre>
+</body>
+</html>

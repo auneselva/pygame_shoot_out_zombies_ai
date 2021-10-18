@@ -1,0 +1,152 @@
+<html>
+<head>
+<title>fastevents.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #cc7832;}
+.s4 { color: #6897bb;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+fastevents.py</font>
+</center></td></tr></table>
+<pre><span class="s0">#!/usr/bin/env python</span>
+<span class="s2">&quot;&quot;&quot;  This is a stress test for the fastevents module. 
+ 
+*Fast events does not appear faster!* 
+ 
+So far it looks like normal pygame.event is faster by up to two times. 
+So maybe fastevent isn't fast at all. 
+ 
+Tested on windowsXP sp2 athlon, and freebsd. 
+ 
+However... on my debian duron 850 machine fastevents is faster. 
+&quot;&quot;&quot;</span>
+
+<span class="s3">import </span><span class="s1">pygame</span>
+<span class="s3">from </span><span class="s1">pygame </span><span class="s3">import </span><span class="s1">*</span>
+
+<span class="s0"># the config to try different settings out with the event queues.</span>
+
+<span class="s0"># use the fastevent module or not.</span>
+<span class="s1">use_fast_events = </span><span class="s4">1</span>
+
+<span class="s0"># use pygame.display.flip().</span>
+<span class="s0">#    otherwise we test raw event processing throughput.</span>
+<span class="s1">with_display = </span><span class="s4">1</span>
+
+<span class="s0"># limit the game loop to 40 fps.</span>
+<span class="s1">slow_tick = </span><span class="s4">0</span>
+
+<span class="s1">NUM_EVENTS_TO_POST = </span><span class="s4">200000</span>
+
+
+
+<span class="s3">if </span><span class="s1">use_fast_events:</span>
+    <span class="s1">event_module = fastevent</span>
+<span class="s3">else</span><span class="s1">:</span>
+    <span class="s1">event_module = event</span>
+
+
+
+
+<span class="s3">from </span><span class="s1">threading </span><span class="s3">import </span><span class="s1">Thread</span>
+
+<span class="s3">class </span><span class="s1">post_them(Thread):</span>
+    <span class="s3">def </span><span class="s1">__init__(self):</span>
+        <span class="s1">Thread.__init__(self)</span>
+        <span class="s1">self.done = []</span>
+        <span class="s1">self.stop = []</span>
+
+    <span class="s3">def </span><span class="s1">run(self):</span>
+        <span class="s1">self.done = []</span>
+        <span class="s1">self.stop = []</span>
+        <span class="s3">for </span><span class="s1">x </span><span class="s3">in </span><span class="s1">range(NUM_EVENTS_TO_POST):</span>
+            <span class="s1">ee = event.Event(USEREVENT)</span>
+            <span class="s1">try_post = </span><span class="s4">1</span>
+
+            <span class="s0"># the pygame.event.post raises an exception if the event</span>
+            <span class="s0">#   queue is full.  so wait a little bit, and try again.</span>
+            <span class="s3">while </span><span class="s1">try_post:</span>
+                <span class="s3">try</span><span class="s1">:</span>
+                    <span class="s1">event_module.post(ee)</span>
+                    <span class="s1">try_post = </span><span class="s4">0</span>
+                <span class="s3">except</span><span class="s1">:</span>
+                    <span class="s1">pytime.sleep(</span><span class="s4">0.001</span><span class="s1">)</span>
+                    <span class="s1">try_post = </span><span class="s4">1</span>
+
+            <span class="s3">if </span><span class="s1">self.stop:</span>
+                <span class="s3">return</span>
+        <span class="s1">self.done.append(</span><span class="s4">1</span><span class="s1">)</span>
+
+
+
+<span class="s3">import </span><span class="s1">time </span><span class="s3">as </span><span class="s1">pytime</span>
+
+<span class="s3">def </span><span class="s1">main():</span>
+    <span class="s1">init()</span>
+
+    <span class="s3">if </span><span class="s1">use_fast_events:</span>
+        <span class="s1">fastevent.init()</span>
+
+    <span class="s1">c = time.Clock()</span>
+
+    <span class="s1">win = display.set_mode((</span><span class="s4">640</span><span class="s3">, </span><span class="s4">480</span><span class="s1">)</span><span class="s3">, </span><span class="s1">RESIZABLE)</span>
+    <span class="s1">display.set_caption(</span><span class="s5">&quot;fastevent Workout&quot;</span><span class="s1">)</span>
+
+    <span class="s1">poster = post_them()</span>
+
+    <span class="s1">t1 = pytime.time()</span>
+    <span class="s1">poster.start()</span>
+
+    <span class="s1">going = </span><span class="s3">True</span>
+    <span class="s3">while </span><span class="s1">going:</span>
+<span class="s0">#        for e in event.get():</span>
+        <span class="s0">#for x in range(200):</span>
+        <span class="s0">#    ee = event.Event(USEREVENT)</span>
+        <span class="s0">#    r = event_module.post(ee)</span>
+        <span class="s0">#    print (r)</span>
+
+        <span class="s0">#for e in event_module.get():</span>
+        <span class="s1">event_list = []</span>
+        <span class="s1">event_list = event_module.get()</span>
+
+        <span class="s3">for </span><span class="s1">e </span><span class="s3">in </span><span class="s1">event_list:</span>
+            <span class="s3">if </span><span class="s1">e.type == QUIT:</span>
+                <span class="s1">print (c.get_fps())</span>
+                <span class="s1">poster.stop.append(</span><span class="s4">1</span><span class="s1">)</span>
+                <span class="s1">going = </span><span class="s3">False</span>
+            <span class="s3">if </span><span class="s1">e.type == KEYDOWN:</span>
+                <span class="s3">if </span><span class="s1">e.key == K_ESCAPE:</span>
+                    <span class="s1">print (c.get_fps())</span>
+                    <span class="s1">poster.stop.append(</span><span class="s4">1</span><span class="s1">)</span>
+                    <span class="s1">going = </span><span class="s3">False</span>
+        <span class="s3">if </span><span class="s1">poster.done:</span>
+            <span class="s1">print (c.get_fps())</span>
+            <span class="s1">print (c)</span>
+            <span class="s1">t2 = pytime.time()</span>
+            <span class="s1">print (</span><span class="s5">&quot;total time:%s&quot; </span><span class="s1">% (t2 - t1))</span>
+            <span class="s1">print (</span><span class="s5">&quot;events/second:%s&quot; </span><span class="s1">% (NUM_EVENTS_TO_POST / (t2 - t1)))</span>
+            <span class="s1">going = </span><span class="s3">False</span>
+        <span class="s3">if </span><span class="s1">with_display:</span>
+            <span class="s1">display.flip()</span>
+        <span class="s3">if </span><span class="s1">slow_tick:</span>
+            <span class="s1">c.tick(</span><span class="s4">40</span><span class="s1">)</span>
+
+
+    <span class="s1">pygame.quit()</span>
+
+
+
+<span class="s3">if </span><span class="s1">__name__ == </span><span class="s5">'__main__'</span><span class="s1">:</span>
+    <span class="s1">main()</span>
+</pre>
+</body>
+</html>

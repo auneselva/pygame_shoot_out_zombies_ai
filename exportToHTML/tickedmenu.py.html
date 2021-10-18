@@ -1,0 +1,51 @@
+<html>
+<head>
+<title>tickedmenu.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+tickedmenu.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">thorpy.menus.basicmenu </span><span class="s0">import </span><span class="s1">BasicMenu</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">constants</span>
+<span class="s0">from </span><span class="s1">thorpy.elements.ghost </span><span class="s0">import </span><span class="s1">Ghost</span>
+
+
+<span class="s0">class </span><span class="s1">TickedMenu(BasicMenu):</span>
+    <span class="s2">&quot;&quot;&quot;Post time since last frame&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">post_time_event(self):</span>
+        <span class="s1">tick_ = self.clock.get_time()</span>
+        <span class="s1">event = pygame.event.Event(constants.THORPY_EVENT</span><span class="s0">,</span>
+                                   <span class="s1">id=constants.EVENT_TIME</span><span class="s0">,</span>
+                                   <span class="s1">tick=tick_)</span>
+        <span class="s1">pygame.event.post(event)</span>
+
+    <span class="s0">def </span><span class="s1">react_to_all_events(self):</span>
+<span class="s3">##        self.clock_tick(self.fps)</span>
+        <span class="s1">self.post_time_event()</span>
+        <span class="s0">for </span><span class="s1">event </span><span class="s0">in </span><span class="s1">pygame.event.get():</span>
+            <span class="s1">self.treatement(event)</span>
+
+<span class="s0">def </span><span class="s1">interactive_pause(max_time_in_seconds</span><span class="s0">, </span><span class="s1">element=</span><span class="s0">None, </span><span class="s1">fps=</span><span class="s4">45</span><span class="s1">):</span>
+    <span class="s0">if </span><span class="s1">element </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s1">element = Ghost()</span>
+    <span class="s1">menu = TickedMenu(element</span><span class="s0">, </span><span class="s1">fps=fps)</span>
+    <span class="s1">menu.kill_after(menu.fps * max_time_in_seconds)</span>
+    <span class="s1">menu.play()</span>
+    <span class="s0">return </span><span class="s1">menu.kill_after</span>
+</pre>
+</body>
+</html>

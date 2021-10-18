@@ -1,0 +1,484 @@
+<html>
+<head>
+<title>drawable_shape.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+drawable_shape.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">collections </span><span class="s0">import </span><span class="s1">deque</span><span class="s0">, </span><span class="s1">OrderedDict</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Dict</span><span class="s0">, </span><span class="s1">List</span><span class="s0">, </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Tuple</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IUIManagerInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.colour_gradient </span><span class="s0">import </span><span class="s1">ColourGradient</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">render_white_text_alpha_black_bg</span><span class="s0">, </span><span class="s1">apply_colour_to_surface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.utility </span><span class="s0">import </span><span class="s1">basic_blit</span>
+
+
+<span class="s0">class </span><span class="s1">DrawableShapeState:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Represents a single state of a drawable shape. 
+ 
+    :param state_id: The ID/name of this state. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">state_id: str):</span>
+
+        <span class="s1">self.state_id = state_id</span>
+        <span class="s1">self.surface = pygame.surface.Surface((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">self.has_fresh_surface = </span><span class="s0">False</span>
+        <span class="s1">self.cached_background_id = </span><span class="s0">None  </span><span class="s4"># type: Union[str, None]</span>
+        <span class="s1">self.transition = </span><span class="s0">None  </span><span class="s4"># type: Union[DrawableStateTransition, None]</span>
+
+        <span class="s1">self.should_auto_pregen = self.state_id != </span><span class="s5">'disabled'</span>
+        <span class="s1">self.generated = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">get_surface(self) -&gt; pygame.surface.Surface:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Gets the pygame.surface.Surface of this state. Will be a blend of this state and 
+        the previous one if we are in a transition. 
+ 
+        :return: A pygame Surface for this state. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.transition </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">self.transition.produce_blended_result()</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">self.surface</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Updates any transitions this state is in 
+ 
+        :param time_delta: The time passed between frames, measured in seconds. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.transition </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.transition.update(time_delta)</span>
+            <span class="s1">self.has_fresh_surface = </span><span class="s0">True</span>
+            <span class="s0">if </span><span class="s1">self.transition.finished:</span>
+                <span class="s1">self.transition = </span><span class="s0">None</span>
+
+
+<span class="s0">class </span><span class="s1">DrawableStateTransition:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Starts &amp; controls a transition between two states of a drawable shape. 
+ 
+    :param states: A dictionary of all the drawable states. 
+    :param start_state_id: The state to start from. 
+    :param target_state_id: The state to transition to. 
+    :param duration: The length of the transition 
+    :param progress: The initial progress along the transition. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">states: Dict[str</span><span class="s0">, </span><span class="s1">DrawableShapeState]</span><span class="s0">,</span>
+                 <span class="s1">start_state_id: str</span><span class="s0">, </span><span class="s1">target_state_id: str</span><span class="s0">,</span>
+                 <span class="s1">duration: float</span><span class="s0">, </span><span class="s1">*</span><span class="s0">, </span><span class="s1">progress: float = </span><span class="s3">0.0</span><span class="s1">):</span>
+
+        <span class="s1">self.states = states</span>
+        <span class="s1">self.duration = duration</span>
+        <span class="s1">self.remaining_time = self.duration - progress</span>
+        <span class="s1">self.percentage_start_state = </span><span class="s3">1.0</span>
+        <span class="s1">self.percentage_target_state = </span><span class="s3">0.0</span>
+        <span class="s1">self.start_stat_id = start_state_id</span>
+        <span class="s1">self.target_state_id = target_state_id</span>
+        <span class="s1">self.finished = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Updates the timer for this transition. 
+ 
+        :param time_delta: The time passed between frames, measured in seconds. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.remaining_time -= time_delta</span>
+        <span class="s0">if </span><span class="s1">self.remaining_time &gt; </span><span class="s3">0.0 </span><span class="s0">and </span><span class="s1">self.duration &gt; </span><span class="s3">0.0</span><span class="s1">:</span>
+            <span class="s1">self.percentage_start_state = self.remaining_time / self.duration</span>
+            <span class="s1">self.percentage_target_state = </span><span class="s3">1.0 </span><span class="s1">- self.percentage_start_state</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.finished = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">produce_blended_result(self) -&gt; pygame.surface.Surface:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Produces a blend between the images of our start state and our target state. The 
+        progression of the blend is dictated by the progress of time through the transition. 
+ 
+        :return: The blended surface. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">result = self.states[self.start_stat_id].surface.copy()</span>
+        <span class="s1">blended_target = self.states[self.target_state_id].surface.copy()</span>
+        <span class="s1">start_multiply_surface = pygame.surface.Surface(</span>
+            <span class="s1">self.states[self.start_stat_id].surface.get_size()</span><span class="s0">, </span><span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+        <span class="s1">target_multiply_surface = start_multiply_surface.copy()</span>
+
+        <span class="s1">start_alpha = int(round(</span><span class="s3">255.0</span><span class="s1">*self.percentage_start_state))</span>
+        <span class="s1">target_alpha = </span><span class="s3">255 </span><span class="s1">- start_alpha</span>
+
+        <span class="s1">start_multiply_surface.fill(pygame.Color(start_alpha</span><span class="s0">, </span><span class="s1">start_alpha</span><span class="s0">, </span><span class="s1">start_alpha</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+        <span class="s1">target_multiply_surface.fill(pygame.Color(target_alpha</span><span class="s0">, </span><span class="s1">target_alpha</span><span class="s0">, </span><span class="s1">target_alpha</span><span class="s0">, </span><span class="s3">255</span><span class="s1">))</span>
+
+        <span class="s1">result.blit(start_multiply_surface</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">special_flags=pygame.BLEND_RGB_MULT)</span>
+        <span class="s1">blended_target.blit(target_multiply_surface</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">special_flags=pygame.BLEND_RGB_MULT)</span>
+        <span class="s1">result.blit(blended_target</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">special_flags=pygame.BLEND_RGB_ADD)</span>
+        <span class="s0">return </span><span class="s1">result</span>
+
+
+<span class="s0">class </span><span class="s1">DrawableShape:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Base class for a graphical 'shape' that we can use for many different UI elements. The intent 
+    is to make it easy to switch between UI elements having normal rectangles, circles or rounded 
+    rectangles as their visual shape while having the same non-shape related functionality. 
+ 
+    :param containing_rect: The rectangle which this shape is entirely contained within (including 
+                            shadows, borders etc) 
+    :param theming_parameters: A dictionary of user supplied data that alters the appearance of 
+                               the shape. 
+    :param states: Names for the different states the shape can be in, each may have different 
+                   sets of colours &amp; images. 
+    :param manager: The UI manager for this UI. 
+ 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">containing_rect: pygame.Rect</span><span class="s0">,</span>
+                 <span class="s1">theming_parameters: Dict</span><span class="s0">,</span>
+                 <span class="s1">states: List[str]</span><span class="s0">,</span>
+                 <span class="s1">manager: IUIManagerInterface):</span>
+
+        <span class="s1">self.containing_rect = containing_rect.copy()</span>
+        <span class="s0">if </span><span class="s1">self.containing_rect.width &lt; </span><span class="s3">1</span><span class="s1">:</span>
+            <span class="s1">self.containing_rect.width = </span><span class="s3">1</span>
+        <span class="s0">if </span><span class="s1">self.containing_rect.height &lt; </span><span class="s3">1</span><span class="s1">:</span>
+            <span class="s1">self.containing_rect.height = </span><span class="s3">1</span>
+
+        <span class="s1">self.theming = theming_parameters</span>
+
+        <span class="s1">self.shadow_width = </span><span class="s3">0</span>
+        <span class="s1">self.border_width = </span><span class="s3">0</span>
+
+        <span class="s1">self.states = OrderedDict()</span>
+        <span class="s0">for </span><span class="s1">state </span><span class="s0">in </span><span class="s1">states:</span>
+            <span class="s1">self.states[state] = DrawableShapeState(state)</span>
+
+        <span class="s0">if </span><span class="s5">'normal' </span><span class="s0">in </span><span class="s1">states:</span>
+            <span class="s1">self.active_state = self.states[</span><span class="s5">'normal'</span><span class="s1">]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">raise </span><span class="s1">NotImplementedError(</span><span class="s5">&quot;No 'normal' state id supplied for drawable shape&quot;</span><span class="s1">)</span>
+
+        <span class="s1">self.previous_state = </span><span class="s0">None</span>
+
+        <span class="s0">if </span><span class="s5">'transitions' </span><span class="s0">in </span><span class="s1">self.theming:</span>
+            <span class="s1">self.state_transition_times = self.theming[</span><span class="s5">'transitions'</span><span class="s1">]</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.state_transition_times = {}</span>
+
+        <span class="s1">self.ui_manager = manager</span>
+        <span class="s1">self.shape_cache = self.ui_manager.get_theme().shape_cache</span>
+
+        <span class="s1">self.aligned_text_rect = </span><span class="s0">None</span>
+        <span class="s1">self.click_area_shape = </span><span class="s0">None</span>
+
+        <span class="s1">self.states_to_redraw_queue = deque([])</span>
+        <span class="s1">self.need_to_clean_up = </span><span class="s0">True</span>
+
+        <span class="s1">self.should_trigger_full_rebuild = </span><span class="s0">True</span>
+        <span class="s1">self.time_until_full_rebuild_after_changing_size = </span><span class="s3">0.35</span>
+        <span class="s1">self.full_rebuild_countdown = self.time_until_full_rebuild_after_changing_size</span>
+
+        <span class="s1">self.click_area_shape = </span><span class="s0">None</span>
+        <span class="s1">self.border_rect = </span><span class="s0">None</span>
+        <span class="s1">self.background_rect = </span><span class="s0">None</span>
+        <span class="s1">self.aligned_text_rect = </span><span class="s0">None</span>
+        <span class="s1">self.base_surface = </span><span class="s0">None</span>
+
+    <span class="s0">def </span><span class="s1">set_active_state(self</span><span class="s0">, </span><span class="s1">state_id: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Changes the currently active state for the drawable shape and, if setup in the theme, 
+        creates a transition blend from the previous state to the newly active one. 
+ 
+        :param state_id: the ID of the new state to make active. 
+ 
+        &quot;&quot;&quot;</span>
+
+        <span class="s4"># make sure this state is generated before we set it.</span>
+        <span class="s4"># should ensure that some more rarely used states are only generated if we use them</span>
+        <span class="s0">if not </span><span class="s1">self.states[state_id].generated:</span>
+            <span class="s0">if </span><span class="s1">state_id </span><span class="s0">in </span><span class="s1">self.states_to_redraw_queue:</span>
+                <span class="s1">self.states_to_redraw_queue.remove(state_id)</span>
+            <span class="s1">self.redraw_state(state_id)</span>
+
+        <span class="s0">if </span><span class="s1">state_id </span><span class="s0">in </span><span class="s1">self.states </span><span class="s0">and </span><span class="s1">self.active_state.state_id != state_id:</span>
+            <span class="s1">self.previous_state = self.active_state</span>
+            <span class="s1">self.active_state = self.states[state_id]</span>
+            <span class="s1">self.active_state.has_fresh_surface = </span><span class="s0">True</span>
+
+            <span class="s0">if </span><span class="s1">self.previous_state </span><span class="s0">is not None and </span><span class="s1">((self.previous_state.state_id</span><span class="s0">,</span>
+                                                     <span class="s1">self.active_state.state_id) </span><span class="s0">in</span>
+                                                    <span class="s1">self.state_transition_times):</span>
+                <span class="s1">prev_id = self.previous_state.state_id</span>
+                <span class="s1">next_id = self.active_state.state_id</span>
+                <span class="s1">duration = self.state_transition_times[(self.previous_state.state_id</span><span class="s0">,</span>
+                                                        <span class="s1">self.active_state.state_id)]</span>
+                <span class="s0">if </span><span class="s1">self.previous_state.transition </span><span class="s0">is None</span><span class="s1">:</span>
+                    <span class="s4"># completely fresh transition</span>
+                    <span class="s1">self.active_state.transition = DrawableStateTransition(self.states</span><span class="s0">,</span>
+                                                                           <span class="s1">prev_id</span><span class="s0">,</span>
+                                                                           <span class="s1">next_id</span><span class="s0">,</span>
+                                                                           <span class="s1">duration)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s4"># check to see if we are reversing an in-progress transition.</span>
+                    <span class="s0">if </span><span class="s1">self.previous_state.transition.start_stat_id == self.active_state.state_id:</span>
+                        <span class="s1">progress_time = self.previous_state.transition.remaining_time</span>
+                        <span class="s1">transition = DrawableStateTransition(self.states</span><span class="s0">,</span>
+                                                             <span class="s1">prev_id</span><span class="s0">,</span>
+                                                             <span class="s1">next_id</span><span class="s0">,</span>
+                                                             <span class="s1">duration</span><span class="s0">,</span>
+                                                             <span class="s1">progress=progress_time)</span>
+                        <span class="s1">self.active_state.transition = transition</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Updates the drawable shape to process rebuilds and update blends between states. 
+ 
+        :param time_delta: amount fo time passed between now and the previous frame in seconds. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">len(self.states_to_redraw_queue) &gt; </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">state = self.states_to_redraw_queue.popleft()</span>
+            <span class="s1">self.redraw_state(state)</span>
+        <span class="s0">if </span><span class="s1">self.need_to_clean_up </span><span class="s0">and </span><span class="s1">len(self.states_to_redraw_queue) == </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s4"># last state so clean up</span>
+            <span class="s1">self.clean_up_temp_shapes()</span>
+            <span class="s1">self.need_to_clean_up = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">self.full_rebuild_countdown &gt; </span><span class="s3">0.0</span><span class="s1">:</span>
+            <span class="s1">self.full_rebuild_countdown -= time_delta</span>
+
+        <span class="s0">if </span><span class="s1">self.should_trigger_full_rebuild </span><span class="s0">and </span><span class="s1">self.full_rebuild_countdown &lt;= </span><span class="s3">0.0</span><span class="s1">:</span>
+            <span class="s1">self.full_rebuild_on_size_change()</span>
+
+        <span class="s1">self.active_state.update(time_delta)</span>
+
+    <span class="s0">def </span><span class="s1">full_rebuild_on_size_change(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Triggered when we've changed the size of the shape and need to rebuild basically everything 
+        to account for it. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s5">'shadow_width' </span><span class="s0">in </span><span class="s1">self.theming:</span>
+            <span class="s1">self.shadow_width = self.theming[</span><span class="s5">'shadow_width'</span><span class="s1">]</span>
+        <span class="s0">if </span><span class="s5">'border_width' </span><span class="s0">in </span><span class="s1">self.theming:</span>
+            <span class="s1">self.border_width = self.theming[</span><span class="s5">'border_width'</span><span class="s1">]</span>
+        <span class="s1">self.should_trigger_full_rebuild = </span><span class="s0">False</span>
+        <span class="s1">self.full_rebuild_countdown = self.time_until_full_rebuild_after_changing_size</span>
+
+    <span class="s0">def </span><span class="s1">redraw_all_states(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Starts the redrawing process for all states of this shape that auto pre-generate. 
+        Redrawing is done one state at a time so will take a few loops of the game to 
+        complete if this shape has many states. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.states_to_redraw_queue = deque([state_id </span><span class="s0">for </span><span class="s1">state_id</span><span class="s0">, </span><span class="s1">state </span><span class="s0">in </span><span class="s1">self.states.items()</span>
+                                             <span class="s0">if </span><span class="s1">state.should_auto_pregen])</span>
+        <span class="s1">initial_state = self.states_to_redraw_queue.popleft()</span>
+        <span class="s1">self.redraw_state(initial_state)</span>
+
+    <span class="s0">def </span><span class="s1">compute_aligned_text_rect(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Aligns the text drawing position correctly according to our theming options. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">(</span><span class="s5">'text' </span><span class="s0">not in </span><span class="s1">self.theming </span><span class="s0">or</span>
+                <span class="s1">len(self.theming[</span><span class="s5">'text'</span><span class="s1">]) &lt;= </span><span class="s3">0 </span><span class="s0">or</span>
+                <span class="s5">'font' </span><span class="s0">not in </span><span class="s1">self.theming):</span>
+            <span class="s0">return</span>
+        <span class="s4"># first we need to create rectangle the size of the text, if there is any text to draw</span>
+        <span class="s1">self.aligned_text_rect = pygame.Rect((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                                             <span class="s1">self.theming[</span><span class="s5">'font'</span><span class="s1">].size(self.theming[</span><span class="s5">'text'</span><span class="s1">]))</span>
+
+        <span class="s0">if </span><span class="s1">(self.theming[</span><span class="s5">'text_horiz_alignment'</span><span class="s1">] == </span><span class="s5">'center' </span><span class="s0">or</span>
+                <span class="s1">self.theming[</span><span class="s5">'text_horiz_alignment'</span><span class="s1">] </span><span class="s0">not in </span><span class="s1">[</span><span class="s5">'left'</span><span class="s0">, </span><span class="s5">'right'</span><span class="s1">]):</span>
+            <span class="s1">self.aligned_text_rect.centerx = int(self.containing_rect.width / </span><span class="s3">2</span><span class="s1">)</span>
+        <span class="s0">elif </span><span class="s1">self.theming[</span><span class="s5">'text_horiz_alignment'</span><span class="s1">] == </span><span class="s5">'left'</span><span class="s1">:</span>
+            <span class="s1">self.aligned_text_rect.x = (self.theming[</span><span class="s5">'text_horiz_alignment_padding'</span><span class="s1">] +</span>
+                                        <span class="s1">self.shadow_width + self.border_width)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">x_pos = (self.containing_rect.width - self.theming[</span><span class="s5">'text_horiz_alignment_padding'</span><span class="s1">] -</span>
+                     <span class="s1">self.aligned_text_rect.width - self.shadow_width - self.border_width)</span>
+            <span class="s1">self.aligned_text_rect.x = x_pos</span>
+        <span class="s0">if </span><span class="s1">(self.theming[</span><span class="s5">'text_vert_alignment'</span><span class="s1">] == </span><span class="s5">'center' </span><span class="s0">or</span>
+                <span class="s1">self.theming[</span><span class="s5">'text_vert_alignment'</span><span class="s1">] </span><span class="s0">not in </span><span class="s1">[</span><span class="s5">'top'</span><span class="s0">, </span><span class="s5">'bottom'</span><span class="s1">]):</span>
+            <span class="s1">self.aligned_text_rect.centery = int(self.containing_rect.height / </span><span class="s3">2</span><span class="s1">)</span>
+        <span class="s0">elif </span><span class="s1">self.theming[</span><span class="s5">'text_vert_alignment'</span><span class="s1">] == </span><span class="s5">'top'</span><span class="s1">:</span>
+            <span class="s1">self.aligned_text_rect.y = (self.theming[</span><span class="s5">'text_vert_alignment_padding'</span><span class="s1">] +</span>
+                                        <span class="s1">self.shadow_width + self.border_width)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.aligned_text_rect.y = (self.containing_rect.height - self.aligned_text_rect.height</span>
+                                        <span class="s1">- self.theming[</span><span class="s5">'text_vert_alignment_padding'</span><span class="s1">] -</span>
+                                        <span class="s1">self.shadow_width - self.border_width)</span>
+
+    <span class="s0">def </span><span class="s1">get_active_state_surface(self) -&gt; pygame.surface.Surface:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Get the main surface from the active state. 
+ 
+        :return: The surface asked for, or the best available substitute. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.active_state </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">self.active_state.get_surface()</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">self.ui_manager.get_universal_empty_surface()</span>
+
+    <span class="s0">def </span><span class="s1">get_surface(self</span><span class="s0">, </span><span class="s1">state_name: str) -&gt; pygame.surface.Surface:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Get the main surface from a specific state. 
+ 
+        :param state_name: The state we are trying to get the surface from. 
+ 
+        :return: The surface asked for, or the best available substitute. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">state_name </span><span class="s0">in </span><span class="s1">self.states </span><span class="s0">and </span><span class="s1">self.states[state_name].surface </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">self.states[state_name].surface</span>
+        <span class="s0">elif </span><span class="s1">state_name </span><span class="s0">in </span><span class="s1">self.states </span><span class="s0">and </span><span class="s1">self.states[</span><span class="s5">'normal'</span><span class="s1">].surface </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">self.states[</span><span class="s5">'normal'</span><span class="s1">].surface</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">pygame.surface.Surface((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">get_fresh_surface(self) -&gt; pygame.surface.Surface:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Gets the surface of the active state and resets the state's 'has_fresh_surface' variable. 
+ 
+        :return: The active state's main pygame.surface.Surface. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.active_state.has_fresh_surface = </span><span class="s0">False</span>
+        <span class="s0">return </span><span class="s1">self.get_active_state_surface()</span>
+
+    <span class="s0">def </span><span class="s1">has_fresh_surface(self) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Lets UI elements find out when a state has finished building a fresh surface for times 
+        when we have to delay it for whatever reason. 
+ 
+        :return: True if there is a freshly built surface waiting, False if the shape has not 
+                 changed. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self.active_state.has_fresh_surface</span>
+
+    <span class="s0">def </span><span class="s1">rebuild_images_and_text(self</span><span class="s0">,</span>
+                                <span class="s1">image_state_str: str</span><span class="s0">,</span>
+                                <span class="s1">state_str: str</span><span class="s0">,</span>
+                                <span class="s1">text_colour_state_str: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Rebuilds any text or image used by a specific state in the drawable shape. Effectively 
+        this means adding them on top of whatever is already in the state's surface. As such it 
+        should generally be called last in the process of building up a finished drawable shape 
+        state. 
+ 
+        :param image_state_str: image ID of the state we are going to be adding images and text to. 
+        :param state_str: normal ID of the state we are going to be adding images and text to. 
+        :param text_colour_state_str: text ID of the state we are going to be adding images and 
+                                      text to. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s4"># Draw any themed images</span>
+        <span class="s0">if </span><span class="s1">image_state_str </span><span class="s0">in </span><span class="s1">self.theming </span><span class="s0">and </span><span class="s1">self.theming[image_state_str] </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">image_rect = self.theming[image_state_str].get_rect()</span>
+            <span class="s1">image_rect.center = (int(self.containing_rect.width / </span><span class="s3">2</span><span class="s1">)</span><span class="s0">,</span>
+                                 <span class="s1">int(self.containing_rect.height / </span><span class="s3">2</span><span class="s1">))</span>
+            <span class="s1">basic_blit(self.states[state_str].surface</span><span class="s0">,</span>
+                       <span class="s1">self.theming[image_state_str]</span><span class="s0">, </span><span class="s1">image_rect)</span>
+        <span class="s4"># Draw any text</span>
+        <span class="s0">if </span><span class="s5">'text' </span><span class="s0">in </span><span class="s1">self.theming </span><span class="s0">and </span><span class="s5">'font' </span><span class="s0">in </span><span class="s1">self.theming </span><span class="s0">and </span><span class="s1">self.theming[</span><span class="s5">'text'</span><span class="s1">] </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">len(self.theming[</span><span class="s5">'text'</span><span class="s1">]) &gt; </span><span class="s3">0 </span><span class="s0">and </span><span class="s1">text_colour_state_str </span><span class="s0">in </span><span class="s1">self.theming:</span>
+                <span class="s1">text_surface = render_white_text_alpha_black_bg(font=self.theming[</span><span class="s5">'font'</span><span class="s1">]</span><span class="s0">,</span>
+                                                                <span class="s1">text=self.theming[</span><span class="s5">'text'</span><span class="s1">])</span>
+                <span class="s0">if </span><span class="s1">isinstance(self.theming[text_colour_state_str]</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+                    <span class="s1">self.theming[text_colour_state_str].apply_gradient_to_surface(text_surface)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">apply_colour_to_surface(self.theming[text_colour_state_str]</span><span class="s0">, </span><span class="s1">text_surface)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">text_surface = </span><span class="s0">None</span>
+
+            <span class="s0">if </span><span class="s5">'text_shadow' </span><span class="s0">in </span><span class="s1">self.theming:</span>
+                <span class="s1">text_shadow = render_white_text_alpha_black_bg(font=self.theming[</span><span class="s5">'font'</span><span class="s1">]</span><span class="s0">,</span>
+                                                               <span class="s1">text=self.theming[</span><span class="s5">'text'</span><span class="s1">])</span>
+                <span class="s1">apply_colour_to_surface(self.theming[</span><span class="s5">'text_shadow'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">text_shadow)</span>
+
+                <span class="s1">basic_blit(self.states[state_str].surface</span><span class="s0">, </span><span class="s1">text_shadow</span><span class="s0">,</span>
+                           <span class="s1">(self.aligned_text_rect.x</span><span class="s0">,</span>
+                            <span class="s1">self.aligned_text_rect.y + </span><span class="s3">1</span><span class="s1">))</span>
+                <span class="s1">basic_blit(self.states[state_str].surface</span><span class="s0">, </span><span class="s1">text_shadow</span><span class="s0">,</span>
+                           <span class="s1">(self.aligned_text_rect.x</span><span class="s0">,</span>
+                            <span class="s1">self.aligned_text_rect.y - </span><span class="s3">1</span><span class="s1">))</span>
+                <span class="s1">basic_blit(self.states[state_str].surface</span><span class="s0">, </span><span class="s1">text_shadow</span><span class="s0">,</span>
+                           <span class="s1">(self.aligned_text_rect.x + </span><span class="s3">1</span><span class="s0">,</span>
+                            <span class="s1">self.aligned_text_rect.y))</span>
+                <span class="s1">basic_blit(self.states[state_str].surface</span><span class="s0">, </span><span class="s1">text_shadow</span><span class="s0">,</span>
+                           <span class="s1">(self.aligned_text_rect.x - </span><span class="s3">1</span><span class="s0">,</span>
+                            <span class="s1">self.aligned_text_rect.y))</span>
+
+            <span class="s0">if </span><span class="s1">text_surface </span><span class="s0">is not None and </span><span class="s1">self.aligned_text_rect </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">basic_blit(self.states[state_str].surface</span><span class="s0">,</span>
+                           <span class="s1">text_surface</span><span class="s0">,</span>
+                           <span class="s1">self.aligned_text_rect)</span>
+
+    <span class="s0">def </span><span class="s1">redraw_state(self</span><span class="s0">, </span><span class="s1">state_str: str):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        This method is declared for derived classes to implement but has no default implementation. 
+ 
+        :param state_str: The ID/name of the state to redraw. 
+ 
+        &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">clean_up_temp_shapes(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        This method is declared for derived classes to implement but has no default implementation. 
+        &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">collide_point(self</span><span class="s0">, </span><span class="s1">point: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                         <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                         <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        This method is declared for derived classes to implement but has no default implementation. 
+ 
+        :param point: A point to collide with this shape. 
+ 
+        &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">set_position(self</span><span class="s0">, </span><span class="s1">point: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                        <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                        <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        This method is declared for derived classes to implement but has no default implementation. 
+ 
+        :param point: A point to set this shapes position to. 
+ 
+        &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">set_dimensions(self</span><span class="s0">, </span><span class="s1">dimensions: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        This method is declared for derived classes to implement but has no default implementation. 
+ 
+        :param dimensions: The new dimensions for our shape. 
+ 
+        &quot;&quot;&quot;</span>
+</pre>
+</body>
+</html>

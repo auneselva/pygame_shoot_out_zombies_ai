@@ -1,0 +1,394 @@
+<html>
+<head>
+<title>fx.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6897bb;}
+.s3 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+fx.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">pygame</span><span class="s0">, </span><span class="s1">random</span><span class="s0">, </span><span class="s1">thorpy</span>
+<span class="s0">from </span><span class="s1">pygame.math </span><span class="s0">import </span><span class="s1">Vector2 </span><span class="s0">as </span><span class="s1">V2</span>
+
+
+<span class="s0">class </span><span class="s1">SmokeGenerator(object):</span>
+    <span class="s1">current_id = </span><span class="s2">0</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">samples</span><span class="s0">, </span><span class="s1">n</span><span class="s0">, </span><span class="s1">opac=</span><span class="s0">None, </span><span class="s1">mov=</span><span class="s2">1</span><span class="s0">, </span><span class="s1">grow=</span><span class="s2">0.5</span><span class="s0">, </span><span class="s1">prob=</span><span class="s2">0.2</span><span class="s0">, </span><span class="s1">i=</span><span class="s2">2</span><span class="s0">,</span>
+                    <span class="s1">color=</span><span class="s0">None, </span><span class="s1">alpha0=</span><span class="s2">255</span><span class="s0">, </span><span class="s1">size0=</span><span class="s0">None, </span><span class="s1">smoothscale=</span><span class="s0">False,</span>
+                    <span class="s1">copy=</span><span class="s0">False</span><span class="s1">):</span>
+        <span class="s0">if not </span><span class="s1">copy:</span>
+            <span class="s1">samples = [s.copy() </span><span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">samples]</span>
+        <span class="s1">self.samples = samples</span>
+        <span class="s1">self.n = n</span>
+        <span class="s1">opac = alpha0/n </span><span class="s0">if </span><span class="s1">opac </span><span class="s0">is None else </span><span class="s1">opac</span>
+        <span class="s1">self.opac = opac</span>
+        <span class="s1">self.mov = mov</span>
+        <span class="s1">self.grow = grow</span>
+        <span class="s1">self.prob = prob</span>
+        <span class="s1">self.alpha0 = alpha0</span>
+        <span class="s0">if not </span><span class="s1">copy:</span>
+            <span class="s0">if </span><span class="s1">smoothscale:</span>
+                <span class="s1">self.scale_func = pygame.transform.smoothscale</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.scale_func = pygame.transform.scale</span>
+            <span class="s0">if </span><span class="s1">isinstance(size0</span><span class="s0">, </span><span class="s1">tuple):</span>
+                <span class="s1">self.size0 = {s:size0 </span><span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">self.samples}</span>
+            <span class="s0">elif </span><span class="s1">size0 </span><span class="s0">is None</span><span class="s1">:</span>
+                <span class="s1">self.size0 = {s:s.get_size() </span><span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">self.samples}</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.size0 = size0</span>
+            <span class="s0">if </span><span class="s1">color </span><span class="s0">is not None</span><span class="s1">:</span><span class="s3">#for the moment colorkey is hardcoded to white, and color source to black</span>
+                <span class="s1">color=(</span><span class="s2">254</span><span class="s0">,</span><span class="s2">254</span><span class="s0">,</span><span class="s2">254</span><span class="s1">) </span><span class="s0">if </span><span class="s1">color == (</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s1">) </span><span class="s0">else </span><span class="s1">color</span>
+                <span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">self.samples:</span>
+                    <span class="s1">thorpy.change_color_on_img_ip(  img=s</span><span class="s0">,</span>
+                                                    <span class="s1">color_source=(</span><span class="s2">0</span><span class="s0">,</span><span class="s2">0</span><span class="s0">,</span><span class="s2">0</span><span class="s1">)</span><span class="s0">,</span>
+                                                    <span class="s1">color_target=color</span><span class="s0">,</span>
+                                                    <span class="s1">colorkey=(</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s1">))</span>
+            <span class="s1">self.imgs = self.build_imgs() </span><span class="s3">#on the form img[sample][time]</span>
+        <span class="s1">self.i = i</span>
+        <span class="s1">self.smokes = []</span>
+        <span class="s1">self.body = </span><span class="s0">None</span>
+        <span class="s1">self.id = SmokeGenerator.current_id</span>
+        <span class="s1">SmokeGenerator.current_id += </span><span class="s2">1</span>
+
+    <span class="s0">def </span><span class="s1">get_copy(self):</span>
+        <span class="s1">gen = SmokeGenerator(samples=self.samples</span><span class="s0">, </span><span class="s1">n=self.n</span><span class="s0">, </span><span class="s1">mov=self.mov</span><span class="s0">,</span>
+                                <span class="s1">prob=self.prob</span><span class="s0">, </span><span class="s1">i=self.i</span><span class="s0">, </span><span class="s1">copy=</span><span class="s0">True</span><span class="s1">)</span>
+        <span class="s1">gen.imgs = self.imgs</span>
+        <span class="s0">return </span><span class="s1">gen</span>
+
+    <span class="s0">def </span><span class="s1">build_imgs(self):</span>
+        <span class="s1">imgs = {}</span>
+        <span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">self.samples:</span>
+            <span class="s1">imgs[s] = []</span>
+            <span class="s1">w</span><span class="s0">,</span><span class="s1">h = self.size0[s]</span>
+            <span class="s1">alpha = self.alpha0</span>
+            <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(self.n):</span>
+                <span class="s1">w += self.grow</span>
+                <span class="s1">h += self.grow</span>
+                <span class="s1">alpha -= self.opac</span>
+                <span class="s1">img = self.scale_func(s</span><span class="s0">, </span><span class="s1">(int(w)</span><span class="s0">, </span><span class="s1">int(h)))</span>
+                <span class="s1">img.set_colorkey((</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s1">))</span>
+                <span class="s1">img.set_alpha(int(alpha))</span>
+                <span class="s1">imgs[s].append(img)</span>
+        <span class="s0">return </span><span class="s1">imgs</span>
+
+    <span class="s0">def </span><span class="s1">generate(self</span><span class="s0">, </span><span class="s1">q):</span>
+        <span class="s1">self.smokes.append(Smoke(V2(q)</span><span class="s0">, </span><span class="s1">self))</span>
+
+    <span class="s0">def </span><span class="s1">kill_old_elements(self):</span>
+<span class="s3">##        for s in self.smokes:</span>
+<span class="s3">##            parent.partial_blit(None, s.rect)</span>
+        <span class="s0">if </span><span class="s1">len(self.smokes) &gt; self.n:</span>
+            <span class="s1">self.smokes = self.smokes[</span><span class="s2">1</span><span class="s1">::]</span>
+
+    <span class="s0">def </span><span class="s1">draw(self</span><span class="s0">, </span><span class="s1">surface):</span>
+        <span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">self.smokes:</span>
+            <span class="s0">if not </span><span class="s1">s.dead:</span>
+                <span class="s1">surface.blit(s.img</span><span class="s0">, </span><span class="s1">s.rect.topleft)</span>
+
+<span class="s3">##    def draw(self, surface, parent):</span>
+<span class="s3">##        if len(self.smokes) &gt; self.n:</span>
+<span class="s3">##            self.smokes = self.smokes[1::]</span>
+<span class="s3">##        for s in self.smokes:</span>
+<span class="s3">##            parent.partial_blit(None, s.rect)</span>
+<span class="s3">##        for s in self.smokes:</span>
+<span class="s3">##            if not s.dead:</span>
+<span class="s3">##                surface.blit(s.img, s.rect.topleft)</span>
+
+    <span class="s0">def </span><span class="s1">update_physics(self</span><span class="s0">, </span><span class="s1">dq):</span>
+        <span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">self.smokes:</span>
+            <span class="s1">s.update_physics(dq)</span>
+
+    <span class="s0">def </span><span class="s1">add_to(self</span><span class="s0">, </span><span class="s1">body</span><span class="s0">, </span><span class="s1">position):</span>
+<span class="s3">##        body.fight.smokes.append((self, body, position))</span>
+<span class="s3">##        print(&quot;adding&quot;, self, body)</span>
+        <span class="s1">self.body = body</span>
+        <span class="s1">body.fight.smokes.insert(</span><span class="s2">0</span><span class="s0">, </span><span class="s1">(self</span><span class="s0">, </span><span class="s1">body</span><span class="s0">, </span><span class="s1">position))</span>
+
+
+<span class="s0">class </span><span class="s1">Smoke(object):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">q</span><span class="s0">, </span><span class="s1">generator):</span>
+        <span class="s1">self.q = q</span>
+        <span class="s1">self.t = </span><span class="s2">0</span>
+        <span class="s1">self.s = random.choice(generator.samples)</span>
+        <span class="s1">self.generator = generator</span>
+        <span class="s1">self.img = self.generator.imgs[self.s][</span><span class="s2">0</span><span class="s1">]</span>
+        <span class="s1">self.rect = self.img.get_rect()</span>
+        <span class="s1">self.rect.center = self.q</span>
+        <span class="s1">self.dead = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">update_physics(self</span><span class="s0">, </span><span class="s1">dq):</span>
+        <span class="s0">if </span><span class="s1">self.t &lt; self.generator.n:</span>
+            <span class="s1">self.img = self.generator.imgs[self.s][self.t]</span>
+            <span class="s0">if </span><span class="s1">random.random() &lt; self.generator.prob:</span>
+                <span class="s1">dx = random.randint(-self.generator.mov</span><span class="s0">,</span><span class="s1">self.generator.mov)</span>
+                <span class="s1">dy = random.randint(-self.generator.mov</span><span class="s0">,</span><span class="s1">self.generator.mov)</span>
+                <span class="s1">self.q += (dx</span><span class="s0">, </span><span class="s1">dy)</span>
+            <span class="s1">self.q += dq</span>
+            <span class="s1">self.rect = self.img.get_rect()</span>
+            <span class="s1">self.rect.center = self.q</span>
+            <span class="s1">self.t += </span><span class="s2">1</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.dead = </span><span class="s0">True</span>
+
+
+<span class="s0">class </span><span class="s1">FireSmokeGenerator(SmokeGenerator):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">samples</span><span class="s0">, </span><span class="s1">n</span><span class="s0">, </span><span class="s1">opac=</span><span class="s0">None, </span><span class="s1">mov=</span><span class="s2">1</span><span class="s0">, </span><span class="s1">grow=</span><span class="s2">0.5</span><span class="s0">, </span><span class="s1">prob=</span><span class="s2">0.2</span><span class="s0">, </span><span class="s1">i=</span><span class="s2">2</span><span class="s0">,</span>
+                    <span class="s1">color=</span><span class="s0">None, </span><span class="s1">alpha0=</span><span class="s2">255</span><span class="s0">, </span><span class="s1">size0=</span><span class="s0">None, </span><span class="s1">smoothscale=</span><span class="s0">False,</span>
+                    <span class="s1">copy=</span><span class="s0">False, </span><span class="s1">black_increase=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">self.black_increase = black_increase</span>
+        <span class="s0">if not </span><span class="s1">black_increase:</span>
+            <span class="s1">self.black_increase = </span><span class="s2">1. </span><span class="s1">/ n</span>
+        <span class="s0">if not </span><span class="s1">copy:</span>
+            <span class="s1">samples = [s.copy() </span><span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">samples]</span>
+        <span class="s1">self.samples = samples</span>
+        <span class="s1">self.n = n</span>
+        <span class="s1">opac = alpha0/n </span><span class="s0">if </span><span class="s1">opac </span><span class="s0">is None else </span><span class="s1">opac</span>
+        <span class="s1">self.opac = opac</span>
+        <span class="s1">self.mov = mov</span>
+        <span class="s1">self.grow = grow</span>
+        <span class="s1">self.prob = prob</span>
+        <span class="s1">self.alpha0 = alpha0</span>
+        <span class="s0">if not </span><span class="s1">copy:</span>
+            <span class="s0">if </span><span class="s1">smoothscale:</span>
+                <span class="s1">self.scale_func = pygame.transform.smoothscale</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.scale_func = pygame.transform.scale</span>
+            <span class="s0">if </span><span class="s1">isinstance(size0</span><span class="s0">, </span><span class="s1">tuple):</span>
+                <span class="s1">self.size0 = {s:size0 </span><span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">self.samples}</span>
+            <span class="s0">elif </span><span class="s1">size0 </span><span class="s0">is None</span><span class="s1">:</span>
+                <span class="s1">self.size0 = {s:s.get_size() </span><span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">self.samples}</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.size0 = size0</span>
+            <span class="s1">self.imgs = self.build_imgs() </span><span class="s3">#on the form img[sample][time]</span>
+        <span class="s1">self.i = i</span>
+        <span class="s1">self.smokes = []</span>
+        <span class="s1">self.body = </span><span class="s0">None</span>
+
+
+    <span class="s0">def </span><span class="s1">build_imgs(self):</span>
+        <span class="s0">from </span><span class="s1">thorpy._utils.colorscomputing </span><span class="s0">import </span><span class="s1">linear_combination</span>
+        <span class="s1">color1 = (</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s0">,</span><span class="s2">0</span><span class="s1">)</span>
+        <span class="s1">color2 = (</span><span class="s2">255</span><span class="s0">,</span><span class="s2">150</span><span class="s0">,</span><span class="s2">0</span><span class="s1">)</span>
+        <span class="s1">imgs = {}</span>
+        <span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">self.samples:</span>
+            <span class="s1">imgs[s]=[]</span>
+            <span class="s0">for </span><span class="s1">ic</span><span class="s0">, </span><span class="s1">c </span><span class="s0">in </span><span class="s1">enumerate([color1</span><span class="s0">, </span><span class="s1">color2]):</span>
+                <span class="s1">imgs[s].append([])</span>
+                <span class="s1">w</span><span class="s0">,</span><span class="s1">h = self.size0[s]</span>
+                <span class="s1">alpha = self.alpha0</span>
+                <span class="s1">k = </span><span class="s2">0.</span>
+                <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(self.n):</span>
+<span class="s3">##                    k += 0.01</span>
+<span class="s3">##                    k = (i-10)*1.1/self.n</span>
+                    <span class="s1">k += self.black_increase</span>
+                    <span class="s0">if </span><span class="s1">k &gt; </span><span class="s2">1.</span><span class="s1">: k=</span><span class="s2">1.</span>
+                    <span class="s0">elif </span><span class="s1">k &lt; </span><span class="s2">0</span><span class="s1">: k=</span><span class="s2">0.</span>
+                    <span class="s1">color_i = linear_combination((</span><span class="s2">0</span><span class="s0">,</span><span class="s2">0</span><span class="s0">,</span><span class="s2">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">c</span><span class="s0">, </span><span class="s1">k)</span>
+                    <span class="s1">local_s = s.copy()</span>
+                    <span class="s1">thorpy.change_color_on_img_ip(  img=local_s</span><span class="s0">,</span>
+                                                    <span class="s1">color_source=(</span><span class="s2">0</span><span class="s0">,</span><span class="s2">0</span><span class="s0">,</span><span class="s2">0</span><span class="s1">)</span><span class="s0">,</span>
+                                                    <span class="s1">color_target=color_i</span><span class="s0">,</span>
+                                                    <span class="s1">colorkey=(</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s1">))</span>
+                    <span class="s1">w += self.grow</span>
+                    <span class="s1">h += self.grow</span>
+                    <span class="s1">alpha -= self.opac</span>
+                    <span class="s1">img = self.scale_func(local_s</span><span class="s0">, </span><span class="s1">(int(w)</span><span class="s0">, </span><span class="s1">int(h)))</span>
+                    <span class="s1">img.set_colorkey((</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s1">))</span>
+                    <span class="s1">img.set_alpha(int(alpha))</span>
+                    <span class="s1">imgs[s][ic].append(img)</span>
+        <span class="s0">return </span><span class="s1">imgs</span>
+
+    <span class="s0">def </span><span class="s1">get_copy(self):</span>
+        <span class="s1">gen = FireSmokeGenerator(samples=self.samples</span><span class="s0">, </span><span class="s1">n=self.n</span><span class="s0">, </span><span class="s1">mov=self.mov</span><span class="s0">,</span>
+                                <span class="s1">prob=self.prob</span><span class="s0">, </span><span class="s1">i=self.i</span><span class="s0">, </span><span class="s1">copy=</span><span class="s0">True</span><span class="s1">)</span>
+        <span class="s1">gen.imgs = self.imgs</span>
+        <span class="s0">return </span><span class="s1">gen</span>
+
+    <span class="s0">def </span><span class="s1">generate(self</span><span class="s0">, </span><span class="s1">q):</span>
+        <span class="s1">self.smokes.append(FireSmoke(V2(q)</span><span class="s0">, </span><span class="s1">self))</span>
+
+<span class="s0">class </span><span class="s1">FireSmoke(Smoke):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">q</span><span class="s0">, </span><span class="s1">generator):</span>
+        <span class="s1">self.q = q</span>
+        <span class="s1">self.t = </span><span class="s2">0</span>
+        <span class="s1">self.s = random.choice(generator.samples)</span>
+        <span class="s1">self.c = random.randint(</span><span class="s2">0</span><span class="s0">,</span><span class="s2">1</span><span class="s1">)</span>
+        <span class="s1">self.generator = generator</span>
+        <span class="s1">self.img = self.generator.imgs[self.s][self.c][</span><span class="s2">0</span><span class="s1">]</span>
+        <span class="s1">self.rect = self.img.get_rect()</span>
+        <span class="s1">self.rect.center = self.q</span>
+        <span class="s1">self.dead = </span><span class="s0">False</span>
+
+    <span class="s0">def </span><span class="s1">update_physics(self</span><span class="s0">, </span><span class="s1">dq):</span>
+        <span class="s0">if </span><span class="s1">self.t &lt; self.generator.n:</span>
+            <span class="s1">self.img = self.generator.imgs[self.s][self.c][self.t]</span>
+            <span class="s0">if </span><span class="s1">random.random() &lt; self.generator.prob:</span>
+                <span class="s1">dx = random.randint(-self.generator.mov</span><span class="s0">,</span><span class="s1">self.generator.mov)</span>
+                <span class="s1">dy = random.randint(-self.generator.mov</span><span class="s0">,</span><span class="s1">self.generator.mov)</span>
+                <span class="s1">self.q += (dx</span><span class="s0">, </span><span class="s1">dy)</span>
+            <span class="s1">self.q += dq</span>
+            <span class="s1">self.rect = self.img.get_rect()</span>
+            <span class="s1">self.rect.center = self.q</span>
+            <span class="s1">self.t += </span><span class="s2">1</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.dead = </span><span class="s0">True</span>
+
+
+<span class="s0">class </span><span class="s1">DebrisGenerator(object):</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">samples</span><span class="s0">, </span><span class="s1">color=</span><span class="s0">None, </span><span class="s1">size0=</span><span class="s0">None, </span><span class="s1">max_i=</span><span class="s2">300</span><span class="s0">, </span><span class="s1">copy=</span><span class="s0">False,</span>
+                    <span class="s1">imgmanagers=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">self.max_i = max_i</span>
+        <span class="s1">self.color = color</span>
+        <span class="s0">if </span><span class="s1">copy:</span>
+            <span class="s1">self.samples = samples</span>
+            <span class="s1">self.imgmanagers = imgmanagers</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">samples = [s.copy() </span><span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">samples]</span>
+            <span class="s1">self.samples = samples</span>
+            <span class="s0">if </span><span class="s1">isinstance(size0</span><span class="s0">, </span><span class="s1">tuple):</span>
+                <span class="s1">self.size0 = {s:size0 </span><span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">self.samples}</span>
+            <span class="s0">elif </span><span class="s1">size0 </span><span class="s0">is None</span><span class="s1">:</span>
+                <span class="s1">self.size0 = {s:s.get_size() </span><span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">self.samples}</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.size0 = size0</span>
+<span class="s3">##            if color is not None:#for the moment colorkey is hardcoded to white, and color source to black</span>
+<span class="s3">##                color=(254,254,254) if color == (255,255,255) else color</span>
+<span class="s3">##                for s in self.samples:</span>
+<span class="s3">##                    thorpy.change_color_on_img_ip(  img=s,</span>
+<span class="s3">##                                                    color_source=(0,0,0),</span>
+<span class="s3">##                                                    color_target=color,</span>
+<span class="s3">##                                                    colorkey=(255,255,255))</span>
+            <span class="s1">self.imgmanagers = {s:ImgManager(s) </span><span class="s0">for </span><span class="s1">s </span><span class="s0">in </span><span class="s1">self.samples}</span>
+        <span class="s1">self.debris = []</span>
+
+    <span class="s0">def </span><span class="s1">generate(self</span><span class="s0">, </span><span class="s1">q</span><span class="s0">, </span><span class="s1">n</span><span class="s0">, </span><span class="s1">v_range</span><span class="s0">, </span><span class="s1">omega_range</span><span class="s0">, </span><span class="s1">angle_range):</span>
+        <span class="s1">angle_range = (angle_range[</span><span class="s2">0</span><span class="s1">]*</span><span class="s2">100</span><span class="s0">, </span><span class="s1">angle_range[</span><span class="s2">1</span><span class="s1">]*</span><span class="s2">100</span><span class="s1">)</span>
+        <span class="s1">v_range = (v_range[</span><span class="s2">0</span><span class="s1">]*</span><span class="s2">100</span><span class="s0">, </span><span class="s1">v_range[</span><span class="s2">1</span><span class="s1">]*</span><span class="s2">100</span><span class="s1">)</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(n):</span>
+            <span class="s1">angle = random.randint(angle_range[</span><span class="s2">0</span><span class="s1">]</span><span class="s0">,</span><span class="s1">angle_range[</span><span class="s2">1</span><span class="s1">])/</span><span class="s2">100.</span>
+            <span class="s1">velocity = random.randint(v_range[</span><span class="s2">0</span><span class="s1">]</span><span class="s0">,</span><span class="s1">v_range[</span><span class="s2">1</span><span class="s1">])/</span><span class="s2">100.</span>
+            <span class="s1">omega = random.randint(omega_range[</span><span class="s2">0</span><span class="s1">]</span><span class="s0">,</span><span class="s1">omega_range[</span><span class="s2">1</span><span class="s1">])</span>
+            <span class="s1">v = V2(</span><span class="s2">0</span><span class="s0">,</span><span class="s1">velocity).rotate(angle)</span>
+<span class="s3">##            print(&quot;     ==&gt;&quot;, self.color, q)</span>
+            <span class="s1">self.debris.append(Debris(V2(q)</span><span class="s0">, </span><span class="s1">v</span><span class="s0">, </span><span class="s1">omega</span><span class="s0">, </span><span class="s1">self))</span>
+
+    <span class="s0">def </span><span class="s1">kill_old_elements(self</span><span class="s0">, </span><span class="s1">domain):</span>
+        <span class="s1">to_remove = []</span>
+        <span class="s0">for </span><span class="s1">d </span><span class="s0">in </span><span class="s1">self.debris:</span>
+            <span class="s0">if </span><span class="s1">d.i &gt; self.max_i </span><span class="s0">or not</span><span class="s1">(d.rect.colliderect(domain)):</span>
+                <span class="s1">to_remove.append(d)</span>
+<span class="s3">##            parent.partial_blit(None, d.rect)</span>
+        <span class="s0">for </span><span class="s1">d </span><span class="s0">in </span><span class="s1">to_remove:</span>
+            <span class="s1">self.debris.remove(d)</span>
+
+    <span class="s0">def </span><span class="s1">draw(self</span><span class="s0">, </span><span class="s1">surface):</span>
+        <span class="s0">for </span><span class="s1">d </span><span class="s0">in </span><span class="s1">self.debris:</span>
+            <span class="s1">surface.blit(d.img</span><span class="s0">, </span><span class="s1">d.rect.topleft)</span>
+
+    <span class="s0">def </span><span class="s1">update_physics(self</span><span class="s0">,</span><span class="s1">dt):</span>
+        <span class="s0">for </span><span class="s1">d </span><span class="s0">in </span><span class="s1">self.debris:</span>
+            <span class="s1">d.update_physics(dt)</span>
+
+    <span class="s0">def </span><span class="s1">add_to(self</span><span class="s0">, </span><span class="s1">vessel):</span>
+        <span class="s1">vessel.fight.debris.append((self</span><span class="s0">, </span><span class="s1">vessel))</span>
+
+    <span class="s0">def </span><span class="s1">get_copy(self):</span>
+        <span class="s1">gen = DebrisGenerator(samples=self.samples</span><span class="s0">, </span><span class="s1">imgmanagers=self.imgmanagers</span><span class="s0">,</span>
+                                <span class="s1">max_i=self.max_i</span><span class="s0">, </span><span class="s1">copy=</span><span class="s0">True</span><span class="s1">)</span>
+        <span class="s1">gen.color = self.color</span>
+        <span class="s0">return </span><span class="s1">gen</span>
+
+<span class="s0">class </span><span class="s1">Debris(object):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">q</span><span class="s0">, </span><span class="s1">v</span><span class="s0">, </span><span class="s1">omega</span><span class="s0">, </span><span class="s1">generator):</span>
+        <span class="s1">self.q = q</span>
+        <span class="s1">self.v = v </span><span class="s3">#constant</span>
+        <span class="s1">self.angle = random.randint(-</span><span class="s2">360</span><span class="s0">,</span><span class="s2">359</span><span class="s1">)</span>
+        <span class="s1">self.omega = omega</span>
+        <span class="s1">self.s = random.choice(generator.samples)</span>
+        <span class="s1">self.generator = generator</span>
+        <span class="s1">self.img = self.generator.imgmanagers[self.s].imgs[int(self.angle)]</span>
+        <span class="s1">self.rect = self.img.get_rect()</span>
+        <span class="s1">self.rect.center = self.q</span>
+        <span class="s1">self.i = </span><span class="s2">0</span>
+
+    <span class="s0">def </span><span class="s1">update_physics(self</span><span class="s0">,</span><span class="s1">dt):</span>
+        <span class="s1">self.angle = (self.angle+self.omega*dt)%</span><span class="s2">360</span>
+        <span class="s1">self.q += self.v*dt</span>
+        <span class="s1">self.img = self.generator.imgmanagers[self.s].imgs[int(self.angle)]</span>
+        <span class="s1">self.rect = self.img.get_rect()</span>
+        <span class="s1">self.rect.center = self.q</span>
+        <span class="s1">self.i += </span><span class="s2">1</span>
+
+<span class="s0">class </span><span class="s1">ImgManager(object):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">img):</span>
+        <span class="s1">self.img = img</span>
+        <span class="s1">self.imgs = self.build_imgs()</span>
+
+    <span class="s0">def </span><span class="s1">build_imgs(self):</span>
+        <span class="s1">imgs = {}</span>
+        <span class="s0">for </span><span class="s1">angle </span><span class="s0">in </span><span class="s1">range(-</span><span class="s2">360</span><span class="s0">, </span><span class="s2">360</span><span class="s1">):</span>
+            <span class="s1">img = pygame.transform.rotate(self.img</span><span class="s0">, </span><span class="s1">angle).convert()</span>
+            <span class="s1">img.set_colorkey((</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s1">))</span>
+            <span class="s1">imgs[angle] = img</span>
+        <span class="s0">return </span><span class="s1">imgs</span>
+
+<span class="s0">def </span><span class="s1">get_debris_generator(duration</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">max_size</span><span class="s0">, </span><span class="s1">black_border=</span><span class="s0">True</span><span class="s1">):</span>
+    <span class="s1">samples = []</span>
+    <span class="s0">for </span><span class="s1">w </span><span class="s0">in </span><span class="s1">range(</span><span class="s2">1</span><span class="s0">,</span><span class="s1">max_size):</span>
+        <span class="s0">for </span><span class="s1">h </span><span class="s0">in </span><span class="s1">range(</span><span class="s2">1</span><span class="s0">,</span><span class="s1">max_size):</span>
+            <span class="s1">s = pygame.Surface(((w+</span><span class="s2">1</span><span class="s1">)*</span><span class="s2">1.5</span><span class="s0">,</span><span class="s1">)*</span><span class="s2">2</span><span class="s1">).convert()</span>
+            <span class="s1">s.fill((</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s1">))</span>
+            <span class="s1">r = pygame.Rect(</span><span class="s2">0</span><span class="s0">,</span><span class="s2">0</span><span class="s0">,</span><span class="s1">w</span><span class="s0">,</span><span class="s1">h)</span>
+            <span class="s1">r.center = s.get_rect().center</span>
+            <span class="s1">pygame.draw.rect(s</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">r)</span>
+            <span class="s0">if </span><span class="s1">black_border:</span>
+                <span class="s1">pygame.draw.rect(s</span><span class="s0">, </span><span class="s1">(</span><span class="s2">0</span><span class="s0">,</span><span class="s2">0</span><span class="s0">,</span><span class="s2">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">r</span><span class="s0">, </span><span class="s2">1</span><span class="s1">)</span>
+            <span class="s1">samples.append(s)</span>
+    <span class="s0">return </span><span class="s1">DebrisGenerator(samples</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">max_i=duration)</span>
+
+
+<span class="s0">def </span><span class="s1">get_smokegen(n=</span><span class="s2">15</span><span class="s0">, </span><span class="s1">color=(</span><span class="s2">99</span><span class="s0">,</span><span class="s2">99</span><span class="s0">,</span><span class="s2">99</span><span class="s1">)</span><span class="s0">, </span><span class="s1">grow=</span><span class="s2">0.4</span><span class="s0">, </span><span class="s1">i=</span><span class="s2">2</span><span class="s0">, </span><span class="s1">prob=</span><span class="s2">0.3</span><span class="s0">, </span><span class="s1">alpha0=</span><span class="s2">255</span><span class="s0">,</span>
+                    <span class="s1">size0=</span><span class="s0">None, </span><span class="s1">images=</span><span class="s0">None</span><span class="s1">):</span>
+    <span class="s0">if </span><span class="s1">images </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s1">images = [thorpy.load_image(thorpy.style.SMOKE_IMG</span><span class="s0">, </span><span class="s1">(</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s1">))]</span>
+    <span class="s0">return </span><span class="s1">SmokeGenerator(images</span><span class="s0">,</span>
+                                 <span class="s1">n=n</span><span class="s0">,</span>
+                                 <span class="s1">prob=prob</span><span class="s0">,</span>
+                                 <span class="s1">grow=grow</span><span class="s0">,</span>
+                                 <span class="s1">i=i</span><span class="s0">,</span>
+                                 <span class="s1">color=color</span><span class="s0">,</span>
+                                 <span class="s1">alpha0=alpha0</span><span class="s0">,</span>
+                                 <span class="s1">size0=size0)</span>
+
+
+<span class="s0">def </span><span class="s1">get_fire_smokegen(n=</span><span class="s2">50</span><span class="s0">, </span><span class="s1">color=(</span><span class="s2">255</span><span class="s0">,</span><span class="s2">200</span><span class="s0">,</span><span class="s2">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">grow=</span><span class="s2">0.4</span><span class="s0">, </span><span class="s1">i=</span><span class="s2">2</span><span class="s0">, </span><span class="s1">prob=</span><span class="s2">0.3</span><span class="s0">, </span><span class="s1">alpha0=</span><span class="s2">255</span><span class="s0">,</span>
+                    <span class="s1">size0=</span><span class="s0">None, </span><span class="s1">images=</span><span class="s0">None, </span><span class="s1">black_increase=</span><span class="s0">None</span><span class="s1">):</span>
+    <span class="s0">if </span><span class="s1">images </span><span class="s0">is None</span><span class="s1">:</span>
+        <span class="s1">images = [thorpy.load_image(thorpy.style.SMOKE_IMG</span><span class="s0">, </span><span class="s1">(</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s0">,</span><span class="s2">255</span><span class="s1">))]</span>
+    <span class="s0">return </span><span class="s1">FireSmokeGenerator(images</span><span class="s0">,</span>
+                                 <span class="s1">n=n</span><span class="s0">,</span>
+                                 <span class="s1">prob=prob</span><span class="s0">,</span>
+                                 <span class="s1">grow=grow</span><span class="s0">,</span>
+                                 <span class="s1">i=i</span><span class="s0">,</span>
+                                 <span class="s1">color=color</span><span class="s0">,</span>
+                                 <span class="s1">alpha0=alpha0</span><span class="s0">,</span>
+                                 <span class="s1">size0=size0</span><span class="s0">,</span>
+                                 <span class="s1">black_increase=black_increase)</span></pre>
+</body>
+</html>

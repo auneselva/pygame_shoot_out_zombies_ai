@@ -1,0 +1,308 @@
+<html>
+<head>
+<title>layered_gui_group.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+layered_gui_group.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">operator </span><span class="s0">import </span><span class="s1">truth</span>
+<span class="s0">from </span><span class="s1">abc </span><span class="s0">import </span><span class="s1">abstractmethod</span>
+
+<span class="s0">from </span><span class="s1">pygame.sprite </span><span class="s0">import </span><span class="s1">LayeredUpdates</span>
+
+
+<span class="s0">class </span><span class="s1">GUISprite:</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A sprite class specifically designed for the GUI. Very similar to pygame's 
+    DirtySprite but without the Dirty flag. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">*groups):</span>
+
+        <span class="s3"># referred to as special_flags in the documentation of Surface.blit</span>
+        <span class="s1">self._blendmode = </span><span class="s4">0</span>
+        <span class="s1">self._visible = </span><span class="s4">1</span>
+
+        <span class="s1">self._image = </span><span class="s0">None</span>
+        <span class="s1">self._rect = </span><span class="s0">None</span>
+
+        <span class="s1">self.blit_data = [self._image</span><span class="s0">, </span><span class="s1">self._rect</span><span class="s0">, None, </span><span class="s1">self._blendmode]</span>
+
+        <span class="s3"># Default 0 unless initialized differently.</span>
+        <span class="s1">self._layer = getattr(self</span><span class="s0">, </span><span class="s5">'_layer'</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+        <span class="s1">self.source_rect = </span><span class="s0">None</span>
+        <span class="s1">self.__g = {}  </span><span class="s3"># The groups the sprite is in</span>
+        <span class="s0">if </span><span class="s1">groups:</span>
+            <span class="s1">self.add(*groups)</span>
+
+    <span class="s0">def </span><span class="s1">add(self</span><span class="s0">, </span><span class="s1">*groups):</span>
+        <span class="s2">&quot;&quot;&quot;add the sprite to groups 
+ 
+        Sprite.add(*groups): return None 
+ 
+        Any number of Group instances can be passed as arguments. The 
+        Sprite will be added to the Groups it is not already a member of. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">has = self.__g.__contains__</span>
+        <span class="s0">for </span><span class="s1">group </span><span class="s0">in </span><span class="s1">groups:</span>
+            <span class="s0">if </span><span class="s1">hasattr(group</span><span class="s0">, </span><span class="s5">'_spritegroup'</span><span class="s1">):</span>
+                <span class="s0">if not </span><span class="s1">has(group):</span>
+                    <span class="s1">group.add_internal(self)</span>
+                    <span class="s1">self.add_internal(group)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.add(*group)</span>
+
+    <span class="s0">def </span><span class="s1">remove(self</span><span class="s0">, </span><span class="s1">*groups):</span>
+        <span class="s2">&quot;&quot;&quot;remove the sprite from groups 
+ 
+        Sprite.remove(*groups): return None 
+ 
+        Any number of Group instances can be passed as arguments. The Sprite 
+        will be removed from the Groups it is currently a member of. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">has = self.__g.__contains__</span>
+        <span class="s0">for </span><span class="s1">group </span><span class="s0">in </span><span class="s1">groups:</span>
+            <span class="s0">if </span><span class="s1">hasattr(group</span><span class="s0">, </span><span class="s5">'_spritegroup'</span><span class="s1">):</span>
+                <span class="s0">if </span><span class="s1">has(group):</span>
+                    <span class="s1">group.remove_internal(self)</span>
+                    <span class="s1">self.remove_internal(group)</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">self.remove(*group)</span>
+
+    <span class="s0">def </span><span class="s1">add_internal(self</span><span class="s0">, </span><span class="s1">group):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        For adding this sprite to a group internally. 
+ 
+        :param group: The group we are adding to. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.__g[group] = </span><span class="s4">0</span>
+
+    <span class="s0">def </span><span class="s1">remove_internal(self</span><span class="s0">, </span><span class="s1">group):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        For removing this sprite from a group internally. 
+ 
+        :param group: The group we are removing from. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">del </span><span class="s1">self.__g[group]</span>
+
+    <span class="s0">def </span><span class="s1">kill(self):</span>
+        <span class="s2">&quot;&quot;&quot;remove the Sprite from all Groups 
+ 
+        Sprite.kill(): return None 
+ 
+        The Sprite is removed from all the Groups that contain it. This won't 
+        change anything about the state of the Sprite. It is possible to 
+        continue to use the Sprite after this method has been called, including 
+        adding it to Groups. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">for </span><span class="s1">group </span><span class="s0">in </span><span class="s1">self.__g:</span>
+            <span class="s1">group.remove_internal(self)</span>
+        <span class="s1">self.__g.clear()</span>
+
+    <span class="s0">def </span><span class="s1">groups(self):</span>
+        <span class="s2">&quot;&quot;&quot;list of Groups that contain this Sprite 
+ 
+        Sprite.groups(): return group_list 
+ 
+        Returns a list of all the Groups that contain this Sprite. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">list(self.__g)</span>
+
+    <span class="s0">def </span><span class="s1">alive(self):</span>
+        <span class="s2">&quot;&quot;&quot;does the sprite belong to any groups 
+ 
+        Sprite.alive(): return bool 
+ 
+        Returns True when the Sprite belongs to one or more Groups. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">truth(self.__g)</span>
+
+    <span class="s0">def </span><span class="s1">_set_visible(self</span><span class="s0">, </span><span class="s1">val):</span>
+        <span class="s2">&quot;&quot;&quot;set the visible value (0 or 1) &quot;&quot;&quot;</span>
+        <span class="s1">self._visible = val</span>
+
+    <span class="s0">def </span><span class="s1">_get_visible(self):</span>
+        <span class="s2">&quot;&quot;&quot;return the visible value of that sprite&quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self._visible</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        A stub to override. 
+ 
+        :param time_delta the time passed in seconds between calls to this function. 
+        &quot;&quot;&quot;</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">visible(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        You can make this sprite disappear without removing it from the group 
+        assign 0 for invisible and 1 for visible 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self._get_visible()</span>
+
+    <span class="s1">@visible.setter</span>
+    <span class="s0">def </span><span class="s1">visible(self</span><span class="s0">, </span><span class="s1">value):</span>
+        <span class="s1">self._set_visible(value)</span>
+        <span class="s0">for </span><span class="s1">group </span><span class="s0">in </span><span class="s1">self.groups():</span>
+            <span class="s1">group.should_update_visibility = </span><span class="s0">True</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">layer(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Layer property can only be set before the sprite is added to a group, 
+        after that it is read only and a sprite's layer in a group should be 
+        set via the group's change_layer() method. 
+ 
+        Overwrites dynamic property from sprite class for speed. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self._layer</span>
+
+    <span class="s1">@layer.setter</span>
+    <span class="s0">def </span><span class="s1">layer(self</span><span class="s0">, </span><span class="s1">value):</span>
+        <span class="s0">if not </span><span class="s1">self.alive():</span>
+            <span class="s1">self._layer = value</span>
+        <span class="s3"># else:</span>
+        <span class="s3">#     raise AttributeError(&quot;Can't set layer directly after &quot;</span>
+        <span class="s3">#                          &quot;adding to group. Use &quot;</span>
+        <span class="s3">#                          &quot;group.change_layer(sprite, new_layer) &quot;</span>
+        <span class="s3">#                          &quot;instead.&quot;)</span>
+
+    <span class="s0">def </span><span class="s1">__repr__(self):</span>
+        <span class="s0">return </span><span class="s5">&quot;&lt;%s GUISprite(in %d groups)&gt;&quot; </span><span class="s1">% (self.__class__.__name__</span><span class="s0">,</span>
+                                                 <span class="s1">len(self.groups()))</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">image(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Layer property can only be set before the sprite is added to a group, 
+        after that it is read only and a sprite's layer in a group should be 
+        set via the group's change_layer() method. 
+ 
+        Overwrites dynamic property from sprite class for speed. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self._image</span>
+
+    <span class="s1">@image.setter</span>
+    <span class="s0">def </span><span class="s1">image(self</span><span class="s0">, </span><span class="s1">value):</span>
+        <span class="s0">if </span><span class="s1">self._image </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">self._image = value</span>
+            <span class="s1">self.blit_data[</span><span class="s4">0</span><span class="s1">] = self._image</span>
+            <span class="s0">for </span><span class="s1">group </span><span class="s0">in </span><span class="s1">self.groups():</span>
+                <span class="s1">group.should_update_visibility = </span><span class="s0">True</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self._image = value</span>
+            <span class="s1">self.blit_data[</span><span class="s4">0</span><span class="s1">] = self._image</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">rect(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Layer property can only be set before the sprite is added to a group, 
+        after that it is read only and a sprite's layer in a group should be 
+        set via the group's change_layer() method. 
+ 
+        Overwrites dynamic property from sprite class for speed. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self._rect</span>
+
+    <span class="s1">@rect.setter</span>
+    <span class="s0">def </span><span class="s1">rect(self</span><span class="s0">, </span><span class="s1">value):</span>
+        <span class="s1">self._rect = value</span>
+        <span class="s1">self.blit_data[</span><span class="s4">1</span><span class="s1">] = self._rect</span>
+
+    <span class="s1">@property</span>
+    <span class="s0">def </span><span class="s1">blendmode(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Layer property can only be set before the sprite is added to a group, 
+        after that it is read only and a sprite's layer in a group should be 
+        set via the group's change_layer() method. 
+ 
+        Overwrites dynamic property from sprite class for speed. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">return </span><span class="s1">self._blendmode</span>
+
+    <span class="s1">@blendmode.setter</span>
+    <span class="s0">def </span><span class="s1">blendmode(self</span><span class="s0">, </span><span class="s1">value):</span>
+        <span class="s1">self._blendmode = value</span>
+        <span class="s1">self.blit_data[</span><span class="s4">3</span><span class="s1">] = self._blendmode</span>
+
+
+<span class="s0">class </span><span class="s1">LayeredGUIGroup(LayeredUpdates):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A sprite group specifically for the GUI. Similar to pygame's LayeredDirty group but with the 
+    dirty flag stuff removed for simplicity and speed. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">*sprites):</span>
+        <span class="s2">&quot;&quot;&quot;initialize group. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">LayeredUpdates.__init__(self</span><span class="s0">, </span><span class="s1">*sprites)</span>
+        <span class="s1">self._clip = </span><span class="s0">None</span>
+        <span class="s1">self.visible = []</span>
+        <span class="s1">self.should_update_visibility = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">add_internal(self</span><span class="s0">, </span><span class="s1">sprite</span><span class="s0">, </span><span class="s1">layer=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot;Do not use this method directly. 
+ 
+        It is used by the group to add a sprite internally. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s3"># check if all needed attributes are set</span>
+        <span class="s0">if not </span><span class="s1">hasattr(sprite</span><span class="s0">, </span><span class="s5">'visible'</span><span class="s1">):</span>
+            <span class="s0">raise </span><span class="s1">AttributeError()</span>
+        <span class="s0">if not </span><span class="s1">hasattr(sprite</span><span class="s0">, </span><span class="s5">'blendmode'</span><span class="s1">):</span>
+            <span class="s0">raise </span><span class="s1">AttributeError()</span>
+        <span class="s0">if not </span><span class="s1">isinstance(sprite</span><span class="s0">, </span><span class="s1">GUISprite):</span>
+            <span class="s0">raise </span><span class="s1">TypeError()</span>
+
+        <span class="s1">LayeredUpdates.add_internal(self</span><span class="s0">, </span><span class="s1">sprite</span><span class="s0">, </span><span class="s1">layer)</span>
+        <span class="s1">self.should_update_visibility = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">remove_internal(self</span><span class="s0">, </span><span class="s1">sprite):</span>
+        <span class="s1">LayeredUpdates.remove_internal(self</span><span class="s0">, </span><span class="s1">sprite)</span>
+        <span class="s1">self.should_update_visibility = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">change_layer(self</span><span class="s0">, </span><span class="s1">sprite</span><span class="s0">, </span><span class="s1">new_layer):</span>
+        <span class="s1">LayeredUpdates.change_layer(self</span><span class="s0">, </span><span class="s1">sprite</span><span class="s0">, </span><span class="s1">new_layer)</span>
+        <span class="s1">self.should_update_visibility = </span><span class="s0">True</span>
+
+    <span class="s0">def </span><span class="s1">draw(self</span><span class="s0">, </span><span class="s1">surface):</span>
+        <span class="s2">&quot;&quot;&quot;draw all sprites in the right order onto the given surface 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">surface.blits(self.visible)</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">*args</span><span class="s0">, </span><span class="s1">**kwargs) -&gt; </span><span class="s0">None</span><span class="s1">:</span>
+        <span class="s0">if </span><span class="s1">self.should_update_visibility:</span>
+            <span class="s1">self.should_update_visibility = </span><span class="s0">False</span>
+            <span class="s1">self.update_visibility()</span>
+        <span class="s1">super().update(*args</span><span class="s0">, </span><span class="s1">**kwargs)</span>
+
+    <span class="s0">def </span><span class="s1">update_visibility(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Update the list of what is currently visible. 
+ 
+        Called when we add or remove elements from the group or when an element is hidden or shown. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.visible = [spr.blit_data</span>
+                        <span class="s0">for </span><span class="s1">spr </span><span class="s0">in </span><span class="s1">self._spritelist</span>
+                        <span class="s0">if </span><span class="s1">spr.image </span><span class="s0">is not None and </span><span class="s1">spr.visible]</span>
+</pre>
+</body>
+</html>

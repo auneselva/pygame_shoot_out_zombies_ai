@@ -1,0 +1,112 @@
+<html>
+<head>
+<title>paramsetter.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+paramsetter.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">thorpy.elements.box </span><span class="s0">import </span><span class="s1">Box</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">constants</span><span class="s0">, </span><span class="s1">style</span><span class="s0">, </span><span class="s1">functions</span>
+<span class="s0">from </span><span class="s1">thorpy.elements.launchers.dropdownlistlauncher </span><span class="s0">import </span><span class="s1">DropDownListLauncher</span>
+
+
+<span class="s0">class </span><span class="s1">ParamSetter(Box):</span>
+    <span class="s2">&quot;&quot;&quot;Put automatically defined elements in a box, in order to set variables. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">@staticmethod</span>
+    <span class="s0">def </span><span class="s1">make(varsets</span><span class="s0">, </span><span class="s1">elements=</span><span class="s0">None, </span><span class="s1">size=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">ps = ParamSetter(varsets</span><span class="s0">, </span><span class="s1">elements</span><span class="s0">, </span><span class="s1">size=size</span><span class="s0">, </span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s1">ps.finish()</span>
+        <span class="s0">return </span><span class="s1">ps</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">varsets</span><span class="s0">,</span>
+                 <span class="s1">elements=</span><span class="s0">None,</span>
+                 <span class="s1">normal_params=</span><span class="s0">None,</span>
+                 <span class="s1">size=</span><span class="s0">None,</span>
+                 <span class="s1">bar=</span><span class="s0">None,</span>
+                 <span class="s1">file_width=</span><span class="s0">None,</span>
+                 <span class="s1">finish=</span><span class="s0">True</span><span class="s1">):</span>
+        <span class="s0">if </span><span class="s1">file_width </span><span class="s0">is None</span><span class="s1">: file_width = style.FILE_WIDTH</span>
+<span class="s3">##        box_size = style.BOX_SIZE if box_size is None else box_size</span>
+        <span class="s1">self.scale_list = [DropDownListLauncher] </span><span class="s3">#!paramsetter</span>
+        <span class="s1">self.varsets = varsets</span>
+        <span class="s0">if not </span><span class="s1">isinstance(self.varsets</span><span class="s0">, </span><span class="s1">list):</span>
+            <span class="s1">self.varsets = [self.varsets]</span>
+        <span class="s1">self.handlers = self.get_handlers() </span><span class="s3">#below, will deny them so they know self</span>
+        <span class="s1">elements = [] </span><span class="s0">if </span><span class="s1">elements </span><span class="s0">is None else </span><span class="s1">elements</span>
+        <span class="s1">elements += self.handlers.values()</span>
+        <span class="s1">Box.__init__(self</span><span class="s0">, </span><span class="s1">elements=elements</span><span class="s0">, </span><span class="s1">normal_params=normal_params</span><span class="s0">,</span>
+                        <span class="s1">size=size</span><span class="s0">, </span><span class="s1">finish=</span><span class="s0">False</span><span class="s1">)</span>
+        <span class="s0">if </span><span class="s1">finish:</span>
+            <span class="s1">self.finish()</span>
+
+
+
+    <span class="s0">def </span><span class="s1">get_handlers(self):</span>
+        <span class="s2">&quot;&quot;&quot;Returns a dictionnary of pairs (i, varname) containing elements.&quot;&quot;&quot;</span>
+        <span class="s1">handlers = {}</span>
+        <span class="s0">for </span><span class="s1">(i</span><span class="s0">, </span><span class="s1">v) </span><span class="s0">in </span><span class="s1">enumerate(self.varsets):</span>
+            <span class="s1">v_handlers = v.get_handlers()</span>
+            <span class="s0">for </span><span class="s1">(varname</span><span class="s0">, </span><span class="s1">handler) </span><span class="s0">in </span><span class="s1">iter(v_handlers.items()):</span>
+                <span class="s1">handler_element</span><span class="s0">, </span><span class="s1">variable = handler</span>
+                <span class="s1">handler_element.finish()</span>
+                <span class="s0">if </span><span class="s1">handler_element.__class__ </span><span class="s0">in </span><span class="s1">self.scale_list:</span>
+                    <span class="s1">handler_element.scale_to_title()</span>
+                <span class="s0">if </span><span class="s1">variable.help_text:</span>
+                    <span class="s1">add_basic_help(handler_element</span><span class="s0">, </span><span class="s1">variable.help_text)</span>
+                <span class="s1">handlers[(i</span><span class="s0">, </span><span class="s1">varname)] = handler_element</span>
+        <span class="s0">return </span><span class="s1">handlers</span>
+
+
+<span class="s3">##    def reinit_handlers(self):</span>
+<span class="s3">##        &quot;&quot;&quot;Returns a dictionnary of pairs (i, varname) containing elements.&quot;&quot;&quot;</span>
+<span class="s3">##        handlers = {}</span>
+<span class="s3">##        for (i, v) in enumerate(self.varsets):</span>
+<span class="s3">##            v_handlers = v.get_handlers()</span>
+<span class="s3">##            for (varname, handler) in iter(v_handlers.items()):</span>
+<span class="s3">##                handler_element, variable = handler</span>
+<span class="s3">##                handler_element.finish()</span>
+<span class="s3">##                if variable.help_text:</span>
+<span class="s3">##                    add_basic_help(handler_element, variable.help_text)</span>
+<span class="s3">##                handlers[(i, varname)] = handler_element</span>
+<span class="s3">##        for key in self.handlers:</span>
+<span class="s3">##            old_handler = self.handlers[key]</span>
+<span class="s3">##            new_handler = handlers[key]</span>
+<span class="s3">##            self.replace_element(old_handler, new_handler)</span>
+<span class="s3">##        self.handlers = handlers</span>
+
+    <span class="s0">def </span><span class="s1">reinit_handlers(self):</span>
+        <span class="s2">&quot;&quot;&quot;Returns a dictionnary of pairs (i, varname) containing elements.&quot;&quot;&quot;</span>
+        <span class="s0">for </span><span class="s1">i</span><span class="s0">, </span><span class="s1">varname </span><span class="s0">in </span><span class="s1">self.handlers:</span>
+            <span class="s1">value = self.varsets[i].get_value(varname)</span>
+            <span class="s1">print(self.handlers[(i</span><span class="s0">,</span><span class="s1">varname)]</span><span class="s0">, </span><span class="s1">value)</span>
+            <span class="s1">self.handlers[(i</span><span class="s0">,</span><span class="s1">varname)].set_value(value)</span>
+
+
+    <span class="s0">def </span><span class="s1">save(self):</span>
+        <span class="s0">for </span><span class="s1">(varset</span><span class="s0">, </span><span class="s1">varname)</span><span class="s0">, </span><span class="s1">handler </span><span class="s0">in </span><span class="s1">iter(self.handlers.items()):</span>
+            <span class="s3"># si varset</span>
+            <span class="s1">self.varsets[varset].set_value(varname</span><span class="s0">, </span><span class="s1">handler.get_value())</span>
+            <span class="s3"># sinon si link</span>
+            <span class="s3"># sinon si fonction</span>
+
+<span class="s3">##    def reinit(self):</span>
+<span class="s3">##        for (varset, varname), handler in iter(self.handlers.items()):</span>
+<span class="s3">##            self.handlers.remove()</span>
+<span class="s3">##            # si varset</span>
+<span class="s3">##            self.varsets[varset].set_value(varname, handler.get_value())</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<html>
+<head>
+<title>reaction.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #808080;}
+.s4 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+reaction.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">thorpy.miscgui.constants </span><span class="s0">import </span><span class="s1">THORPY_EVENT</span><span class="s0">, </span><span class="s1">EVENT_TIME</span>
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">class </span><span class="s1">Reaction(object):</span>
+    <span class="s2">&quot;&quot;&quot;Reacts to a pygame event &lt;reacts_to&gt; by running &lt;reac_func&gt;. Designed 
+    to belong to a specific element, normally through element.reactions. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">reacts_to</span><span class="s0">, </span><span class="s1">reac_func</span><span class="s0">, </span><span class="s1">event_args=</span><span class="s0">None, </span><span class="s1">params=</span><span class="s0">None,</span>
+                 <span class="s1">reac_name=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        &lt;reacts_to&gt; : pygame event 
+        &lt;reac_func&gt; : function ro run 
+        &lt;event_args&gt; : args to filter the pygame event 
+        &lt;params&gt; : constant params for the function to run (not depending on 
+            the event. 
+        &lt;reac_name&gt; : the name of the reaction (optionnal). Reaction names that 
+            are int comprised in range(13) are reserved. Use REAC_USER + n for 
+            your nth reaction, or use any other structure than int. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if not </span><span class="s1">event_args:</span>
+            <span class="s1">event_args = {}</span>
+        <span class="s0">if not </span><span class="s1">params:</span>
+            <span class="s1">params = {}</span>
+        <span class="s1">self.reacts_to = reacts_to</span>
+        <span class="s1">self.event_args = event_args</span>
+        <span class="s1">self.reac_func = reac_func</span>
+        <span class="s1">self.params = params</span>
+        <span class="s1">self.reac_name = reac_name</span>
+
+    <span class="s0">def </span><span class="s1">_is_right_event(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s2">&quot;&quot;&quot;Returns True if &lt;event&gt; match the requirements for self.&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">event.type == self.reacts_to:</span>
+            <span class="s0">for </span><span class="s1">k </span><span class="s0">in </span><span class="s1">self.event_args.keys():</span>
+                <span class="s0">if </span><span class="s1">event.dict.get(k) != self.event_args[k]:  </span><span class="s3"># if has not arg</span>
+                    <span class="s0">return False</span>
+            <span class="s0">return True</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">_try_activation(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s2">&quot;&quot;&quot;Tests if has to react to &lt;event&gt; 
+        NB : the reac_func function shall always take event as argument&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self._is_right_event(event):</span>
+            <span class="s1">self.reac_func(event</span><span class="s0">, </span><span class="s1">**self.params)</span>
+
+<span class="s3">##    def __repr__(self):</span>
+<span class="s3">##        return &quot; &quot;.join([self.reac_name,self.reac_func.__repr__,str(self.reacts_to),str(self.event_args)])</span>
+
+<span class="s0">class </span><span class="s1">ConstantReaction(Reaction):</span>
+    <span class="s2">&quot;&quot;&quot;Reaction whose behaviour is not influed by event. See Reaction for more. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">_try_activation(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s2">&quot;&quot;&quot;Tests if has to react to &lt;event&gt;&quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self._is_right_event(event):</span>
+            <span class="s1">self.reac_func(**self.params)</span>
+
+
+<span class="s0">def </span><span class="s1">add_time_reaction(element</span><span class="s0">, </span><span class="s1">func</span><span class="s0">, </span><span class="s1">event_args=</span><span class="s0">None, </span><span class="s1">params=</span><span class="s0">None, </span><span class="s1">reac_name=</span><span class="s0">None</span><span class="s1">):</span>
+    <span class="s1">reac = ConstantReaction(THORPY_EVENT</span><span class="s0">, </span><span class="s1">func</span><span class="s0">, </span><span class="s1">{</span><span class="s4">&quot;id&quot;</span><span class="s1">:EVENT_TIME}</span><span class="s0">, </span><span class="s1">params</span><span class="s0">,</span>
+            <span class="s1">reac_name)</span>
+    <span class="s1">element.add_reaction(reac)</span>
+
+<span class="s0">def </span><span class="s1">add_keydown_reaction(element</span><span class="s0">, </span><span class="s1">key</span><span class="s0">, </span><span class="s1">func</span><span class="s0">, </span><span class="s1">event_args=</span><span class="s0">None, </span><span class="s1">params=</span><span class="s0">None,</span>
+                            <span class="s1">reac_name=</span><span class="s0">None</span><span class="s1">):</span>
+    <span class="s1">reac = ConstantReaction(pygame.KEYDOWN</span><span class="s0">, </span><span class="s1">func</span><span class="s0">, </span><span class="s1">{</span><span class="s4">&quot;key&quot;</span><span class="s1">:key}</span><span class="s0">, </span><span class="s1">params</span><span class="s0">,</span>
+            <span class="s1">reac_name)</span>
+    <span class="s1">element.add_reaction(reac)</span>
+
+<span class="s0">def </span><span class="s1">add_keyup_reaction(element</span><span class="s0">, </span><span class="s1">key</span><span class="s0">, </span><span class="s1">func</span><span class="s0">, </span><span class="s1">event_args=</span><span class="s0">None, </span><span class="s1">params=</span><span class="s0">None,</span>
+                            <span class="s1">reac_name=</span><span class="s0">None</span><span class="s1">):</span>
+    <span class="s1">reac = ConstantReaction(pygame.KEYUP</span><span class="s0">, </span><span class="s1">func</span><span class="s0">, </span><span class="s1">{</span><span class="s4">&quot;key&quot;</span><span class="s1">:key}</span><span class="s0">, </span><span class="s1">params</span><span class="s0">,</span>
+            <span class="s1">reac_name)</span>
+    <span class="s1">element.add_reaction(reac)</span>
+
+<span class="s0">def </span><span class="s1">add_mousemotion_reaction(element</span><span class="s0">, </span><span class="s1">func</span><span class="s0">, </span><span class="s1">event_args=</span><span class="s0">None, </span><span class="s1">params=</span><span class="s0">None,</span>
+                            <span class="s1">reac_name=</span><span class="s0">None</span><span class="s1">):</span>
+    <span class="s1">reac = ConstantReaction(pygame.KEYUP</span><span class="s0">, </span><span class="s1">func</span><span class="s0">, </span><span class="s1">{</span><span class="s4">&quot;key&quot;</span><span class="s1">:key}</span><span class="s0">, </span><span class="s1">params</span><span class="s0">,</span>
+            <span class="s1">reac_name)</span>
+    <span class="s1">element.add_reaction(reac)</span>
+
+
+</pre>
+</body>
+</html>

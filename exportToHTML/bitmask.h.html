@@ -1,0 +1,169 @@
+<html>
+<head>
+<title>bitmask.h</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6a8759;}
+.s4 { color: #ab51ba;}
+.s5 { color: #6897bb;}
+.s6 { color: #0f9795;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+bitmask.h</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+    Bitmask 1.7 - A pixel-perfect collision detection library. 
+ 
+    Copyright (C) 2002-2005 Ulf Ekstrom except for the bitcount 
+    function which is copyright (C) Donald W. Gillies, 1992. 
+ 
+    This library is free software; you can redistribute it and/or 
+    modify it under the terms of the GNU Library General Public 
+    License as published by the Free Software Foundation; either 
+    version 2 of the License, or (at your option) any later version. 
+ 
+    This library is distributed in the hope that it will be useful, 
+    but WITHOUT ANY WARRANTY; without even the implied warranty of 
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+    Library General Public License for more details. 
+ 
+    You should have received a copy of the GNU Library General Public 
+    License along with this library; if not, write to the Free 
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+ */</span>
+<span class="s2">#ifndef </span><span class="s1">BITMASK_H</span>
+<span class="s2">#define </span><span class="s1">BITMASK_H</span>
+
+<span class="s2">#ifdef </span><span class="s1">__cplusplus</span>
+<span class="s2">extern </span><span class="s3">&quot;C&quot; </span><span class="s1">{</span>
+<span class="s2">#endif</span>
+
+<span class="s2">#include </span><span class="s1">&lt;limits.h&gt;</span>
+<span class="s0">/* Define INLINE for different compilers.  If your compiler does not 
+   support inlining then there might be a performance hit in 
+   bitmask_overlap_area(). 
+*/</span>
+<span class="s2">#ifndef </span><span class="s1">INLINE</span>
+<span class="s1"># ifdef __GNUC__</span>
+<span class="s1">#  define INLINE </span><span class="s4">inline</span>
+<span class="s1"># </span><span class="s2">else</span>
+<span class="s1">#  ifdef _MSC_VER</span>
+<span class="s1">#   define INLINE __inline</span>
+<span class="s1">#  </span><span class="s2">else</span>
+<span class="s1">#   define INLINE</span>
+<span class="s1">#  endif</span>
+<span class="s1"># endif</span>
+<span class="s2">#endif</span>
+
+<span class="s2">#define </span><span class="s1">BITMASK_W </span><span class="s2">unsigned long int</span>
+<span class="s2">#define </span><span class="s1">BITMASK_W_LEN (</span><span class="s2">sizeof</span><span class="s1">(BITMASK_W)*CHAR_BIT)</span>
+<span class="s2">#define </span><span class="s1">BITMASK_W_MASK (BITMASK_W_LEN - </span><span class="s5">1</span><span class="s1">)</span>
+<span class="s2">#define </span><span class="s1">BITMASK_N(n) ((BITMASK_W)</span><span class="s5">1 </span><span class="s1">&lt;&lt; (n))</span>
+
+<span class="s2">typedef struct </span><span class="s1">bitmask</span>
+<span class="s1">{</span>
+  <span class="s2">int </span><span class="s1">w,h;</span>
+  <span class="s1">BITMASK_W bits[</span><span class="s5">1</span><span class="s1">];</span>
+<span class="s1">} bitmask_t;</span>
+
+<span class="s0">/* Creates a bitmask of width w and height h, where 
+   w and h must both be greater than or equal to 0. 
+   The mask is automatically cleared when created. 
+ */</span>
+<span class="s1">bitmask_t *bitmask_create(</span><span class="s2">int </span><span class="s1">w, </span><span class="s2">int </span><span class="s1">h);</span>
+
+<span class="s0">/* Frees all the memory allocated by bitmask_create for m. */</span>
+<span class="s2">void </span><span class="s1">bitmask_free(bitmask_t *m);</span>
+
+<span class="s0">/* Clears all bits in the mask */</span>
+<span class="s2">void </span><span class="s1">bitmask_clear(bitmask_t *m);</span>
+
+<span class="s0">/* Sets all bits in the mask */</span>
+<span class="s2">void </span><span class="s1">bitmask_fill(bitmask_t *m);</span>
+
+<span class="s0">/* Flips all bits in the mask */</span>
+<span class="s2">void </span><span class="s1">bitmask_invert(bitmask_t *m);</span>
+
+<span class="s0">/* Counts the bits in the mask */</span>
+<span class="s2">unsigned int </span><span class="s1">bitmask_count(bitmask_t *m);</span>
+
+<span class="s0">/* Returns nonzero if the bit at (x,y) is set.  Coordinates start at 
+   (0,0) */</span>
+<span class="s2">static </span><span class="s1">INLINE </span><span class="s2">int </span><span class="s1">bitmask_getbit(</span><span class="s2">const </span><span class="s1">bitmask_t *m, </span><span class="s2">int </span><span class="s1">x, </span><span class="s2">int </span><span class="s1">y)</span>
+<span class="s1">{</span>
+  <span class="s2">return </span><span class="s1">(m</span><span class="s6">-&gt;</span><span class="s1">bits[x/BITMASK_W_LEN*m</span><span class="s6">-&gt;</span><span class="s1">h + y] &amp; BITMASK_N(x &amp; BITMASK_W_MASK)) != </span><span class="s5">0</span><span class="s1">;</span>
+<span class="s1">}</span>
+
+<span class="s0">/* Sets the bit at (x,y) */</span>
+<span class="s2">static </span><span class="s1">INLINE </span><span class="s2">void </span><span class="s1">bitmask_setbit(bitmask_t *m, </span><span class="s2">int </span><span class="s1">x, </span><span class="s2">int </span><span class="s1">y)</span>
+<span class="s1">{</span>
+  <span class="s1">m</span><span class="s6">-&gt;</span><span class="s1">bits[x/BITMASK_W_LEN*m</span><span class="s6">-&gt;</span><span class="s1">h + y] |= BITMASK_N(x &amp; BITMASK_W_MASK);</span>
+<span class="s1">}</span>
+
+<span class="s0">/* Clears the bit at (x,y) */</span>
+<span class="s2">static </span><span class="s1">INLINE </span><span class="s2">void </span><span class="s1">bitmask_clearbit(bitmask_t *m, </span><span class="s2">int </span><span class="s1">x, </span><span class="s2">int </span><span class="s1">y)</span>
+<span class="s1">{</span>
+  <span class="s1">m</span><span class="s6">-&gt;</span><span class="s1">bits[x/BITMASK_W_LEN*m</span><span class="s6">-&gt;</span><span class="s1">h + y] &amp;= ~BITMASK_N(x &amp; BITMASK_W_MASK);</span>
+<span class="s1">}</span>
+
+<span class="s0">/* Returns nonzero if the masks overlap with the given offset. 
+   The overlap tests uses the following offsets (which may be negative): 
+ 
+   +----+----------.. 
+   |A   | yoffset 
+   |  +-+----------.. 
+   +--|B 
+   |xoffset 
+   |  | 
+   :  : 
+*/</span>
+<span class="s2">int </span><span class="s1">bitmask_overlap(</span><span class="s2">const </span><span class="s1">bitmask_t *a, </span><span class="s2">const </span><span class="s1">bitmask_t *b, </span><span class="s2">int </span><span class="s1">xoffset, </span><span class="s2">int </span><span class="s1">yoffset);</span>
+
+<span class="s0">/* Like bitmask_overlap(), but will also give a point of intersection. 
+   x and y are given in the coordinates of mask a, and are untouched 
+   if there is no overlap. */</span>
+<span class="s2">int </span><span class="s1">bitmask_overlap_pos(</span><span class="s2">const </span><span class="s1">bitmask_t *a, </span><span class="s2">const </span><span class="s1">bitmask_t *b,</span>
+                        <span class="s2">int </span><span class="s1">xoffset, </span><span class="s2">int </span><span class="s1">yoffset, </span><span class="s2">int </span><span class="s1">*x, </span><span class="s2">int </span><span class="s1">*y);</span>
+
+<span class="s0">/* Returns the number of overlapping 'pixels' */</span>
+<span class="s2">int </span><span class="s1">bitmask_overlap_area(</span><span class="s2">const </span><span class="s1">bitmask_t *a, </span><span class="s2">const </span><span class="s1">bitmask_t *b, </span><span class="s2">int </span><span class="s1">xoffset, </span><span class="s2">int </span><span class="s1">yoffset);</span>
+
+<span class="s0">/* Fills a mask with the overlap of two other masks. A bitwise AND. */</span>
+<span class="s2">void </span><span class="s1">bitmask_overlap_mask (</span><span class="s2">const </span><span class="s1">bitmask_t *a, </span><span class="s2">const </span><span class="s1">bitmask_t *b, bitmask_t *c, </span><span class="s2">int </span><span class="s1">xoffset, </span><span class="s2">int </span><span class="s1">yoffset);</span>
+
+<span class="s0">/* Draws mask b onto mask a (bitwise OR). Can be used to compose large 
+   (game background?) mask from several submasks, which may speed up 
+   the testing. */</span>
+
+<span class="s2">void </span><span class="s1">bitmask_draw(bitmask_t *a, </span><span class="s2">const </span><span class="s1">bitmask_t *b, </span><span class="s2">int </span><span class="s1">xoffset, </span><span class="s2">int </span><span class="s1">yoffset);</span>
+
+<span class="s2">void </span><span class="s1">bitmask_erase(bitmask_t *a, </span><span class="s2">const </span><span class="s1">bitmask_t *b, </span><span class="s2">int </span><span class="s1">xoffset, </span><span class="s2">int </span><span class="s1">yoffset);</span>
+
+<span class="s0">/* Return a new scaled bitmask, with dimensions w*h. The quality of the 
+   scaling may not be perfect for all circumstances, but it should 
+   be reasonable. If either w or h is 0 a clear 1x1 mask is returned. */</span>
+<span class="s1">bitmask_t *bitmask_scale(</span><span class="s2">const </span><span class="s1">bitmask_t *m, </span><span class="s2">int </span><span class="s1">w, </span><span class="s2">int </span><span class="s1">h);</span>
+
+<span class="s0">/* Convolve b into a, drawing the output into o, shifted by offset.  If offset 
+ * is 0, then the (x,y) bit will be set if and only if 
+ * bitmask_overlap(a, b, x - b-&gt;w - 1, y - b-&gt;h - 1) returns true. 
+ * 
+ * Modifies bits o[xoffset ... xoffset + a-&gt;w + b-&gt;w - 1) 
+ *                [yoffset ... yoffset + a-&gt;h + b-&gt;h - 1). */</span>
+<span class="s2">void </span><span class="s1">bitmask_convolve(</span><span class="s2">const </span><span class="s1">bitmask_t *a, </span><span class="s2">const </span><span class="s1">bitmask_t *b, bitmask_t *o, </span><span class="s2">int </span><span class="s1">xoffset, </span><span class="s2">int </span><span class="s1">yoffset);</span>
+
+<span class="s2">#ifdef </span><span class="s1">__cplusplus</span>
+<span class="s1">} </span><span class="s0">/* End of extern &quot;C&quot; { */</span>
+<span class="s2">#endif</span>
+
+<span class="s2">#endif</span>
+</pre>
+</body>
+</html>

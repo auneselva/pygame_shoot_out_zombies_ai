@@ -1,0 +1,50 @@
+<html>
+<head>
+<title>test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6897bb;}
+.s3 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">datetime</span>
+<span class="s0">from </span><span class="s1">.utils </span><span class="s0">import </span><span class="s1">format_rfc3339</span>
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s1">_string_types = (str</span><span class="s0">, </span><span class="s1">unicode)</span>
+    <span class="s1">_int_types = (int</span><span class="s0">, </span><span class="s1">long)</span>
+<span class="s0">except </span><span class="s1">NameError:</span>
+    <span class="s1">_string_types = str</span>
+    <span class="s1">_int_types = int</span>
+
+<span class="s0">def </span><span class="s1">translate_to_test(v):</span>
+    <span class="s0">if </span><span class="s1">isinstance(v</span><span class="s0">, </span><span class="s1">dict):</span>
+        <span class="s0">return </span><span class="s1">{ k: translate_to_test(v) </span><span class="s0">for </span><span class="s1">k</span><span class="s0">, </span><span class="s1">v </span><span class="s0">in </span><span class="s1">v.items() }</span>
+    <span class="s0">if </span><span class="s1">isinstance(v</span><span class="s0">, </span><span class="s1">list):</span>
+        <span class="s1">a = [translate_to_test(x) </span><span class="s0">for </span><span class="s1">x </span><span class="s0">in </span><span class="s1">v]</span>
+        <span class="s0">if </span><span class="s1">v </span><span class="s0">and </span><span class="s1">isinstance(v[</span><span class="s2">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">dict):</span>
+            <span class="s0">return </span><span class="s1">a</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s0">return </span><span class="s1">{</span><span class="s3">'type'</span><span class="s1">: </span><span class="s3">'array'</span><span class="s0">, </span><span class="s3">'value'</span><span class="s1">: a}</span>
+    <span class="s0">if </span><span class="s1">isinstance(v</span><span class="s0">, </span><span class="s1">datetime.datetime):</span>
+        <span class="s0">return </span><span class="s1">{</span><span class="s3">'type'</span><span class="s1">: </span><span class="s3">'datetime'</span><span class="s0">, </span><span class="s3">'value'</span><span class="s1">: format_rfc3339(v)}</span>
+    <span class="s0">if </span><span class="s1">isinstance(v</span><span class="s0">, </span><span class="s1">bool):</span>
+        <span class="s0">return </span><span class="s1">{</span><span class="s3">'type'</span><span class="s1">: </span><span class="s3">'bool'</span><span class="s0">, </span><span class="s3">'value'</span><span class="s1">: </span><span class="s3">'true' </span><span class="s0">if </span><span class="s1">v </span><span class="s0">else </span><span class="s3">'false'</span><span class="s1">}</span>
+    <span class="s0">if </span><span class="s1">isinstance(v</span><span class="s0">, </span><span class="s1">_int_types):</span>
+        <span class="s0">return </span><span class="s1">{</span><span class="s3">'type'</span><span class="s1">: </span><span class="s3">'integer'</span><span class="s0">, </span><span class="s3">'value'</span><span class="s1">: str(v)}</span>
+    <span class="s0">if </span><span class="s1">isinstance(v</span><span class="s0">, </span><span class="s1">float):</span>
+        <span class="s0">return </span><span class="s1">{</span><span class="s3">'type'</span><span class="s1">: </span><span class="s3">'float'</span><span class="s0">, </span><span class="s3">'value'</span><span class="s1">: </span><span class="s3">'{:.17}'</span><span class="s1">.format(v)}</span>
+    <span class="s0">if </span><span class="s1">isinstance(v</span><span class="s0">, </span><span class="s1">_string_types):</span>
+        <span class="s0">return </span><span class="s1">{</span><span class="s3">'type'</span><span class="s1">: </span><span class="s3">'string'</span><span class="s0">, </span><span class="s3">'value'</span><span class="s1">: v}</span>
+    <span class="s0">raise </span><span class="s1">RuntimeError(</span><span class="s3">'unexpected value: {!r}'</span><span class="s1">.format(v))</span>
+</pre>
+</body>
+</html>

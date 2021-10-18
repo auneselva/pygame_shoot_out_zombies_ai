@@ -1,0 +1,74 @@
+<html>
+<head>
+<title>commands.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6897bb;}
+.s3 { color: #6a8759;}
+.s4 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+commands.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">pygame</span>
+<span class="s0">import </span><span class="s1">thorpy</span>
+
+<span class="s0">def </span><span class="s1">writing():</span>
+    <span class="s1">thorpy.parameters.KEY_DELAY = </span><span class="s2">30</span>
+    <span class="s1">thorpy.parameters.KEY_INTERVAL = </span><span class="s2">100</span>
+    <span class="s1">pygame.key.set_repeat(</span><span class="s2">30</span><span class="s0">,</span><span class="s2">500</span><span class="s1">)</span>
+
+<span class="s0">def </span><span class="s1">playing(fps):</span>
+    <span class="s1">value = </span><span class="s2">1000</span><span class="s1">//fps</span>
+    <span class="s1">thorpy.parameters.KEY_DELAY = value</span>
+    <span class="s1">thorpy.parameters.KEY_INTERVAL = value</span>
+    <span class="s1">pygame.key.set_repeat(value</span><span class="s0">,</span><span class="s1">value)</span>
+
+<span class="s0">class </span><span class="s1">Commands:</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">element</span><span class="s0">, </span><span class="s1">delta_i=-</span><span class="s2">1</span><span class="s1">):</span>
+        <span class="s1">self.e = element</span>
+        <span class="s1">self._initialize()</span>
+        <span class="s1">self.last_key_action = -float(</span><span class="s3">&quot;inf&quot;</span><span class="s1">)</span>
+        <span class="s1">self.i = </span><span class="s2">0</span>
+        <span class="s1">self.delta_i = delta_i</span>
+        <span class="s1">self.cam_shift = [</span><span class="s2">0</span><span class="s0">,</span><span class="s2">0</span><span class="s1">]</span>
+        <span class="s1">self.reac = {}</span>
+        <span class="s1">self.refresh = </span><span class="s0">None</span>
+
+    <span class="s0">def </span><span class="s1">_initialize(self):</span>
+        <span class="s1">self.reac_keydown = thorpy.Reaction(pygame.KEYDOWN</span><span class="s0">, </span><span class="s1">self.func_keydown)</span>
+        <span class="s1">self.e.add_reaction(self.reac_keydown)</span>
+        <span class="s4">#</span>
+        <span class="s1">self.reac_time = thorpy.ConstantReaction(thorpy.constants.THORPY_EVENT</span><span class="s0">,</span>
+                                            <span class="s1">self.func_time</span><span class="s0">,</span>
+                                            <span class="s1">{</span><span class="s3">&quot;id&quot;</span><span class="s1">:thorpy.constants.EVENT_TIME})</span>
+        <span class="s1">self.e.add_reaction(self.reac_time)</span>
+
+    <span class="s0">def </span><span class="s1">func_keydown(self</span><span class="s0">, </span><span class="s1">e):</span>
+        <span class="s0">if </span><span class="s1">self.i &gt; self.last_key_action + self.delta_i:</span>
+            <span class="s1">self.last_key_action = self.i</span>
+            <span class="s1">reaction = self.reac.get(e.key)</span>
+            <span class="s0">if </span><span class="s1">reaction:</span>
+                <span class="s1">reaction()</span>
+
+    <span class="s0">def </span><span class="s1">func_time(self):</span>
+        <span class="s0">if </span><span class="s1">self.refresh:</span>
+            <span class="s1">self.refresh()</span>
+        <span class="s1">self.i += </span><span class="s2">1</span>
+
+    <span class="s0">def </span><span class="s1">add_reaction(self</span><span class="s0">, </span><span class="s1">key</span><span class="s0">, </span><span class="s1">func):</span>
+        <span class="s0">if </span><span class="s1">key </span><span class="s0">in </span><span class="s1">self.reac:</span>
+            <span class="s0">raise </span><span class="s1">Exception(</span><span class="s3">&quot;There is already a func for this key&quot;</span><span class="s1">)</span>
+        <span class="s1">self.reac[key] = func</span>
+
+    <span class="s0">def </span><span class="s1">default_func(self):</span>
+        <span class="s0">pass</span></pre>
+</body>
+</html>

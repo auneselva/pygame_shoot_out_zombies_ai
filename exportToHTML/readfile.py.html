@@ -1,0 +1,145 @@
+<html>
+<head>
+<title>readfile.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6a8759;}
+.s4 { color: #808080;}
+.s5 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+readfile.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Functions to handle files reading&quot;&quot;&quot;</span>
+<span class="s2">from </span><span class="s1">thorpy._utils.strhandler </span><span class="s2">import </span><span class="s1">convert_str</span><span class="s2">, </span><span class="s1">get_between_keys</span>
+
+<span class="s2">def </span><span class="s1">get_lines_as_list(filename</span><span class="s2">, </span><span class="s1">to_del=</span><span class="s3">'</span><span class="s2">\n</span><span class="s3">'</span><span class="s1">):</span>
+    <span class="s0">&quot;&quot;&quot;Returns all the lines of the file in a list&quot;&quot;&quot;</span>
+    <span class="s2">with </span><span class="s1">open(filename</span><span class="s2">, </span><span class="s3">&quot;r&quot;</span><span class="s1">) </span><span class="s2">as </span><span class="s1">f:</span>
+        <span class="s1">text = f.readlines()</span>
+    <span class="s1">f.close()</span>
+    <span class="s1">lines = list([])</span>
+    <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(len(text)):</span>
+        <span class="s1">lines.append(text[i].rstrip(to_del))</span>
+    <span class="s2">return </span><span class="s1">lines</span>
+
+<span class="s2">def </span><span class="s1">get_data_as_2d_array(filename</span><span class="s2">, </span><span class="s1">delimiter=</span><span class="s3">&quot; &quot;</span><span class="s2">, </span><span class="s1">to_del=</span><span class="s3">'</span><span class="s2">\n</span><span class="s3">'</span><span class="s1">): </span><span class="s4">#!convert (dernier argu) supprime</span>
+    <span class="s0">&quot;&quot;&quot;Suitable for data array&quot;&quot;&quot;</span>
+    <span class="s1">data = list([])</span>
+    <span class="s1">lines = get_lines_as_list(filename</span><span class="s2">, </span><span class="s1">to_del)</span>
+    <span class="s2">for </span><span class="s1">line </span><span class="s2">in </span><span class="s1">lines:</span>
+        <span class="s1">splitted = line.split(delimiter)</span>
+        <span class="s2">while </span><span class="s3">'' </span><span class="s2">in </span><span class="s1">splitted:</span>
+            <span class="s1">splitted.remove(</span><span class="s3">''</span><span class="s1">)</span>
+        <span class="s1">data.append(splitted)</span>
+    <span class="s2">return </span><span class="s1">data</span>
+
+<span class="s2">def </span><span class="s1">get_column_from_array(array</span><span class="s2">, </span><span class="s1">column</span><span class="s2">, </span><span class="s1">type_=float):</span>
+    <span class="s1">l = list()</span>
+<span class="s4">##    print len(array), len(array[0]), column</span>
+    <span class="s2">for </span><span class="s1">line </span><span class="s2">in </span><span class="s1">array:</span>
+        <span class="s2">if </span><span class="s1">line:</span>
+            <span class="s1">value = type_(line[column])</span>
+            <span class="s1">l.append(value)</span>
+    <span class="s2">return </span><span class="s1">l</span>
+
+<span class="s2">def </span><span class="s1">get_column_from_datafile(filename</span><span class="s2">, </span><span class="s1">column</span><span class="s2">, </span><span class="s1">sep=</span><span class="s3">&quot; &quot;</span><span class="s2">, </span><span class="s1">type_=float):</span>
+    <span class="s1">array = get_data_as_2d_array(filename</span><span class="s2">, </span><span class="s1">sep)</span>
+    <span class="s2">return </span><span class="s1">get_column_from_array(array</span><span class="s2">, </span><span class="s1">column</span><span class="s2">, </span><span class="s1">type_)</span>
+
+<span class="s2">def </span><span class="s1">get_data_name(filename</span><span class="s2">, </span><span class="s1">name</span><span class="s2">, </span><span class="s1">delimiter=</span><span class="s3">&quot; = &quot;</span><span class="s2">, </span><span class="s1">stop=</span><span class="s3">&quot; &quot;</span><span class="s1">):</span>
+    <span class="s1">lines = get_lines_as_list(filename)</span>
+    <span class="s1">true_name = name + delimiter</span>
+    <span class="s2">for </span><span class="s1">line </span><span class="s2">in </span><span class="s1">lines:</span>
+        <span class="s2">try</span><span class="s1">:</span>
+            <span class="s1">found = get_between_keys(line</span><span class="s2">, </span><span class="s1">true_name</span><span class="s2">, </span><span class="s1">stop)</span>
+            <span class="s2">return </span><span class="s1">found</span>
+        <span class="s2">except</span><span class="s1">:</span>
+            <span class="s2">pass</span>
+    <span class="s2">return </span><span class="s1">-</span><span class="s5">1</span>
+
+
+<span class="s2">class </span><span class="s1">ParamsLoader(object):</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">filename</span><span class="s2">, </span><span class="s1">attr</span><span class="s2">, </span><span class="s1">sep</span><span class="s2">, </span><span class="s1">comm</span><span class="s2">, </span><span class="s1">del_spaces=</span><span class="s2">True,</span>
+                    <span class="s1">del_comms=</span><span class="s2">True, </span><span class="s1">del_no_attr=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s0">&quot;&quot;&quot; 
+        &lt;attr&gt; : attributor (e.g &quot;=&quot;) 
+        &lt;sep&gt; : separator (e.g &quot;,&quot;) ; defines a new line 
+        &lt;comm&gt; : comment (e.g &quot;#&quot;) 
+        &lt;del_spaces&gt; : ignore all spaces 
+        &lt;del_comms&gt; : ignore all comments 
+        &lt;del_no_attr&gt; : ignore all line that don't contain &lt;attr&gt;&quot;&quot;&quot;</span>
+        <span class="s1">self.filename = filename</span>
+        <span class="s1">self.attr = attr</span>
+        <span class="s1">self.sep = sep</span>
+        <span class="s1">self.comm = comm</span>
+        <span class="s1">self.text = self.get_txt(del_spaces</span><span class="s2">, </span><span class="s1">del_comms</span><span class="s2">, </span><span class="s1">del_no_attr)</span>
+        <span class="s1">self.params = self.get_all_params()</span>
+
+    <span class="s2">def </span><span class="s1">get_txt(self</span><span class="s2">, </span><span class="s1">del_spaces</span><span class="s2">, </span><span class="s1">del_comms</span><span class="s2">, </span><span class="s1">del_no_attr):</span>
+        <span class="s1">text = get_lines_as_list(self.filename</span><span class="s2">, </span><span class="s3">&quot;&quot;</span><span class="s1">)</span>
+        <span class="s4"># 1</span>
+        <span class="s2">if </span><span class="s1">del_no_attr:</span>
+            <span class="s2">for </span><span class="s1">(numline</span><span class="s2">, </span><span class="s1">line) </span><span class="s2">in </span><span class="s1">enumerate(text):</span>
+                <span class="s2">if not</span><span class="s1">(self.attr </span><span class="s2">in </span><span class="s1">line):</span>
+                    <span class="s1">text.pop(numline)</span>
+        <span class="s4"># 2</span>
+        <span class="s2">if </span><span class="s1">del_comms:</span>
+            <span class="s2">for </span><span class="s1">numline </span><span class="s2">in </span><span class="s1">range(len(text)):</span>
+                <span class="s1">beg = text[numline].find(self.comm)</span>
+                <span class="s1">text[numline] = text[numline][:beg]</span>
+        <span class="s4"># 3</span>
+        <span class="s2">if </span><span class="s1">del_spaces:</span>
+            <span class="s2">for </span><span class="s1">numline </span><span class="s2">in </span><span class="s1">range(len(text)):</span>
+                <span class="s1">text[numline] = text[numline].replace(</span><span class="s3">&quot; &quot;</span><span class="s2">, </span><span class="s3">&quot;&quot;</span><span class="s1">)</span>
+        <span class="s4"># 4</span>
+        <span class="s2">for </span><span class="s1">(numline</span><span class="s2">, </span><span class="s1">line) </span><span class="s2">in </span><span class="s1">enumerate(text):</span>
+            <span class="s2">if </span><span class="s1">line.count(self.sep) &gt; </span><span class="s5">1</span><span class="s1">:</span>
+                <span class="s1">newlines = text[numline].split(self.sep)</span>
+                <span class="s1">text.pop(numline)</span>
+                <span class="s2">for </span><span class="s1">line </span><span class="s2">in </span><span class="s1">newlines:</span>
+                    <span class="s1">text.insert(</span><span class="s5">0</span><span class="s2">, </span><span class="s1">line)</span>
+        <span class="s4"># 5</span>
+        <span class="s2">while </span><span class="s3">&quot;&quot; </span><span class="s2">in </span><span class="s1">text:</span>
+            <span class="s1">text.remove(</span><span class="s3">&quot;&quot;</span><span class="s1">)</span>
+        <span class="s2">return </span><span class="s1">text</span>
+
+    <span class="s2">def </span><span class="s1">get_all_params(self</span><span class="s2">, </span><span class="s1">verbose=</span><span class="s2">True</span><span class="s1">):</span>
+        <span class="s1">params = dict()</span>
+        <span class="s2">for </span><span class="s1">line </span><span class="s2">in </span><span class="s1">self.text:</span>
+            <span class="s1">splitted = line.split(</span><span class="s3">&quot;=&quot;</span><span class="s1">)</span>
+            <span class="s2">if </span><span class="s1">len(splitted) == </span><span class="s5">2</span><span class="s1">:</span>
+                <span class="s2">if </span><span class="s1">verbose:</span>
+                    <span class="s2">if </span><span class="s1">splitted[</span><span class="s5">0</span><span class="s1">] </span><span class="s2">in </span><span class="s1">params:</span>
+                        <span class="s1">print(splitted[</span><span class="s5">0</span><span class="s1">] + </span><span class="s3">&quot; appears multiple time in file &quot; </span><span class="s1">+\</span>
+                                 <span class="s1">self.filename + </span><span class="s3">&quot; !&quot;</span><span class="s1">)</span>
+                <span class="s1">params[splitted[</span><span class="s5">0</span><span class="s1">]] = splitted[</span><span class="s5">1</span><span class="s1">]</span>
+        <span class="s2">return </span><span class="s1">params</span>
+
+    <span class="s2">def </span><span class="s1">get(self</span><span class="s2">, </span><span class="s1">param</span><span class="s2">, </span><span class="s1">type_=str</span><span class="s2">, </span><span class="s1">typ2=int):</span>
+        <span class="s2">if </span><span class="s1">param </span><span class="s2">in </span><span class="s1">self.params:</span>
+            <span class="s2">if </span><span class="s1">type_ == int:</span>
+                <span class="s1">value = float(self.params[param])</span>
+                <span class="s2">return </span><span class="s1">int(value)</span>
+            <span class="s2">elif </span><span class="s1">type_ == tuple </span><span class="s2">or </span><span class="s1">type_ == list:</span>
+                <span class="s1">values = self.params[param]</span>
+                <span class="s1">values = values.replace(</span><span class="s3">&quot;(&quot;</span><span class="s2">, </span><span class="s3">&quot;&quot;</span><span class="s1">).replace(</span><span class="s3">&quot;)&quot;</span><span class="s2">, </span><span class="s3">&quot;&quot;</span><span class="s1">).split(</span><span class="s3">&quot;,&quot;</span><span class="s1">)</span>
+                <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">range(len(values)):</span>
+                    <span class="s1">values[i] = convert_str(values[i]</span><span class="s2">, </span><span class="s1">typ2)</span>
+                <span class="s2">return </span><span class="s1">type_(values)</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s1">type_(self.params[param])</span>
+        <span class="s2">else</span><span class="s1">:</span>
+            <span class="s2">raise </span><span class="s1">Exception(param + </span><span class="s3">&quot; is not in file &quot; </span><span class="s1">+ self.filename)</span>
+
+</pre>
+</body>
+</html>

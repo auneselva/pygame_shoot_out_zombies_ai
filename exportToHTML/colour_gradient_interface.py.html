@@ -1,0 +1,45 @@
+<html>
+<head>
+<title>colour_gradient_interface.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+colour_gradient_interface.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">abc </span><span class="s0">import </span><span class="s1">ABCMeta</span><span class="s0">, </span><span class="s1">abstractmethod</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Union</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+
+<span class="s0">class </span><span class="s1">IColourGradientInterface(metaclass=ABCMeta):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A meta class that defines the interface that a colour gradient uses. 
+ 
+    Interfaces like this help us evade cyclical import problems by allowing us to define the 
+    actual manager class later on and have it make use of the classes that use the interface. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s1">@abstractmethod</span>
+    <span class="s0">def </span><span class="s1">apply_gradient_to_surface(self</span><span class="s0">, </span><span class="s1">input_surface: pygame.surface.Surface</span><span class="s0">,</span>
+                                  <span class="s1">rect: Union[pygame.Rect</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Applies this gradient to a specified input surface using blending multiplication. 
+        As a result this method works best when the input surface is a mostly white, stencil shape 
+        type surface. 
+ 
+        :param input_surface: 
+        :param rect: The rectangle on the surface to apply the gradient to. If None, applies to the 
+                     whole surface. 
+        &quot;&quot;&quot;</span>
+</pre>
+</body>
+</html>

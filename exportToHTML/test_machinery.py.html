@@ -1,0 +1,101 @@
+<html>
+<head>
+<title>test_machinery.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+test_machinery.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">inspect</span>
+<span class="s0">import </span><span class="s1">random</span>
+<span class="s0">import </span><span class="s1">re</span>
+<span class="s0">import </span><span class="s1">unittest</span>
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s0">from </span><span class="s1">StringIO </span><span class="s0">import </span><span class="s1">StringIO</span>
+<span class="s0">except </span><span class="s1">ImportError:</span>
+    <span class="s0">from </span><span class="s1">io </span><span class="s0">import </span><span class="s1">StringIO</span>
+
+<span class="s0">from </span><span class="s1">. </span><span class="s0">import </span><span class="s1">import_submodule</span>
+
+<span class="s0">class </span><span class="s1">PygameTestLoader(unittest.TestLoader):</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">randomize_tests=</span><span class="s0">False, </span><span class="s1">include_incomplete=</span><span class="s0">False,</span>
+                 <span class="s1">exclude=(</span><span class="s2">'interactive'</span><span class="s0">,</span><span class="s1">)):</span>
+        <span class="s1">super(PygameTestLoader</span><span class="s0">, </span><span class="s1">self).__init__()</span>
+        <span class="s1">self.randomize_tests = randomize_tests</span>
+
+        <span class="s0">if </span><span class="s1">exclude </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">self.exclude = set()</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.exclude = set(exclude)</span>
+
+        <span class="s0">if </span><span class="s1">include_incomplete:</span>
+            <span class="s1">self.testMethodPrefix = (</span><span class="s2">'test'</span><span class="s0">, </span><span class="s2">'todo_'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">getTestCaseNames(self</span><span class="s0">, </span><span class="s1">testCaseClass):</span>
+        <span class="s1">res = []</span>
+        <span class="s0">for </span><span class="s1">name </span><span class="s0">in </span><span class="s1">super(PygameTestLoader</span><span class="s0">, </span><span class="s1">self).getTestCaseNames(testCaseClass):</span>
+            <span class="s1">tags = get_tags(testCaseClass</span><span class="s0">, </span><span class="s1">getattr(testCaseClass</span><span class="s0">, </span><span class="s1">name))</span>
+            <span class="s0">if </span><span class="s1">self.exclude.isdisjoint(tags):</span>
+                <span class="s1">res.append(name)</span>
+
+        <span class="s0">if </span><span class="s1">self.randomize_tests:</span>
+            <span class="s1">random.shuffle(res)</span>
+
+        <span class="s0">return </span><span class="s1">res</span>
+
+
+<span class="s3"># Exclude by tags:</span>
+
+<span class="s1">TAGS_RE = re.compile(</span><span class="s2">r&quot;\|[tT]ags:(-?[ a-zA-Z,0-9_\n]+)\|&quot;</span><span class="s0">, </span><span class="s1">re.M)</span>
+
+<span class="s0">class </span><span class="s1">TestTags:</span>
+    <span class="s0">def </span><span class="s1">__init__(self):</span>
+        <span class="s1">self.memoized = {}</span>
+        <span class="s1">self.parent_modules = {}</span>
+
+    <span class="s0">def </span><span class="s1">get_parent_module(self</span><span class="s0">, </span><span class="s1">class_):</span>
+        <span class="s0">if </span><span class="s1">class_ </span><span class="s0">not in </span><span class="s1">self.parent_modules:</span>
+            <span class="s1">self.parent_modules[class_] = import_submodule(class_.__module__)</span>
+        <span class="s0">return </span><span class="s1">self.parent_modules[class_]</span>
+
+    <span class="s0">def </span><span class="s1">__call__(self</span><span class="s0">, </span><span class="s1">parent_class</span><span class="s0">, </span><span class="s1">meth):</span>
+        <span class="s1">key = (parent_class</span><span class="s0">, </span><span class="s1">meth.__name__)</span>
+        <span class="s0">if </span><span class="s1">key </span><span class="s0">not in </span><span class="s1">self.memoized:</span>
+            <span class="s1">parent_module = self.get_parent_module(parent_class)</span>
+
+            <span class="s1">module_tags = getattr(parent_module</span><span class="s0">, </span><span class="s2">'__tags__'</span><span class="s0">, </span><span class="s1">[])</span>
+            <span class="s1">class_tags  = getattr(parent_class</span><span class="s0">,  </span><span class="s2">'__tags__'</span><span class="s0">, </span><span class="s1">[])</span>
+
+            <span class="s1">tags = TAGS_RE.search(inspect.getdoc(meth) </span><span class="s0">or </span><span class="s2">''</span><span class="s1">)</span>
+            <span class="s0">if </span><span class="s1">tags: test_tags = [t.strip() </span><span class="s0">for </span><span class="s1">t </span><span class="s0">in </span><span class="s1">tags.group(</span><span class="s4">1</span><span class="s1">).split(</span><span class="s2">','</span><span class="s1">)]</span>
+            <span class="s0">else</span><span class="s1">:    test_tags = []</span>
+
+            <span class="s1">combined = set()</span>
+            <span class="s0">for </span><span class="s1">tags </span><span class="s0">in </span><span class="s1">(module_tags</span><span class="s0">, </span><span class="s1">class_tags</span><span class="s0">, </span><span class="s1">test_tags):</span>
+                <span class="s0">if not </span><span class="s1">tags: </span><span class="s0">continue</span>
+
+                <span class="s1">add    = set([t </span><span class="s0">for </span><span class="s1">t </span><span class="s0">in </span><span class="s1">tags </span><span class="s0">if not </span><span class="s1">t.startswith(</span><span class="s2">'-'</span><span class="s1">)])</span>
+                <span class="s1">remove = set([t[</span><span class="s4">1</span><span class="s1">:] </span><span class="s0">for </span><span class="s1">t </span><span class="s0">in </span><span class="s1">tags </span><span class="s0">if </span><span class="s1">t </span><span class="s0">not in </span><span class="s1">add])</span>
+
+                <span class="s0">if </span><span class="s1">add:     combined.update(add)</span>
+                <span class="s0">if </span><span class="s1">remove:  combined.difference_update(remove)</span>
+
+            <span class="s1">self.memoized[key] = combined</span>
+
+        <span class="s0">return </span><span class="s1">self.memoized[key]</span>
+
+<span class="s1">get_tags = TestTags()</span>
+</pre>
+</body>
+</html>

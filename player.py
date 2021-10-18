@@ -24,7 +24,7 @@ class Player(object):
         # let's assume mass is equal to the size
         self.mass = 75
 
-        self.hp = 100
+        self.hp = 10
         self.score = 0
         self.kills = 0
         self.flag = False

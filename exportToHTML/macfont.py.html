@@ -1,0 +1,157 @@
+<html>
+<head>
+<title>macfont.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+macfont.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+EXPERIMENTAL CODE! 
+ 
+Here we load a .TTF font file, and display it in 
+a basic pygame window. It demonstrates several of the 
+Font object attributes. Nothing exciting in here, but 
+it makes a great example for basic window, event, and 
+font management. 
+&quot;&quot;&quot;</span>
+
+
+<span class="s2">import </span><span class="s1">pygame</span>
+<span class="s2">import </span><span class="s1">math</span>
+<span class="s2">from </span><span class="s1">pygame.locals </span><span class="s2">import </span><span class="s1">*</span>
+<span class="s2">from </span><span class="s1">pygame </span><span class="s2">import </span><span class="s1">Surface</span>
+<span class="s2">from </span><span class="s1">pygame.surfarray </span><span class="s2">import </span><span class="s1">blit_array</span><span class="s2">, </span><span class="s1">make_surface</span><span class="s2">, </span><span class="s1">pixels3d</span><span class="s2">, </span><span class="s1">pixels2d</span>
+<span class="s2">import </span><span class="s1">Numeric</span>
+
+<span class="s2">from </span><span class="s1">Foundation </span><span class="s2">import </span><span class="s1">*</span>
+<span class="s2">from </span><span class="s1">AppKit </span><span class="s2">import </span><span class="s1">*</span>
+
+<span class="s2">def </span><span class="s1">_getColor(color=</span><span class="s2">None</span><span class="s1">):</span>
+    <span class="s2">if </span><span class="s1">color </span><span class="s2">is None</span><span class="s1">:</span>
+        <span class="s2">return </span><span class="s1">NSColor.clearColor()</span>
+    <span class="s1">div255 = (</span><span class="s3">0.00390625</span><span class="s1">).__mul__</span>
+    <span class="s2">if </span><span class="s1">len(color) == </span><span class="s3">3</span><span class="s1">:</span>
+        <span class="s1">color = tuple(color) + (</span><span class="s3">255.0</span><span class="s2">,</span><span class="s1">)</span>
+    <span class="s2">return </span><span class="s1">NSColor.colorWithDeviceRed_green_blue_alpha_(*map(div255</span><span class="s2">, </span><span class="s1">color))</span>
+
+<span class="s2">def </span><span class="s1">_getBitmapImageRep(size</span><span class="s2">, </span><span class="s1">hasAlpha=</span><span class="s2">True</span><span class="s1">):</span>
+    <span class="s1">width</span><span class="s2">, </span><span class="s1">height = map(int</span><span class="s2">, </span><span class="s1">size)</span>
+    <span class="s2">return </span><span class="s1">NSBitmapImageRep.alloc().initWithBitmapDataPlanes_pixelsWide_pixelsHigh_bitsPerSample_samplesPerPixel_hasAlpha_isPlanar_colorSpaceName_bytesPerRow_bitsPerPixel_(</span><span class="s2">None, </span><span class="s1">width</span><span class="s2">, </span><span class="s1">height</span><span class="s2">, </span><span class="s3">8</span><span class="s2">, </span><span class="s3">4</span><span class="s2">, </span><span class="s1">hasAlpha</span><span class="s2">, False, </span><span class="s1">NSDeviceRGBColorSpace</span><span class="s2">, </span><span class="s1">width*</span><span class="s3">4</span><span class="s2">, </span><span class="s3">32</span><span class="s1">)</span>
+
+<span class="s2">class </span><span class="s1">SysFont(object):</span>
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">name</span><span class="s2">, </span><span class="s1">size):</span>
+        <span class="s1">self._font = NSFont.fontWithName_size_(name</span><span class="s2">, </span><span class="s1">size)</span>
+        <span class="s1">self._isBold = </span><span class="s2">False</span>
+        <span class="s1">self._isOblique = </span><span class="s2">False</span>
+        <span class="s1">self._isUnderline = </span><span class="s2">False</span>
+        <span class="s1">self._family = name</span>
+        <span class="s1">self._size = size</span>
+        <span class="s1">self._setupFont()</span>
+
+    <span class="s2">def </span><span class="s1">_setupFont(self):</span>
+        <span class="s1">name = self._family</span>
+        <span class="s2">if </span><span class="s1">self._isBold </span><span class="s2">or </span><span class="s1">self._isOblique:</span>
+            <span class="s1">name = </span><span class="s4">'%s-%s%s' </span><span class="s1">% (</span>
+                <span class="s1">name</span><span class="s2">,</span>
+                <span class="s1">self._isBold </span><span class="s2">and </span><span class="s4">'Bold' </span><span class="s2">or </span><span class="s4">''</span><span class="s2">,</span>
+                <span class="s1">self._isOblique </span><span class="s2">and </span><span class="s4">'Oblique' </span><span class="s2">or </span><span class="s4">''</span><span class="s1">)</span>
+        <span class="s1">self._font = NSFont.fontWithName_size_(name</span><span class="s2">, </span><span class="s1">self._size)</span>
+        <span class="s1">print (name</span><span class="s2">, </span><span class="s1">self._font)</span>
+        <span class="s2">if </span><span class="s1">self._font </span><span class="s2">is None</span><span class="s1">:</span>
+            <span class="s2">if </span><span class="s1">self._isBold:</span>
+                <span class="s1">self._font = NSFont.boldSystemFontOfSize(self._size)</span>
+            <span class="s2">else</span><span class="s1">:</span>
+                <span class="s1">self._font = NSFont.systemFontOfSize_(self._size)</span>
+        
+    <span class="s2">def </span><span class="s1">get_ascent(self):</span>
+        <span class="s2">return </span><span class="s1">self._font.ascender()</span>
+
+    <span class="s2">def </span><span class="s1">get_descent(self):</span>
+        <span class="s2">return </span><span class="s1">-self._font.descender()</span>
+
+    <span class="s2">def </span><span class="s1">get_bold(self):</span>
+        <span class="s2">return </span><span class="s1">self._isBold</span>
+
+    <span class="s2">def </span><span class="s1">get_height(self):</span>
+        <span class="s2">return </span><span class="s1">self._font.defaultLineHeightForFont()</span>
+
+    <span class="s2">def </span><span class="s1">get_italic(self):</span>
+        <span class="s2">return </span><span class="s1">self._isOblique</span>
+
+    <span class="s2">def </span><span class="s1">get_linesize(self):</span>
+        <span class="s2">pass</span>
+
+    <span class="s2">def </span><span class="s1">get_underline(self):</span>
+        <span class="s2">return </span><span class="s1">self._isUnderline</span>
+
+    <span class="s2">def </span><span class="s1">set_bold(self</span><span class="s2">, </span><span class="s1">isBold):</span>
+        <span class="s2">if </span><span class="s1">isBold != self._isBold:</span>
+            <span class="s1">self._isBold = isBold</span>
+            <span class="s1">self._setupFont()</span>
+
+    <span class="s2">def </span><span class="s1">set_italic(self</span><span class="s2">, </span><span class="s1">isOblique):</span>
+        <span class="s2">if </span><span class="s1">isOblique != self._isOblique:</span>
+            <span class="s1">self._isOblique = isOblique</span>
+            <span class="s1">self._setupFont()</span>
+
+    <span class="s2">def </span><span class="s1">set_underline(self</span><span class="s2">, </span><span class="s1">isUnderline):</span>
+        <span class="s1">self._isUnderline = isUnderline</span>
+        
+    <span class="s2">def </span><span class="s1">size(self</span><span class="s2">, </span><span class="s1">text):</span>
+        <span class="s2">return </span><span class="s1">tuple(map(int</span><span class="s2">,</span><span class="s1">map(math.ceil</span><span class="s2">, </span><span class="s1">NSString.sizeWithAttributes_(text</span><span class="s2">, </span><span class="s1">{</span>
+            <span class="s1">NSFontAttributeName: self._font</span><span class="s2">,</span>
+            <span class="s1">NSUnderlineStyleAttributeName: self._isUnderline </span><span class="s2">and </span><span class="s3">1.0 </span><span class="s2">or None,</span>
+        <span class="s1">}))))</span>
+
+    <span class="s2">def </span><span class="s1">render(self</span><span class="s2">, </span><span class="s1">text</span><span class="s2">, </span><span class="s1">antialias</span><span class="s2">, </span><span class="s1">forecolor</span><span class="s2">, </span><span class="s1">backcolor=(</span><span class="s3">0</span><span class="s2">,</span><span class="s3">0</span><span class="s2">,</span><span class="s3">0</span><span class="s2">,</span><span class="s3">255</span><span class="s1">)):</span>
+        <span class="s1">size = self.size(text)</span>
+        <span class="s1">img = NSImage.alloc().initWithSize_(size)</span>
+        <span class="s1">img.lockFocus()</span>
+
+        <span class="s1">NSString.drawAtPoint_withAttributes_(text</span><span class="s2">, </span><span class="s1">(</span><span class="s3">0.0</span><span class="s2">, </span><span class="s3">0.0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">{</span>
+            <span class="s1">NSFontAttributeName: self._font</span><span class="s2">,</span>
+            <span class="s1">NSUnderlineStyleAttributeName: self._isUnderline </span><span class="s2">and </span><span class="s3">1.0 </span><span class="s2">or None,</span>
+            <span class="s1">NSBackgroundColorAttributeName: backcolor </span><span class="s2">and </span><span class="s1">_getColor(backcolor) </span><span class="s2">or None,</span>
+            <span class="s1">NSForegroundColorAttributeName: _getColor(forecolor)</span><span class="s2">,</span>
+        <span class="s1">})</span>
+
+        <span class="s1">rep = NSBitmapImageRep.alloc().initWithFocusedViewRect_(((</span><span class="s3">0.0</span><span class="s2">, </span><span class="s3">0.0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">size))</span>
+        <span class="s1">img.unlockFocus()</span>
+        <span class="s2">if </span><span class="s1">rep.samplesPerPixel() == </span><span class="s3">4</span><span class="s1">:</span>
+            <span class="s1">s = Surface(size</span><span class="s2">, </span><span class="s1">SRCALPHA|SWSURFACE</span><span class="s2">, </span><span class="s3">32</span><span class="s2">, </span><span class="s1">[-</span><span class="s3">1</span><span class="s1">&lt;&lt;</span><span class="s3">24</span><span class="s2">,</span><span class="s3">0xff</span><span class="s1">&lt;&lt;</span><span class="s3">16</span><span class="s2">,</span><span class="s3">0xff</span><span class="s1">&lt;&lt;</span><span class="s3">8</span><span class="s2">,</span><span class="s3">0xff</span><span class="s1">])</span>
+            
+            <span class="s1">a = Numeric.reshape(Numeric.fromstring(rep.bitmapData()</span><span class="s2">, </span><span class="s1">typecode=Numeric.Int32)</span><span class="s2">, </span><span class="s1">(size[</span><span class="s3">1</span><span class="s1">]</span><span class="s2">, </span><span class="s1">size[</span><span class="s3">0</span><span class="s1">]))</span>
+            <span class="s1">blit_array(s</span><span class="s2">, </span><span class="s1">Numeric.swapaxes(a</span><span class="s2">,</span><span class="s3">0</span><span class="s2">,</span><span class="s3">1</span><span class="s1">))</span>
+            <span class="s2">return </span><span class="s1">s.convert_alpha()</span>
+
+<span class="s2">if </span><span class="s1">__name__==</span><span class="s4">'__main__'</span><span class="s1">:</span>
+    <span class="s1">pygame.init()</span>
+    <span class="s1">screen = pygame.display.set_mode((</span><span class="s3">600</span><span class="s2">, </span><span class="s3">600</span><span class="s1">))</span>
+    <span class="s1">s = SysFont(</span><span class="s4">'Gill Sans'</span><span class="s2">, </span><span class="s3">36</span><span class="s1">)</span>
+    <span class="s1">s.set_italic(</span><span class="s3">1</span><span class="s1">)</span>
+    <span class="s1">s.set_underline(</span><span class="s3">1</span><span class="s1">)</span>
+    <span class="s1">done = </span><span class="s2">False</span>
+    <span class="s1">surf = s.render(</span><span class="s4">'OS X Fonts!'</span><span class="s2">, True, </span><span class="s1">(</span><span class="s3">255</span><span class="s2">,</span><span class="s3">0</span><span class="s2">,</span><span class="s3">0</span><span class="s2">,</span><span class="s3">255</span><span class="s1">)</span><span class="s2">, </span><span class="s1">(</span><span class="s3">0</span><span class="s2">,</span><span class="s3">0</span><span class="s2">,</span><span class="s3">0</span><span class="s2">,</span><span class="s3">0</span><span class="s1">))</span>
+    <span class="s1">screen.blit(surf</span><span class="s2">, </span><span class="s1">(</span><span class="s3">0</span><span class="s2">,</span><span class="s3">0</span><span class="s1">))</span>
+    <span class="s1">screen.blit(surf</span><span class="s2">, </span><span class="s1">(</span><span class="s3">2</span><span class="s2">, </span><span class="s3">2</span><span class="s1">))</span>
+    <span class="s1">pygame.display.update()</span>
+    <span class="s2">while not </span><span class="s1">done:</span>
+
+        <span class="s2">for </span><span class="s1">e </span><span class="s2">in </span><span class="s1">pygame.event.get():</span>
+            <span class="s2">if </span><span class="s1">e.type == QUIT </span><span class="s2">or </span><span class="s1">(e.type == KEYUP </span><span class="s2">and </span><span class="s1">e.key == K_ESCAPE):</span>
+                <span class="s1">done = </span><span class="s2">True</span>
+                <span class="s2">break</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<html>
+<head>
+<title>constants_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+constants_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">unittest</span>
+<span class="s0">import </span><span class="s1">pygame.constants</span>
+
+
+<span class="s0">class </span><span class="s1">KmodTests(unittest.TestCase):</span>
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">setUpClass(cls):</span>
+        <span class="s1">cls.constants = [</span>
+            <span class="s2">'KMOD_NONE'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_LSHIFT'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_RSHIFT'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_LCTRL'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_RCTRL'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_LALT'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_RALT'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_LMETA'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_RMETA'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_NUM'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_CAPS'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_MODE'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_CTRL'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_SHIFT'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_ALT'</span><span class="s0">,</span>
+            <span class="s2">'KMOD_META'</span><span class="s0">,</span>
+        <span class="s1">]</span>
+        <span class="s0">if </span><span class="s1">pygame.get_sdl_version()[</span><span class="s3">0</span><span class="s1">] &gt;= </span><span class="s3">2</span><span class="s1">:</span>
+            <span class="s1">cls.constants.extend([</span>
+                <span class="s2">'KMOD_LGUI'</span><span class="s0">,</span>
+                <span class="s2">'KMOD_RGUI'</span><span class="s0">,</span>
+                <span class="s2">'KMOD_GUI'</span><span class="s0">,</span>
+            <span class="s1">])</span>
+
+    <span class="s0">def </span><span class="s1">test_kmod_existence(self):</span>
+        <span class="s0">for </span><span class="s1">k </span><span class="s0">in </span><span class="s1">self.constants:</span>
+            <span class="s1">self.assertTrue(hasattr(pygame.constants</span><span class="s0">, </span><span class="s1">k)</span><span class="s0">, </span><span class="s2">'missing constant {}'</span><span class="s1">.format(k))</span>
+
+    <span class="s0">def </span><span class="s1">test_kmod_types(self):</span>
+        <span class="s0">for </span><span class="s1">k </span><span class="s0">in </span><span class="s1">self.constants:</span>
+            <span class="s1">self.assertEqual(type(getattr(pygame.constants</span><span class="s0">, </span><span class="s1">k))</span><span class="s0">, </span><span class="s1">int)</span>
+
+<span class="s0">class </span><span class="s1">KeyConstantTests(unittest.TestCase):</span>
+    <span class="s0">def </span><span class="s1">test_letters(self):</span>
+        <span class="s0">for </span><span class="s1">c </span><span class="s0">in </span><span class="s1">range(ord(</span><span class="s2">'a'</span><span class="s1">)</span><span class="s0">, </span><span class="s1">ord(</span><span class="s2">'z'</span><span class="s1">) + </span><span class="s3">1</span><span class="s1">):</span>
+            <span class="s1">c = chr(c)</span>
+            <span class="s1">self.assertTrue(hasattr(pygame.constants</span><span class="s0">, </span><span class="s2">'K_%s' </span><span class="s1">% c)</span><span class="s0">,</span>
+                                    <span class="s2">'missing constant: K_%s' </span><span class="s1">% c)</span>
+
+<span class="s4">################################################################################</span>
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s2">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

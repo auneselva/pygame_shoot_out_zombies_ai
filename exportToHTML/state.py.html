@@ -1,0 +1,79 @@
+<html>
+<head>
+<title>state.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6a8759;}
+.s4 { color: #6897bb;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+state.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Couple of fusionner, position and ghost rect&quot;&quot;&quot;</span>
+
+<span class="s2">from </span><span class="s1">thorpy.miscgui._ghoststate </span><span class="s2">import </span><span class="s1">_GhostState</span>
+<span class="s2">from </span><span class="s1">thorpy._utils.rectscomputing </span><span class="s2">import </span><span class="s1">get_rel_pos_topleft</span>
+
+<span class="s2">from </span><span class="s1">thorpy.miscgui.title </span><span class="s2">import </span><span class="s1">Title</span>
+<span class="s2">from </span><span class="s1">thorpy.painting.painters.painter </span><span class="s2">import </span><span class="s1">Painter</span>
+<span class="s2">from </span><span class="s1">thorpy.painting.fusionner </span><span class="s2">import </span><span class="s1">_Fusionner</span>
+
+<span class="s2">def </span><span class="s1">get_void_state():</span>
+    <span class="s1">title = Title(</span><span class="s3">&quot;&quot;</span><span class="s1">)</span>
+    <span class="s1">painter = Painter(</span><span class="s2">None</span><span class="s1">)</span>
+    <span class="s1">fusionner = _Fusionner(painter</span><span class="s2">, </span><span class="s1">title)</span>
+    <span class="s2">return </span><span class="s1">State(fusionner)</span>
+
+
+<span class="s2">class </span><span class="s1">State(_GhostState):</span>
+
+    <span class="s0">&quot;&quot;&quot; 
+    Triplet of fusionner, position and ghost rect. 
+    Note that the ghost rect must be an inflation of the fusionner's one, i.e 
+    they share a common center coordinate. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s2">, </span><span class="s1">fusionner</span><span class="s2">, </span><span class="s1">topleft=(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s1">)</span><span class="s2">, </span><span class="s1">inflation=(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s1">)):</span>
+        <span class="s0">&quot;&quot;&quot;inflation is negative if ghost is bigger than img&quot;&quot;&quot;</span>
+        <span class="s1">super(State</span><span class="s2">, </span><span class="s1">self).__init__(topleft</span><span class="s2">, </span><span class="s1">(</span><span class="s4">0</span><span class="s2">, </span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">self.fusionner = fusionner</span>
+        <span class="s1">self.inflation = inflation</span>
+        <span class="s1">self.ghost_rect = self.get_ghost_from_fus()</span>
+
+    <span class="s2">def </span><span class="s1">compute_inflation(self):</span>
+        <span class="s1">semi_infl = get_rel_pos_topleft(self.fusionner.rect</span><span class="s2">, </span><span class="s1">self.ghost_rect)</span>
+        <span class="s2">return </span><span class="s1">(</span><span class="s4">2 </span><span class="s1">* semi_infl[</span><span class="s4">0</span><span class="s1">]</span><span class="s2">, </span><span class="s4">2 </span><span class="s1">* semi_infl[</span><span class="s4">1</span><span class="s1">])</span>
+
+    <span class="s2">def </span><span class="s1">set_ghost_rect(self</span><span class="s2">, </span><span class="s1">topleft</span><span class="s2">, </span><span class="s1">size):</span>
+        <span class="s1">_GhostState.set_ghost_rect(self</span><span class="s2">, </span><span class="s1">topleft</span><span class="s2">, </span><span class="s1">size)</span>
+        <span class="s1">self.inflation = self.compute_inflation()</span>
+
+    <span class="s2">def </span><span class="s1">get_anti_inflation(self):</span>
+        <span class="s2">return </span><span class="s1">(-self.inflation[</span><span class="s4">0</span><span class="s1">]</span><span class="s2">, </span><span class="s1">-self.inflation[</span><span class="s4">1</span><span class="s1">])</span>
+
+    <span class="s2">def </span><span class="s1">get_ghost_from_fus(self):</span>
+        <span class="s0">&quot;&quot;&quot;Returns inflated fusionner rect according to self.inflation.&quot;&quot;&quot;</span>
+        <span class="s2">return </span><span class="s1">self.fusionner.rect.inflate(self.get_anti_inflation())</span>
+
+    <span class="s2">def </span><span class="s1">set_topleft(self</span><span class="s2">, </span><span class="s1">topleft):</span>
+        <span class="s0">&quot;&quot;&quot;Refresh the ghost rect and the fusionner rect too.&quot;&quot;&quot;</span>
+        <span class="s1">self.ghost_rect.topleft = topleft</span>
+        <span class="s5"># replace fusionner into the center</span>
+        <span class="s1">self.fusionner.rect.center = self.ghost_rect.center</span>
+
+    <span class="s2">def </span><span class="s1">refresh_ghost_rect(self):</span>
+        <span class="s1">self.ghost_rect = self.get_ghost_from_fus()</span>
+
+    <span class="s2">def </span><span class="s1">recenter_fusionner(self):</span>
+        <span class="s1">self.fusionner.rect.center = self.ghost_rect.center</span>
+</pre>
+</body>
+</html>

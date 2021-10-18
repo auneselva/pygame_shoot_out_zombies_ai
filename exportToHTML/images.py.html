@@ -1,0 +1,201 @@
+<html>
+<head>
+<title>images.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #cc7832;}
+.s4 { color: #6897bb;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+images.py</font>
+</center></td></tr></table>
+<pre><span class="s0"># -*- coding: utf-8 -*-</span>
+<span class="s2">&quot;&quot;&quot;Provides functions for handling images.&quot;&quot;&quot;</span>
+
+<span class="s3">import </span><span class="s1">pygame</span>
+
+<span class="s3">try</span><span class="s1">:</span>
+    <span class="s3">import </span><span class="s1">numpy</span>
+    <span class="s1">HAS_NUMPY = </span><span class="s3">True</span>
+<span class="s3">except </span><span class="s1">ImportError:</span>
+    <span class="s1">HAS_NUMPY = </span><span class="s3">False</span>
+
+<span class="s3">from </span><span class="s1">thorpy </span><span class="s3">import </span><span class="s1">miscgui</span>
+
+
+<span class="s3">def </span><span class="s1">detect_frame(surf</span><span class="s3">, </span><span class="s1">vacuum=(</span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s1">)):</span>
+    <span class="s2">&quot;&quot;&quot;Returns a Rect of the minimum size to contain all that is not &lt;vacuum&gt;&quot;&quot;&quot;</span>
+    <span class="s3">if not </span><span class="s1">HAS_NUMPY:</span>
+        <span class="s1">miscgui.functions.debug_msg(</span><span class="s5">&quot;Numpy was not found on this machine.</span><span class="s3">\ 
+            </span><span class="s5">Cannot call detect_frame. Returns surface's size instead.&quot;</span><span class="s1">)</span>
+        <span class="s3">return </span><span class="s1">surf.get_size()</span>
+    <span class="s1">print(</span><span class="s5">&quot;detecting frame...&quot;</span><span class="s1">)</span>
+    <span class="s1">vacuum = numpy.array(vacuum)</span>
+    <span class="s1">array = pygame.surfarray.array3d(surf)</span>
+    <span class="s1">x_found = </span><span class="s3">False</span>
+    <span class="s1">last_x = </span><span class="s4">0</span>
+    <span class="s1">miny = float(</span><span class="s5">&quot;inf&quot;</span><span class="s1">) </span><span class="s0">#previously : 1000000000</span>
+    <span class="s1">maxy = </span><span class="s4">0</span>
+    <span class="s1">len_x = len(array)</span>
+    <span class="s1">len_y = len(array[</span><span class="s4">0</span><span class="s1">])</span>
+    <span class="s3">for </span><span class="s1">x </span><span class="s3">in </span><span class="s1">range(len_x):</span>
+        <span class="s3">if </span><span class="s1">x % </span><span class="s4">100 </span><span class="s1">== </span><span class="s4">0</span><span class="s1">:</span>
+            <span class="s1">print(</span><span class="s5">&quot;scanning pixel line &quot; </span><span class="s1">+ str(x))</span>
+        <span class="s3">for </span><span class="s1">y </span><span class="s3">in </span><span class="s1">range(len_y):</span>
+            <span class="s3">if </span><span class="s1">(array[x][y] != vacuum).any():</span>
+                <span class="s3">if not </span><span class="s1">x_found:</span>
+                    <span class="s1">x_found = </span><span class="s3">True</span>
+                    <span class="s1">first_x = x</span>
+                <span class="s1">last_x = x</span>
+                <span class="s3">if </span><span class="s1">y &lt; miny:</span>
+                    <span class="s1">miny = y</span>
+                <span class="s3">if </span><span class="s1">y &gt; maxy:</span>
+                    <span class="s1">maxy = y</span>
+    <span class="s3">return </span><span class="s1">pygame.Rect(first_x</span><span class="s3">, </span><span class="s1">miny</span><span class="s3">, </span><span class="s1">last_x - first_x</span><span class="s3">, </span><span class="s1">maxy - miny)</span>
+
+<span class="s3">def </span><span class="s1">extract_frames(inGif</span><span class="s3">, </span><span class="s1">outFolder):</span>
+    <span class="s2">&quot;&quot;&quot;Needs PIL. No more than 100 frames&quot;&quot;&quot;</span>
+    <span class="s3">from </span><span class="s1">PIL </span><span class="s3">import </span><span class="s1">Image</span>
+    <span class="s1">frame = Image.open(inGif)</span>
+    <span class="s1">nframes = </span><span class="s4">0</span>
+    <span class="s3">while </span><span class="s1">frame:</span>
+        <span class="s1">snframe = str(nframes).zfill(</span><span class="s4">6</span><span class="s1">)</span>
+        <span class="s3">if </span><span class="s1">nframes &lt; </span><span class="s4">10</span><span class="s1">:</span>
+            <span class="s1">snframe = </span><span class="s5">&quot;0&quot; </span><span class="s1">+ str(nframes)</span>
+        <span class="s1">frame.save(outFolder + snframe</span><span class="s3">, </span><span class="s5">'GIF'</span><span class="s1">)</span>
+        <span class="s1">nframes += </span><span class="s4">1</span>
+        <span class="s3">try</span><span class="s1">:</span>
+            <span class="s1">frame.seek( nframes )</span>
+        <span class="s3">except </span><span class="s1">EOFError:</span>
+            <span class="s3">break</span>
+    <span class="s3">return True</span>
+
+<span class="s3">def </span><span class="s1">get_resized_image(image</span><span class="s3">, </span><span class="s1">dims</span><span class="s3">, </span><span class="s1">type_=min):</span>
+    <span class="s2">&quot;&quot;&quot;Fits whitout deformation &lt;image&gt; to &lt;dims&gt;. Return the scaled image. 
+    Note that if dims ratio is not the same as image ratio, the max/min side 
+    fits the specified dimensions, depending on the &lt;type_&gt; argument.&quot;&quot;&quot;</span>
+    <span class="s1">size = image.get_size()</span>
+    <span class="s1">(fx</span><span class="s3">, </span><span class="s1">fy) = (float(dims[</span><span class="s4">0</span><span class="s1">]) / size[</span><span class="s4">0</span><span class="s1">]</span><span class="s3">, </span><span class="s1">float(dims[</span><span class="s4">1</span><span class="s1">]) / size[</span><span class="s4">1</span><span class="s1">])</span>
+    <span class="s1">f = type_(fx</span><span class="s3">, </span><span class="s1">fy)</span>
+    <span class="s1">size_x = int(size[</span><span class="s4">0</span><span class="s1">] * f)</span>
+    <span class="s1">size_y = int(size[</span><span class="s4">1</span><span class="s1">] * f)</span>
+    <span class="s3">return </span><span class="s1">pygame.transform.scale(image</span><span class="s3">, </span><span class="s1">(size_x</span><span class="s3">, </span><span class="s1">size_y))</span>
+
+<span class="s3">def </span><span class="s1">get_centered_image(img</span><span class="s3">, </span><span class="s1">dims</span><span class="s3">, </span><span class="s1">bckgr):</span>
+    <span class="s1">s = pygame.Surface(dims)</span>
+    <span class="s1">s.fill(bckgr)</span>
+    <span class="s1">img_size = img.get_size()</span>
+    <span class="s1">dx = (dims[</span><span class="s4">0</span><span class="s1">] - img_size[</span><span class="s4">0</span><span class="s1">])/</span><span class="s4">2</span>
+    <span class="s1">dy = (dims[</span><span class="s4">1</span><span class="s1">] - img_size[</span><span class="s4">1</span><span class="s1">])/</span><span class="s4">2</span>
+    <span class="s3">if </span><span class="s1">dx &lt; </span><span class="s4">0</span><span class="s1">:</span>
+        <span class="s1">dx = -dx</span>
+    <span class="s3">if </span><span class="s1">dy &lt; </span><span class="s4">0</span><span class="s1">:</span>
+        <span class="s1">dy = -dy</span>
+    <span class="s1">s.blit(img</span><span class="s3">, </span><span class="s1">(dx</span><span class="s3">, </span><span class="s1">dy))</span>
+    <span class="s3">return </span><span class="s1">s</span>
+
+<span class="s3">def </span><span class="s1">get_colorkey(colorkey</span><span class="s3">, </span><span class="s1">surf):</span>
+    <span class="s3">if </span><span class="s1">colorkey </span><span class="s3">is not None</span><span class="s1">:</span>
+        <span class="s3">if </span><span class="s1">colorkey </span><span class="s3">is </span><span class="s5">&quot;auto&quot;</span><span class="s1">:</span>
+            <span class="s1">colorkey = surf.get_at((</span><span class="s4">0</span><span class="s3">,</span><span class="s4">0</span><span class="s1">))</span>
+    <span class="s3">return </span><span class="s1">colorkey</span>
+
+<span class="s0">##def load_image(filename, colorkey=None):</span>
+<span class="s0">##    miscgui.functions.debug_msg(&quot;Loading &quot; + filename)</span>
+<span class="s0">##    image = pygame.image.load(filename).convert()</span>
+<span class="s0">##    if colorkey:</span>
+<span class="s0">##        image.set_colorkey(colorkey, pygame.RLEACCEL)</span>
+<span class="s0">####    image.convert_alpha()</span>
+<span class="s0">####    image.convert()</span>
+<span class="s0">##    return image</span>
+
+<span class="s3">def </span><span class="s1">load_image(filename</span><span class="s3">, </span><span class="s1">colorkey=</span><span class="s3">None, </span><span class="s1">use_img_dict=</span><span class="s3">None</span><span class="s1">):</span>
+    <span class="s1">use_img_dict=miscgui.application.USE_IMG_DICT </span><span class="s3">if </span><span class="s1">use_img_dict </span><span class="s3">is None else </span><span class="s1">use_img_dict</span>
+    <span class="s1">loaded = miscgui.application._loaded.get(filename)</span>
+    <span class="s3">if </span><span class="s1">loaded </span><span class="s3">and </span><span class="s1">use_img_dict:</span>
+        <span class="s1">miscgui.functions.debug_msg(filename + </span><span class="s5">&quot; found in loaded files.&quot;</span><span class="s1">)</span>
+        <span class="s3">return </span><span class="s1">loaded</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s1">miscgui.functions.debug_msg(</span><span class="s5">&quot;Loading &quot; </span><span class="s1">+ filename)</span>
+        <span class="s1">image = pygame.image.load(filename).convert()</span>
+        <span class="s3">if </span><span class="s1">colorkey:</span>
+            <span class="s1">image.set_colorkey(colorkey</span><span class="s3">, </span><span class="s1">pygame.RLEACCEL)</span>
+        <span class="s3">if </span><span class="s1">miscgui.application.USE_IMG_DICT:</span>
+            <span class="s1">miscgui.application._loaded[filename] = image</span>
+        <span class="s3">return </span><span class="s1">image</span>
+
+<span class="s0">##def load_image(name, path=&quot;./&quot;, colorkey=None):</span>
+<span class="s0">##    fullname = os.path.join(path, name)</span>
+<span class="s0">##    loaded = miscgui.constants.loaded.get(fullname)</span>
+<span class="s0">##    if loaded:</span>
+<span class="s0">##        miscgui.functions.debug_msg(fullname + &quot; found in loaded files.&quot;)</span>
+<span class="s0">##        return loaded</span>
+<span class="s0">##    else:</span>
+<span class="s0">##        miscgui.functions.debug_msg(&quot;Loading &quot; + fullname)</span>
+<span class="s0">##        try:</span>
+<span class="s0">##            image = pygame.image.load(fullname)</span>
+<span class="s0">##        except:</span>
+<span class="s0">##            dirpath = os.path.dirname(os.path.dirname(__file__))</span>
+<span class="s0">##            path = dirpath + &quot;/&quot; + fullname</span>
+<span class="s0">##            path=os.path.normpath(path)</span>
+<span class="s0">##            return load_image(name=path, colorkey=colorkey)</span>
+<span class="s0">##        image.convert()</span>
+<span class="s0">##        miscgui.constants.loaded[fullname] = image</span>
+<span class="s0">##        return image</span>
+
+<span class="s3">def </span><span class="s1">fusion_images(surf1</span><span class="s3">, </span><span class="s1">surf2</span><span class="s3">, </span><span class="s1">rel_pos=(</span><span class="s4">0</span><span class="s3">,</span><span class="s4">0</span><span class="s1">)</span><span class="s3">, </span><span class="s1">colorkey=(</span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s1">)):</span>
+    <span class="s2">&quot;&quot;&quot;Blit surf1 at &lt;rel_pos&gt; from surf1's topleft corner&quot;&quot;&quot;</span>
+    <span class="s1">surface = pygame.Surface(surf1.get_rect().size)</span>
+    <span class="s3">if </span><span class="s1">colorkey </span><span class="s3">is not None</span><span class="s1">:</span>
+        <span class="s3">if </span><span class="s1">colorkey </span><span class="s3">is </span><span class="s1">-</span><span class="s4">1</span><span class="s1">:</span>
+            <span class="s1">colorkey = surf1.get_at((</span><span class="s4">0</span><span class="s3">,</span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">surface.fill(colorkey)</span>
+        <span class="s1">surface.set_colorkey(colorkey</span><span class="s3">, </span><span class="s1">pygame.RLEACCEL)</span>
+    <span class="s1">surface.blit(surf1</span><span class="s3">,</span><span class="s1">(</span><span class="s4">0</span><span class="s3">,</span><span class="s4">0</span><span class="s1">))</span>
+    <span class="s1">surface.blit(surf2</span><span class="s3">,</span><span class="s1">rel_pos)</span>
+    <span class="s3">return </span><span class="s1">surface.convert()</span>
+
+<span class="s3">def </span><span class="s1">fusion_images_fine(size</span><span class="s3">, </span><span class="s1">surf1</span><span class="s3">, </span><span class="s1">pos1</span><span class="s3">, </span><span class="s1">surf2</span><span class="s3">, </span><span class="s1">pos2</span><span class="s3">, </span><span class="s1">colorkey=(</span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s1">)):</span>
+    <span class="s1">surface = pygame.Surface(size)</span>
+    <span class="s3">if </span><span class="s1">colorkey </span><span class="s3">is not None</span><span class="s1">:</span>
+        <span class="s3">if </span><span class="s1">colorkey </span><span class="s3">is </span><span class="s1">-</span><span class="s4">1</span><span class="s1">:</span>
+            <span class="s1">colorkey = surf1.get_at((</span><span class="s4">0</span><span class="s3">,</span><span class="s4">0</span><span class="s1">))</span>
+        <span class="s1">surface.fill(colorkey)</span>
+        <span class="s1">surface.set_colorkey(colorkey</span><span class="s3">, </span><span class="s1">pygame.RLEACCEL)</span>
+    <span class="s1">surface.blit(surf1</span><span class="s3">, </span><span class="s1">pos1)</span>
+    <span class="s1">surface.blit(surf2</span><span class="s3">, </span><span class="s1">pos2)</span>
+    <span class="s3">return </span><span class="s1">surface.convert()</span>
+
+
+<span class="s3">def </span><span class="s1">capture_screen(surface</span><span class="s3">, </span><span class="s1">rect=</span><span class="s3">None</span><span class="s1">):</span>
+    <span class="s2">&quot;&quot;&quot;Returns a copy of the surface &lt;surface&gt;, with restriction &lt;rect&gt; 
+        (None means the whole surface)&quot;&quot;&quot;</span>
+    <span class="s3">if not </span><span class="s1">rect:</span>
+        <span class="s1">rect = surface.get_rect()</span>
+    <span class="s3">return </span><span class="s1">surface.copy().subsurface(rect).convert()</span>
+
+<span class="s3">def </span><span class="s1">change_color_on_img(img</span><span class="s3">, </span><span class="s1">color_source</span><span class="s3">, </span><span class="s1">color_target</span><span class="s3">, </span><span class="s1">colorkey=</span><span class="s3">None</span><span class="s1">):</span>
+    <span class="s1">px = pygame.PixelArray(img.copy())</span>
+    <span class="s1">px.replace(color_source</span><span class="s3">, </span><span class="s1">color_target)</span>
+    <span class="s1">img2 = px.make_surface()</span>
+    <span class="s3">if </span><span class="s1">colorkey </span><span class="s3">is not None</span><span class="s1">:</span>
+        <span class="s1">img2.set_colorkey(colorkey</span><span class="s3">, </span><span class="s1">pygame.RLEACCEL)</span>
+    <span class="s3">return </span><span class="s1">img2.convert()</span>
+
+<span class="s3">def </span><span class="s1">change_color_on_img_ip(img</span><span class="s3">, </span><span class="s1">color_source</span><span class="s3">, </span><span class="s1">color_target</span><span class="s3">, </span><span class="s1">colorkey=</span><span class="s3">None</span><span class="s1">):</span>
+    <span class="s1">px = pygame.PixelArray(img)</span>
+    <span class="s1">px.replace(color_source</span><span class="s3">, </span><span class="s1">color_target)</span>
+    <span class="s1">img2 = px.make_surface()</span>
+    <span class="s3">if </span><span class="s1">colorkey </span><span class="s3">is not None</span><span class="s1">:</span>
+        <span class="s1">img2.set_colorkey(colorkey</span><span class="s3">, </span><span class="s1">pygame.RLEACCEL)</span>
+    <span class="s3">return </span><span class="s1">img2.convert()</span></pre>
+</body>
+</html>

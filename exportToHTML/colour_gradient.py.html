@@ -1,0 +1,126 @@
+<html>
+<head>
+<title>colour_gradient.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+colour_gradient.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Any</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces.colour_gradient_interface </span><span class="s0">import </span><span class="s1">IColourGradientInterface</span>
+
+
+<span class="s0">class </span><span class="s1">ColourGradient(IColourGradientInterface):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    Creates a small surface containing a smooth gradient between two or three colours. 
+ 
+    :param angle_direction: Angle direction of the gradient in degrees. 
+    :param colour_1: The first colour of the gradient. 
+    :param colour_2: The second colour of the gradient. 
+    :param colour_3: An optional third colour for the gradient. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">angle_direction: int</span><span class="s0">,</span>
+                 <span class="s1">colour_1: pygame.Color</span><span class="s0">,</span>
+                 <span class="s1">colour_2: pygame.Color</span><span class="s0">,</span>
+                 <span class="s1">colour_3: Union[pygame.Color</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None</span><span class="s1">):</span>
+
+        <span class="s1">self.angle_direction = angle_direction</span>
+        <span class="s1">self.colour_1 = colour_1</span>
+        <span class="s1">self.colour_2 = colour_2</span>
+        <span class="s1">self.colour_3 = colour_3</span>
+
+        <span class="s0">if </span><span class="s1">self.colour_3 </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">pixel_width = </span><span class="s3">2</span>
+            <span class="s1">colour_pixels_surf = pygame.surface.Surface((pixel_width</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span><span class="s0">,</span>
+                                                        <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+            <span class="s1">colour_pixels_surf.fill(self.colour_1</span><span class="s0">, </span><span class="s1">pygame.Rect((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)))</span>
+            <span class="s1">colour_pixels_surf.fill(self.colour_2</span><span class="s0">, </span><span class="s1">pygame.Rect((</span><span class="s3">1</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)))</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">pixel_width = </span><span class="s3">3</span>
+            <span class="s1">colour_pixels_surf = pygame.surface.Surface((pixel_width</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span><span class="s0">,</span>
+                                                        <span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+            <span class="s1">colour_pixels_surf.fill(self.colour_1</span><span class="s0">, </span><span class="s1">pygame.Rect((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)))</span>
+            <span class="s1">colour_pixels_surf.fill(self.colour_2</span><span class="s0">, </span><span class="s1">pygame.Rect((</span><span class="s3">1</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)))</span>
+            <span class="s1">colour_pixels_surf.fill(self.colour_3</span><span class="s0">, </span><span class="s1">pygame.Rect((</span><span class="s3">2</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(</span><span class="s3">1</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)))</span>
+
+        <span class="s1">self.gradient_surface = pygame.transform.rotozoom(colour_pixels_surf</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">30</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">__eq__(self</span><span class="s0">, </span><span class="s1">other: Any) -&gt; bool:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Checks if this gradient is equal to another when compared with the == symbol. 
+ 
+        :return: True if they have the same colours and direction. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if not </span><span class="s1">isinstance(other</span><span class="s0">, </span><span class="s1">ColourGradient):</span>
+            <span class="s0">return False</span>
+        <span class="s0">return </span><span class="s1">(self.colour_1 == other.colour_1 </span><span class="s0">and</span>
+                <span class="s1">self.colour_2 == other.colour_2 </span><span class="s0">and</span>
+                <span class="s1">self.colour_3 == other.colour_3 </span><span class="s0">and</span>
+                <span class="s1">self.angle_direction == other.angle_direction)</span>
+
+    <span class="s0">def </span><span class="s1">__str__(self) -&gt; str:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Creates a string representation of this gradient. 
+ 
+        :return: The string representation. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">result = (str(self.angle_direction) + </span><span class="s4">'_' </span><span class="s1">+</span>
+                  <span class="s1">str(self.colour_1.r) + </span><span class="s4">'_' </span><span class="s1">+ str(self.colour_1.g) + </span><span class="s4">'_' </span><span class="s1">+</span>
+                  <span class="s1">str(self.colour_1.b) + </span><span class="s4">'_' </span><span class="s1">+ str(self.colour_1.a) + </span><span class="s4">'_' </span><span class="s1">+</span>
+                  <span class="s1">str(self.colour_2.r) + </span><span class="s4">'_' </span><span class="s1">+ str(self.colour_2.g) + </span><span class="s4">'_' </span><span class="s1">+</span>
+                  <span class="s1">str(self.colour_2.b) + </span><span class="s4">'_' </span><span class="s1">+ str(self.colour_2.a))</span>
+        <span class="s0">if </span><span class="s1">self.colour_3 </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">result += (</span><span class="s4">'_' </span><span class="s1">+ str(self.colour_3.r) + </span><span class="s4">'_' </span><span class="s1">+ str(self.colour_3.g) +</span>
+                       <span class="s4">'_' </span><span class="s1">+ str(self.colour_3.b) + </span><span class="s4">'_' </span><span class="s1">+ str(self.colour_3.a))</span>
+
+        <span class="s0">return </span><span class="s1">result</span>
+
+    <span class="s0">def </span><span class="s1">apply_gradient_to_surface(self</span><span class="s0">, </span><span class="s1">input_surface: pygame.surface.Surface</span><span class="s0">,</span>
+                                  <span class="s1">rect: Union[pygame.Rect</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Applies this gradient to a specified input surface using blending multiplication. 
+        As a result this method works best when the input surface is a mostly white, stencil shape 
+        type surface. 
+ 
+        :param input_surface: 
+        :param rect: The rectangle on the surface to apply the gradient to. If None, applies to the 
+                     whole surface. 
+        &quot;&quot;&quot;</span>
+        <span class="s5"># scale the gradient up to the right size</span>
+        <span class="s1">input_surface_size = input_surface.get_size()</span>
+        <span class="s1">inverse_rotated_input = pygame.transform.rotate(input_surface</span><span class="s0">, </span><span class="s1">-self.angle_direction)</span>
+        <span class="s1">gradient_size = inverse_rotated_input.get_rect().size</span>
+        <span class="s1">gradient_surf = pygame.surface.Surface(gradient_size</span><span class="s0">, </span><span class="s1">flags=pygame.SRCALPHA</span><span class="s0">, </span><span class="s1">depth=</span><span class="s3">32</span><span class="s1">)</span>
+
+        <span class="s1">pygame.transform.scale(self.gradient_surface</span><span class="s0">, </span><span class="s1">gradient_size</span><span class="s0">, </span><span class="s1">gradient_surf)</span>
+        <span class="s1">gradient_surf = pygame.transform.rotate(gradient_surf</span><span class="s0">, </span><span class="s1">self.angle_direction)</span>
+
+        <span class="s0">if </span><span class="s1">rect </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">input_surface.set_clip(rect)</span>
+            <span class="s1">input_surface.blit(gradient_surf</span><span class="s0">, </span><span class="s1">rect</span><span class="s0">, </span><span class="s1">special_flags=pygame.BLEND_RGBA_MULT)</span>
+            <span class="s1">input_surface.set_clip(</span><span class="s0">None</span><span class="s1">)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">gradient_placement_rect = gradient_surf.get_rect()</span>
+            <span class="s1">gradient_placement_rect.center = (int(input_surface_size[</span><span class="s3">0</span><span class="s1">] / </span><span class="s3">2</span><span class="s1">)</span><span class="s0">,</span>
+                                              <span class="s1">int(input_surface_size[</span><span class="s3">1</span><span class="s1">] / </span><span class="s3">2</span><span class="s1">))</span>
+
+            <span class="s1">input_surface.blit(gradient_surf</span><span class="s0">,</span>
+                               <span class="s1">gradient_placement_rect</span><span class="s0">,</span>
+                               <span class="s1">special_flags=pygame.BLEND_RGBA_MULT)</span>
+</pre>
+</body>
+</html>

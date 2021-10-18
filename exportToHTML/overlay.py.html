@@ -1,0 +1,84 @@
+<html>
+<head>
+<title>overlay.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #808080;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+overlay.py</font>
+</center></td></tr></table>
+<pre><span class="s0">#!/usr/bin/env python</span>
+
+<span class="s2">import </span><span class="s1">sys</span>
+<span class="s2">import </span><span class="s1">pygame</span>
+<span class="s2">from </span><span class="s1">pygame.compat </span><span class="s2">import </span><span class="s1">xrange_</span>
+
+<span class="s1">SR= (</span><span class="s3">800</span><span class="s2">,</span><span class="s3">600</span><span class="s1">)</span>
+<span class="s1">ovl= </span><span class="s2">None</span>
+
+<span class="s0">########################################################################</span>
+<span class="s0"># Simple video player </span>
+<span class="s2">def </span><span class="s1">vPlayer( fName ):</span>
+    <span class="s2">global </span><span class="s1">ovl</span>
+    <span class="s1">f= open( fName</span><span class="s2">, </span><span class="s4">'rb' </span><span class="s1">)</span>
+    <span class="s1">fmt= f.readline().strip()</span>
+    <span class="s1">res= f.readline().strip()</span>
+    <span class="s1">col= f.readline().strip()</span>
+    <span class="s2">if </span><span class="s1">fmt!= </span><span class="s4">&quot;P5&quot;</span><span class="s1">:</span>
+        <span class="s1">print (</span><span class="s4">'Unknown format( len %d ). Exiting...' </span><span class="s1">% len( fmt ))</span>
+        <span class="s2">return</span>
+    
+    <span class="s1">w</span><span class="s2">,</span><span class="s1">h= [ int(x) </span><span class="s2">for </span><span class="s1">x </span><span class="s2">in </span><span class="s1">res.split( </span><span class="s4">' ' </span><span class="s1">) ]</span>
+    <span class="s1">h= ( h* </span><span class="s3">2 </span><span class="s1">)/ </span><span class="s3">3</span>
+    <span class="s0"># Read into strings</span>
+    <span class="s1">y= f.read( w*h )</span>
+    <span class="s1">u= []</span>
+    <span class="s1">v= []</span>
+    <span class="s2">for </span><span class="s1">i </span><span class="s2">in </span><span class="s1">xrange_( </span><span class="s3">0</span><span class="s2">, </span><span class="s1">h/</span><span class="s3">2 </span><span class="s1">):</span>
+        <span class="s1">u.append( f.read( w/</span><span class="s3">2 </span><span class="s1">))</span>
+        <span class="s1">v.append( f.read( w/</span><span class="s3">2 </span><span class="s1">))</span>
+    
+    <span class="s1">u= </span><span class="s4">''</span><span class="s1">.join(u)</span>
+    <span class="s1">v= </span><span class="s4">''</span><span class="s1">.join(v)</span>
+    
+    <span class="s0"># Open overlay with the resolution specified</span>
+    <span class="s1">ovl= pygame.Overlay(pygame.YV12_OVERLAY</span><span class="s2">, </span><span class="s1">(w</span><span class="s2">,</span><span class="s1">h))</span>
+    <span class="s1">ovl.set_location(</span><span class="s3">0</span><span class="s2">, </span><span class="s3">0</span><span class="s2">, </span><span class="s1">w</span><span class="s2">, </span><span class="s1">h)</span>
+    
+    <span class="s1">ovl.display((y</span><span class="s2">,</span><span class="s1">u</span><span class="s2">,</span><span class="s1">v))</span>
+    <span class="s2">while </span><span class="s3">1</span><span class="s1">:</span>
+        <span class="s1">pygame.time.wait(</span><span class="s3">10</span><span class="s1">)</span>
+        <span class="s2">for </span><span class="s1">ev </span><span class="s2">in </span><span class="s1">pygame.event.get():</span>
+            <span class="s2">if </span><span class="s1">ev.type </span><span class="s2">in </span><span class="s1">(pygame.KEYDOWN</span><span class="s2">, </span><span class="s1">pygame.QUIT): </span>
+                <span class="s2">return</span>
+
+
+<span class="s2">def </span><span class="s1">main(fname):</span>
+    <span class="s5">&quot;&quot;&quot;play video file fname&quot;&quot;&quot;</span>
+    <span class="s1">pygame.init()</span>
+    <span class="s2">try</span><span class="s1">:</span>
+        <span class="s1">pygame.display.set_mode(SR)</span>
+        <span class="s1">vPlayer(fname)</span>
+    <span class="s2">finally</span><span class="s1">:</span>
+        <span class="s1">pygame.quit()</span>
+
+<span class="s0"># Test all modules</span>
+<span class="s2">if </span><span class="s1">__name__== </span><span class="s4">'__main__'</span><span class="s1">:</span>
+    <span class="s2">if </span><span class="s1">len( sys.argv )!= </span><span class="s3">2</span><span class="s1">:</span>
+        <span class="s1">print (</span><span class="s4">&quot;Usage: play_file &lt;file_pattern&gt;&quot;</span><span class="s1">)</span>
+    <span class="s2">else</span><span class="s1">:</span>
+        <span class="s1">main(sys.argv[</span><span class="s3">1</span><span class="s1">])</span>
+
+</pre>
+</body>
+</html>

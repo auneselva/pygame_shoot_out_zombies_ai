@@ -1,0 +1,124 @@
+<html>
+<head>
+<title>freetype_misc.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+freetype_misc.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">sys</span><span class="s0">, </span><span class="s1">os</span>
+<span class="s0">import </span><span class="s1">pygame</span>
+<span class="s0">from </span><span class="s1">pygame.locals </span><span class="s0">import </span><span class="s1">*</span>
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s0">import </span><span class="s1">pygame.freetype </span><span class="s0">as </span><span class="s1">freetype</span>
+<span class="s0">except </span><span class="s1">ImportError:</span>
+    <span class="s1">print (</span><span class="s2">&quot;No FreeType support compiled&quot;</span><span class="s1">)</span>
+    <span class="s1">sys.exit ()</span>
+
+<span class="s1">colors = {</span>
+    <span class="s2">&quot;grey_light&quot;    </span><span class="s1">:   pygame.Color(</span><span class="s3">200</span><span class="s0">, </span><span class="s3">200</span><span class="s0">, </span><span class="s3">200</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s2">&quot;grey_dark&quot;     </span><span class="s1">:   pygame.Color(</span><span class="s3">100</span><span class="s0">, </span><span class="s3">100</span><span class="s0">, </span><span class="s3">100</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s2">&quot;green&quot;         </span><span class="s1">:   pygame.Color(</span><span class="s3">50</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">63</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s2">&quot;red&quot;           </span><span class="s1">:   pygame.Color(</span><span class="s3">220</span><span class="s0">, </span><span class="s3">30</span><span class="s0">, </span><span class="s3">30</span><span class="s1">)</span><span class="s0">,</span>
+    <span class="s2">&quot;blue&quot;          </span><span class="s1">:   pygame.Color(</span><span class="s3">50</span><span class="s0">, </span><span class="s3">75</span><span class="s0">, </span><span class="s3">245</span><span class="s1">)</span>
+<span class="s1">}</span>
+
+<span class="s0">def </span><span class="s1">run():</span>
+    <span class="s1">pygame.init()</span>
+
+    <span class="s1">fontdir = os.path.dirname(os.path.abspath (__file__))</span>
+    <span class="s1">font = freetype.Font(os.path.join (fontdir</span><span class="s0">, </span><span class="s2">&quot;data&quot;</span><span class="s0">, </span><span class="s2">&quot;sans.ttf&quot;</span><span class="s1">))</span>
+
+    <span class="s1">screen = pygame.display.set_mode((</span><span class="s3">800</span><span class="s0">, </span><span class="s3">600</span><span class="s1">))</span>
+    <span class="s1">screen.fill (colors[</span><span class="s2">&quot;grey_light&quot;</span><span class="s1">])</span>
+
+    <span class="s1">font.underline_adjustment = </span><span class="s3">0.5</span>
+    <span class="s1">font.pad = </span><span class="s0">True</span>
+    <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">32</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;Hello World&quot;</span><span class="s0">, </span><span class="s1">colors[</span><span class="s2">&quot;red&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                   <span class="s1">colors[</span><span class="s2">'grey_dark'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">size=</span><span class="s3">64</span><span class="s0">,</span>
+                   <span class="s1">style=freetype.STYLE_UNDERLINE|freetype.STYLE_OBLIQUE)</span>
+    <span class="s1">font.pad = </span><span class="s0">False</span>
+
+    <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">32</span><span class="s0">, </span><span class="s3">128</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;abcdefghijklm&quot;</span><span class="s0">, </span><span class="s1">colors[</span><span class="s2">&quot;grey_dark&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                   <span class="s1">colors[</span><span class="s2">&quot;green&quot;</span><span class="s1">]</span><span class="s0">, </span><span class="s1">size=</span><span class="s3">64</span><span class="s1">)</span>
+
+    <span class="s1">font.vertical = </span><span class="s0">True</span>
+    <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">32</span><span class="s0">, </span><span class="s3">200</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;Vertical?&quot;</span><span class="s0">, </span><span class="s1">colors[</span><span class="s2">&quot;blue&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                   <span class="s0">None, </span><span class="s1">size=</span><span class="s3">32</span><span class="s1">)</span>
+    <span class="s1">font.vertical = </span><span class="s0">False</span>
+
+    <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">64</span><span class="s0">, </span><span class="s3">190</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;Let's spin!&quot;</span><span class="s0">, </span><span class="s1">colors[</span><span class="s2">&quot;red&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                   <span class="s0">None, </span><span class="s1">size=</span><span class="s3">48</span><span class="s0">, </span><span class="s1">rotation=</span><span class="s3">55</span><span class="s1">)</span>
+
+    <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">160</span><span class="s0">, </span><span class="s3">290</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;All around!&quot;</span><span class="s0">, </span><span class="s1">colors[</span><span class="s2">&quot;green&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                   <span class="s0">None, </span><span class="s1">size=</span><span class="s3">48</span><span class="s0">, </span><span class="s1">rotation=-</span><span class="s3">55</span><span class="s1">)</span>
+
+    <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">250</span><span class="s0">, </span><span class="s3">220</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;and BLEND&quot;</span><span class="s0">,</span>
+                   <span class="s1">pygame.Color(</span><span class="s3">255</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">128</span><span class="s1">)</span><span class="s0">, None, </span><span class="s1">size=</span><span class="s3">64</span><span class="s1">)</span>
+
+    <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">265</span><span class="s0">, </span><span class="s3">237</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;or BLAND!&quot;</span><span class="s0">,</span>
+                   <span class="s1">pygame.Color(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0xCC</span><span class="s0">, </span><span class="s3">28</span><span class="s0">, </span><span class="s3">128</span><span class="s1">)</span><span class="s0">, None, </span><span class="s1">size=</span><span class="s3">64</span><span class="s1">)</span>
+
+    <span class="s4"># Some pinwheels</span>
+    <span class="s1">font.origin = </span><span class="s0">True</span>
+    <span class="s0">for </span><span class="s1">angle </span><span class="s0">in </span><span class="s1">range(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">360</span><span class="s0">, </span><span class="s3">45</span><span class="s1">):</span>
+        <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">150</span><span class="s0">, </span><span class="s3">420</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;)&quot;</span><span class="s0">, </span><span class="s1">pygame.Color(</span><span class="s2">'black'</span><span class="s1">)</span><span class="s0">,</span>
+                       <span class="s1">size=</span><span class="s3">48</span><span class="s0">, </span><span class="s1">rotation=angle)</span>
+    <span class="s1">font.vertical = </span><span class="s0">True</span>
+    <span class="s0">for </span><span class="s1">angle </span><span class="s0">in </span><span class="s1">range(</span><span class="s3">15</span><span class="s0">, </span><span class="s3">375</span><span class="s0">, </span><span class="s3">30</span><span class="s1">):</span>
+        <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">600</span><span class="s0">, </span><span class="s3">400</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;|^*&quot;</span><span class="s0">, </span><span class="s1">pygame.Color(</span><span class="s2">'orange'</span><span class="s1">)</span><span class="s0">,</span>
+                       <span class="s1">size=</span><span class="s3">48</span><span class="s0">, </span><span class="s1">rotation=angle)</span>
+    <span class="s1">font.vertical = </span><span class="s0">False</span>
+    <span class="s1">font.origin = </span><span class="s0">False</span>
+
+    <span class="s1">utext = pygame.compat.as_unicode(</span><span class="s2">r&quot;I \u2665 Unicode&quot;</span><span class="s1">)</span>
+    <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">298</span><span class="s0">, </span><span class="s3">320</span><span class="s1">)</span><span class="s0">, </span><span class="s1">utext</span><span class="s0">, </span><span class="s1">pygame.Color(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0xCC</span><span class="s0">, </span><span class="s3">0xDD</span><span class="s1">)</span><span class="s0">,</span>
+                   <span class="s0">None, </span><span class="s1">size=</span><span class="s3">64</span><span class="s1">)</span>
+
+    <span class="s1">utext = pygame.compat.as_unicode(</span><span class="s2">r&quot;\u2665&quot;</span><span class="s1">)</span>
+    <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">480</span><span class="s0">, </span><span class="s3">32</span><span class="s1">)</span><span class="s0">, </span><span class="s1">utext</span><span class="s0">, </span><span class="s1">colors[</span><span class="s2">&quot;grey_light&quot;</span><span class="s1">]</span><span class="s0">,</span>
+                   <span class="s1">colors[</span><span class="s2">&quot;red&quot;</span><span class="s1">]</span><span class="s0">, </span><span class="s1">size=</span><span class="s3">148</span><span class="s1">)</span>
+
+    <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">380</span><span class="s0">, </span><span class="s3">380</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;...yes, this is an SDL surface&quot;</span><span class="s0">,</span>
+                   <span class="s1">pygame.Color(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                   <span class="s0">None, </span><span class="s1">size=</span><span class="s3">24</span><span class="s0">, </span><span class="s1">style=freetype.STYLE_STRONG)</span>
+
+    <span class="s1">font.origin = </span><span class="s0">True</span>
+    <span class="s1">r = font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">100</span><span class="s0">, </span><span class="s3">530</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;stretch&quot;</span><span class="s0">,</span>
+                   <span class="s1">pygame.Color(</span><span class="s2">'red'</span><span class="s1">)</span><span class="s0">,</span>
+                   <span class="s0">None, </span><span class="s1">size=(</span><span class="s3">24</span><span class="s0">, </span><span class="s3">24</span><span class="s1">)</span><span class="s0">, </span><span class="s1">style=freetype.STYLE_NORMAL)</span>
+    <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">100 </span><span class="s1">+ r.width</span><span class="s0">, </span><span class="s3">530</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot; VERTICAL&quot;</span><span class="s0">,</span>
+                   <span class="s1">pygame.Color(</span><span class="s2">'red'</span><span class="s1">)</span><span class="s0">,</span>
+                   <span class="s0">None, </span><span class="s1">size=(</span><span class="s3">24</span><span class="s0">, </span><span class="s3">48</span><span class="s1">)</span><span class="s0">, </span><span class="s1">style=freetype.STYLE_NORMAL)</span>
+
+    <span class="s1">r = font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">100</span><span class="s0">, </span><span class="s3">580</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot;stretch&quot;</span><span class="s0">,</span>
+                   <span class="s1">pygame.Color(</span><span class="s2">'blue'</span><span class="s1">)</span><span class="s0">,</span>
+                   <span class="s0">None, </span><span class="s1">size=(</span><span class="s3">24</span><span class="s0">, </span><span class="s3">24</span><span class="s1">)</span><span class="s0">, </span><span class="s1">style=freetype.STYLE_NORMAL)</span>
+    <span class="s1">font.render_to(screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">100 </span><span class="s1">+ r.width</span><span class="s0">, </span><span class="s3">580</span><span class="s1">)</span><span class="s0">, </span><span class="s2">&quot; HORIZONTAL&quot;</span><span class="s0">,</span>
+                   <span class="s1">pygame.Color(</span><span class="s2">'blue'</span><span class="s1">)</span><span class="s0">,</span>
+                   <span class="s0">None, </span><span class="s1">size=(</span><span class="s3">48</span><span class="s0">, </span><span class="s3">24</span><span class="s1">)</span><span class="s0">, </span><span class="s1">style=freetype.STYLE_NORMAL)</span>
+
+    <span class="s1">pygame.display.flip()</span>
+
+    <span class="s0">while </span><span class="s3">1</span><span class="s1">:</span>
+        <span class="s0">if </span><span class="s1">pygame.event.wait().type </span><span class="s0">in </span><span class="s1">(QUIT</span><span class="s0">, </span><span class="s1">KEYDOWN</span><span class="s0">, </span><span class="s1">MOUSEBUTTONDOWN):</span>
+            <span class="s0">break</span>
+
+    <span class="s1">pygame.quit()</span>
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s2">&quot;__main__&quot;</span><span class="s1">:</span>
+    <span class="s1">run ()</span>
+</pre>
+</body>
+</html>

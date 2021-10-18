@@ -1,0 +1,73 @@
+<html>
+<head>
+<title>classicround.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6897bb;}
+.s4 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+classicround.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">division</span>
+
+<span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">Surface</span>
+<span class="s0">from </span><span class="s1">pygame.constants </span><span class="s0">import </span><span class="s1">SRCALPHA</span>
+<span class="s0">from </span><span class="s1">pygame.gfxdraw </span><span class="s0">import </span><span class="s1">arc </span><span class="s0">as </span><span class="s1">arc  </span><span class="s2"># to change if pygame changes</span>
+<span class="s2"># to change if pygame changes:</span>
+<span class="s0">from </span><span class="s1">pygame.gfxdraw </span><span class="s0">import </span><span class="s1">filled_circle </span><span class="s0">as </span><span class="s1">filled_circle</span>
+
+<span class="s0">from </span><span class="s1">thorpy._utils.colorscomputing </span><span class="s0">import </span><span class="s1">mid_color</span><span class="s0">, </span><span class="s1">make_compatible</span>
+<span class="s0">from </span><span class="s1">thorpy.painting.painters.painter </span><span class="s0">import </span><span class="s1">Painter</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">constants</span><span class="s0">, </span><span class="s1">style</span>
+
+
+<span class="s0">class </span><span class="s1">ClassicRound(Painter):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">size=</span><span class="s0">None, </span><span class="s1">color=</span><span class="s0">None, </span><span class="s1">pressed=</span><span class="s0">False, </span><span class="s1">dark=</span><span class="s0">None,</span>
+                 <span class="s1">hovered=</span><span class="s0">False, </span><span class="s1">light=</span><span class="s0">None, </span><span class="s1">thick=</span><span class="s3">1</span><span class="s0">, </span><span class="s1">clip=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s4">&quot;&quot;&quot;Size : diameter&quot;&quot;&quot;</span>
+        <span class="s1">size = style.CHECK_SIZE </span><span class="s0">if </span><span class="s1">size </span><span class="s0">is None else </span><span class="s1">size</span>
+        <span class="s1">color = style.DEF_COLOR2 </span><span class="s0">if </span><span class="s1">color </span><span class="s0">is None else </span><span class="s1">color</span>
+        <span class="s1">Painter.__init__(self</span><span class="s0">, </span><span class="s1">size=size</span><span class="s0">, </span><span class="s1">clip=clip</span><span class="s0">, </span><span class="s1">pressed=pressed</span><span class="s0">,</span>
+                         <span class="s1">hovered=hovered)</span>
+        <span class="s1">self.color = color</span>
+        <span class="s1">self.dark = dark</span>
+        <span class="s1">self.light = light</span>
+        <span class="s1">self.thick = thick</span>
+
+    <span class="s0">def </span><span class="s1">blit_borders_on(self</span><span class="s0">, </span><span class="s1">surface):</span>
+        <span class="s0">if not </span><span class="s1">self.light:</span>
+            <span class="s1">white = make_compatible(constants.WHITE</span><span class="s0">, </span><span class="s1">self.color)</span>
+            <span class="s1">self.light = mid_color(self.color</span><span class="s0">, </span><span class="s1">white)</span>
+        <span class="s0">if not </span><span class="s1">self.dark:</span>
+            <span class="s1">black = make_compatible(constants.BLACK</span><span class="s0">, </span><span class="s1">self.color)</span>
+            <span class="s1">self.dark = mid_color(self.color</span><span class="s0">, </span><span class="s1">black)</span>
+<span class="s2">##        rect = Rect((0, 0), self.size)</span>
+        <span class="s1">x = y = r = self.size[</span><span class="s3">0</span><span class="s1">] // </span><span class="s3">2</span>
+        <span class="s1">r -= </span><span class="s3">2</span>
+        <span class="s1">filled_circle(surface</span><span class="s0">, </span><span class="s1">x</span><span class="s0">, </span><span class="s1">y</span><span class="s0">, </span><span class="s1">r</span><span class="s0">, </span><span class="s1">self.color)</span>
+<span class="s2">##        circle(surface, x, y, r,  self.dark)</span>
+        <span class="s1">arc(surface</span><span class="s0">, </span><span class="s1">x</span><span class="s0">, </span><span class="s1">y</span><span class="s0">, </span><span class="s1">r</span><span class="s0">, </span><span class="s3">135</span><span class="s0">, </span><span class="s3">135 </span><span class="s1">+ </span><span class="s3">180</span><span class="s0">, </span><span class="s1">self.dark)</span>
+        <span class="s1">arc(surface</span><span class="s0">, </span><span class="s1">x</span><span class="s0">, </span><span class="s1">y</span><span class="s0">, </span><span class="s1">r</span><span class="s0">, </span><span class="s3">135 </span><span class="s1">+ </span><span class="s3">180</span><span class="s0">, </span><span class="s3">135 </span><span class="s1">+ </span><span class="s3">360</span><span class="s0">, </span><span class="s1">self.light)</span>
+
+    <span class="s0">def </span><span class="s1">draw(self):</span>
+        <span class="s1">surface = Surface(self.size</span><span class="s0">, </span><span class="s1">flags=SRCALPHA).convert_alpha()</span>
+        <span class="s1">surface.fill(constants.TRANSPARENT)</span>
+        <span class="s1">self.blit_borders_on(surface)</span>
+        <span class="s0">return </span><span class="s1">surface</span>
+
+    <span class="s0">def </span><span class="s1">get_surface(self):</span>
+        <span class="s1">surface = self.draw()</span>
+        <span class="s1">surface.set_clip(self.clip)</span>
+        <span class="s0">return </span><span class="s1">surface</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,505 @@
+<html>
+<head>
+<title>bufferproxy_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+.s5 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+bufferproxy_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">import </span><span class="s1">re</span>
+<span class="s0">import </span><span class="s1">weakref</span>
+<span class="s0">import </span><span class="s1">gc</span>
+<span class="s0">import </span><span class="s1">ctypes</span>
+<span class="s0">import </span><span class="s1">unittest</span>
+
+
+<span class="s0">import </span><span class="s1">pygame</span>
+<span class="s0">from </span><span class="s1">pygame.bufferproxy </span><span class="s0">import </span><span class="s1">BufferProxy</span>
+<span class="s0">from </span><span class="s1">pygame.compat </span><span class="s0">import </span><span class="s1">as_bytes</span>
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s1">BufferError</span>
+<span class="s0">except </span><span class="s1">NameError:</span>
+    <span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">BufferError</span>
+
+
+<span class="s0">class </span><span class="s1">BufferProxyTest(unittest.TestCase):</span>
+    <span class="s1">view_keywords = {</span><span class="s2">'shape'</span><span class="s1">: (</span><span class="s3">5</span><span class="s0">, </span><span class="s3">4</span><span class="s0">, </span><span class="s3">3</span><span class="s1">)</span><span class="s0">,</span>
+                     <span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u1'</span><span class="s0">,</span>
+                     <span class="s2">'data'</span><span class="s1">: (</span><span class="s3">0</span><span class="s0">, True</span><span class="s1">)</span><span class="s0">,</span>
+                     <span class="s2">'strides'</span><span class="s1">: (</span><span class="s3">4</span><span class="s0">, </span><span class="s3">20</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)}</span>
+
+    <span class="s0">def </span><span class="s1">test_module_name(self):</span>
+        <span class="s1">self.assertEqual(pygame.bufferproxy.__name__</span><span class="s0">,</span>
+                         <span class="s2">&quot;pygame.bufferproxy&quot;</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_class_name(self):</span>
+        <span class="s1">self.assertEqual(BufferProxy.__name__</span><span class="s0">, </span><span class="s2">&quot;BufferProxy&quot;</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test___array_struct___property(self):</span>
+        <span class="s1">kwds = self.view_keywords</span>
+        <span class="s1">v = BufferProxy(kwds)</span>
+        <span class="s1">d = pygame.get_array_interface(v)</span>
+        <span class="s1">self.assertEqual(len(d)</span><span class="s0">, </span><span class="s3">5</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(d[</span><span class="s2">'version'</span><span class="s1">]</span><span class="s0">, </span><span class="s3">3</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(d[</span><span class="s2">'shape'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">kwds[</span><span class="s2">'shape'</span><span class="s1">])</span>
+        <span class="s1">self.assertEqual(d[</span><span class="s2">'typestr'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">kwds[</span><span class="s2">'typestr'</span><span class="s1">])</span>
+        <span class="s1">self.assertEqual(d[</span><span class="s2">'data'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">kwds[</span><span class="s2">'data'</span><span class="s1">])</span>
+        <span class="s1">self.assertEqual(d[</span><span class="s2">'strides'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">kwds[</span><span class="s2">'strides'</span><span class="s1">])</span>
+
+    <span class="s0">def </span><span class="s1">test___array_interface___property(self):</span>
+        <span class="s1">kwds = self.view_keywords</span>
+        <span class="s1">v = BufferProxy(kwds)</span>
+        <span class="s1">d = v.__array_interface__</span>
+        <span class="s1">self.assertEqual(len(d)</span><span class="s0">, </span><span class="s3">5</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(d[</span><span class="s2">'version'</span><span class="s1">]</span><span class="s0">, </span><span class="s3">3</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(d[</span><span class="s2">'shape'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">kwds[</span><span class="s2">'shape'</span><span class="s1">])</span>
+        <span class="s1">self.assertEqual(d[</span><span class="s2">'typestr'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">kwds[</span><span class="s2">'typestr'</span><span class="s1">])</span>
+        <span class="s1">self.assertEqual(d[</span><span class="s2">'data'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">kwds[</span><span class="s2">'data'</span><span class="s1">])</span>
+        <span class="s1">self.assertEqual(d[</span><span class="s2">'strides'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">kwds[</span><span class="s2">'strides'</span><span class="s1">])</span>
+
+    <span class="s0">def </span><span class="s1">test_parent_property(self):</span>
+        <span class="s1">kwds = dict(self.view_keywords)</span>
+        <span class="s1">p = []</span>
+        <span class="s1">kwds[</span><span class="s2">'parent'</span><span class="s1">] = p</span>
+        <span class="s1">v = BufferProxy(kwds)</span>
+
+        <span class="s1">self.assertIs(v.parent</span><span class="s0">, </span><span class="s1">p)</span>
+
+    <span class="s0">def </span><span class="s1">test_before(self):</span>
+        <span class="s0">def </span><span class="s1">callback(parent):</span>
+            <span class="s1">success.append(parent </span><span class="s0">is </span><span class="s1">p)</span>
+
+        <span class="s0">class </span><span class="s1">MyException(Exception):</span>
+            <span class="s0">pass</span>
+
+        <span class="s0">def </span><span class="s1">raise_exception(parent):</span>
+            <span class="s0">raise </span><span class="s1">MyException(</span><span class="s2">&quot;Just a test.&quot;</span><span class="s1">)</span>
+
+        <span class="s1">kwds = dict(self.view_keywords)</span>
+        <span class="s1">p = []</span>
+        <span class="s1">kwds[</span><span class="s2">'parent'</span><span class="s1">] = p</span>
+
+        <span class="s4"># For array interface</span>
+        <span class="s1">success = []</span>
+        <span class="s1">kwds[</span><span class="s2">'before'</span><span class="s1">] = callback</span>
+        <span class="s1">v = BufferProxy(kwds)</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">d = v.__array_interface__</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(success[</span><span class="s3">0</span><span class="s1">])</span>
+        <span class="s1">d = v.__array_interface__</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">d = v = </span><span class="s0">None</span>
+        <span class="s1">gc.collect()</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+
+        <span class="s4"># For array struct</span>
+        <span class="s1">success = []</span>
+        <span class="s1">kwds[</span><span class="s2">'before'</span><span class="s1">] = callback</span>
+        <span class="s1">v = BufferProxy(kwds)</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">c = v.__array_struct__</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(success[</span><span class="s3">0</span><span class="s1">])</span>
+        <span class="s1">c = v.__array_struct__</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">c = v = </span><span class="s0">None</span>
+        <span class="s1">gc.collect()</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+
+        <span class="s4"># Callback raises an exception</span>
+        <span class="s1">kwds[</span><span class="s2">'before'</span><span class="s1">] = raise_exception</span>
+        <span class="s1">v = BufferProxy(kwds)</span>
+        <span class="s1">self.assertRaises(MyException</span><span class="s0">, lambda </span><span class="s1">: v.__array_struct__)</span>
+
+    <span class="s0">def </span><span class="s1">test_after(self):</span>
+        <span class="s0">def </span><span class="s1">callback(parent):</span>
+            <span class="s1">success.append(parent </span><span class="s0">is </span><span class="s1">p)</span>
+
+        <span class="s1">kwds = dict(self.view_keywords)</span>
+        <span class="s1">p = []</span>
+        <span class="s1">kwds[</span><span class="s2">'parent'</span><span class="s1">] = p</span>
+
+        <span class="s4"># For array interface</span>
+        <span class="s1">success = []</span>
+        <span class="s1">kwds[</span><span class="s2">'after'</span><span class="s1">] = callback</span>
+        <span class="s1">v = BufferProxy(kwds)</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">d = v.__array_interface__</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">d = v.__array_interface__</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">d = v = </span><span class="s0">None</span>
+        <span class="s1">gc.collect()</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(success[</span><span class="s3">0</span><span class="s1">])</span>
+
+        <span class="s4"># For array struct</span>
+        <span class="s1">success = []</span>
+        <span class="s1">kwds[</span><span class="s2">'after'</span><span class="s1">] = callback</span>
+        <span class="s1">v = BufferProxy(kwds)</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">c = v.__array_struct__</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">c = v.__array_struct__</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">c = v = </span><span class="s0">None</span>
+        <span class="s1">gc.collect()</span>
+        <span class="s1">self.assertEqual(len(success)</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(success[</span><span class="s3">0</span><span class="s1">])</span>
+
+    <span class="s0">def </span><span class="s1">test_attribute(self):</span>
+        <span class="s1">v = BufferProxy(self.view_keywords)</span>
+        <span class="s1">self.assertRaises(AttributeError</span><span class="s0">, </span><span class="s1">getattr</span><span class="s0">, </span><span class="s1">v</span><span class="s0">, </span><span class="s2">'undefined'</span><span class="s1">)</span>
+        <span class="s1">v.undefined = </span><span class="s3">12</span><span class="s1">;</span>
+        <span class="s1">self.assertEqual(v.undefined</span><span class="s0">, </span><span class="s3">12</span><span class="s1">)</span>
+        <span class="s0">del </span><span class="s1">v.undefined</span>
+        <span class="s1">self.assertRaises(AttributeError</span><span class="s0">, </span><span class="s1">getattr</span><span class="s0">, </span><span class="s1">v</span><span class="s0">, </span><span class="s2">'undefined'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_weakref(self):</span>
+        <span class="s1">v = BufferProxy(self.view_keywords)</span>
+        <span class="s1">weak_v = weakref.ref(v)</span>
+
+        <span class="s1">self.assertIs(weak_v()</span><span class="s0">, </span><span class="s1">v)</span>
+
+        <span class="s1">v = </span><span class="s0">None</span>
+        <span class="s1">gc.collect()</span>
+
+        <span class="s1">self.assertIsNone(weak_v())</span>
+
+    <span class="s0">def </span><span class="s1">test_gc(self):</span>
+        <span class="s5">&quot;&quot;&quot;refcount agnostic check that contained objects are freed&quot;&quot;&quot;</span>
+        <span class="s0">def </span><span class="s1">before_callback(parent):</span>
+            <span class="s0">return </span><span class="s1">r[</span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s0">def </span><span class="s1">after_callback(parent):</span>
+            <span class="s0">return </span><span class="s1">r[</span><span class="s3">1</span><span class="s1">]</span>
+        <span class="s0">class </span><span class="s1">Obj(object):</span>
+            <span class="s0">pass</span>
+        <span class="s1">p = Obj()</span>
+        <span class="s1">a = Obj()</span>
+        <span class="s1">r = [Obj()</span><span class="s0">, </span><span class="s1">Obj()]</span>
+        <span class="s1">weak_p = weakref.ref(p)</span>
+        <span class="s1">weak_a = weakref.ref(a)</span>
+        <span class="s1">weak_r0 = weakref.ref(r[</span><span class="s3">0</span><span class="s1">])</span>
+        <span class="s1">weak_r1 = weakref.ref(r[</span><span class="s3">1</span><span class="s1">])</span>
+        <span class="s1">weak_before = weakref.ref(before_callback)</span>
+        <span class="s1">weak_after = weakref.ref(after_callback)</span>
+        <span class="s1">kwds = dict(self.view_keywords)</span>
+        <span class="s1">kwds[</span><span class="s2">'parent'</span><span class="s1">] = p</span>
+        <span class="s1">kwds[</span><span class="s2">'before'</span><span class="s1">] = before_callback</span>
+        <span class="s1">kwds[</span><span class="s2">'after'</span><span class="s1">] = after_callback</span>
+        <span class="s1">v = BufferProxy(kwds)</span>
+        <span class="s1">v.some_attribute = a</span>
+        <span class="s1">weak_v = weakref.ref(v)</span>
+        <span class="s1">kwds = p = a = before_callback = after_callback = </span><span class="s0">None</span>
+        <span class="s1">gc.collect()</span>
+        <span class="s1">self.assertTrue(weak_p() </span><span class="s0">is not None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(weak_a() </span><span class="s0">is not None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(weak_before() </span><span class="s0">is not None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(weak_after() </span><span class="s0">is not None</span><span class="s1">)</span>
+        <span class="s1">v = </span><span class="s0">None</span>
+        <span class="s1">[gc.collect() </span><span class="s0">for </span><span class="s1">x </span><span class="s0">in </span><span class="s1">range(</span><span class="s3">4</span><span class="s1">)]</span>
+        <span class="s1">self.assertTrue(weak_v() </span><span class="s0">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(weak_p() </span><span class="s0">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(weak_a() </span><span class="s0">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(weak_before() </span><span class="s0">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(weak_after() </span><span class="s0">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(weak_r0() </span><span class="s0">is not None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(weak_r1() </span><span class="s0">is not None</span><span class="s1">)</span>
+        <span class="s1">r = </span><span class="s0">None</span>
+        <span class="s1">gc.collect()</span>
+        <span class="s1">self.assertTrue(weak_r0() </span><span class="s0">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(weak_r1() </span><span class="s0">is None</span><span class="s1">)</span>
+
+        <span class="s4"># Cycle removal</span>
+        <span class="s1">kwds = dict(self.view_keywords)</span>
+        <span class="s1">kwds[</span><span class="s2">'parent'</span><span class="s1">] = []</span>
+        <span class="s1">v = BufferProxy(kwds)</span>
+        <span class="s1">v.some_attribute = v</span>
+        <span class="s1">tracked = </span><span class="s0">True</span>
+        <span class="s0">for </span><span class="s1">o </span><span class="s0">in </span><span class="s1">gc.get_objects():</span>
+            <span class="s0">if </span><span class="s1">o </span><span class="s0">is </span><span class="s1">v:</span>
+                <span class="s0">break</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">tracked = </span><span class="s0">False</span>
+        <span class="s1">self.assertTrue(tracked)</span>
+        <span class="s1">kwds[</span><span class="s2">'parent'</span><span class="s1">].append(v)</span>
+        <span class="s1">kwds = </span><span class="s0">None</span>
+        <span class="s1">gc.collect()</span>
+        <span class="s1">n1 = len(gc.garbage)</span>
+        <span class="s1">v = </span><span class="s0">None</span>
+        <span class="s1">gc.collect()</span>
+        <span class="s1">n2 = len(gc.garbage)</span>
+        <span class="s1">self.assertEqual(n2</span><span class="s0">, </span><span class="s1">n1)</span>
+
+    <span class="s0">def </span><span class="s1">test_c_api(self):</span>
+        <span class="s1">api = pygame.bufferproxy._PYGAME_C_API</span>
+        <span class="s1">api_type = type(pygame.base._PYGAME_C_API)</span>
+
+        <span class="s1">self.assertIsInstance(api</span><span class="s0">, </span><span class="s1">api_type)</span>
+
+    <span class="s0">def </span><span class="s1">test_repr(self):</span>
+        <span class="s1">v = BufferProxy(self.view_keywords)</span>
+        <span class="s1">cname = BufferProxy.__name__</span>
+        <span class="s1">oname</span><span class="s0">, </span><span class="s1">ovalue = re.findall(</span><span class="s2">r&quot;&lt;([^)]+)\(([^)]+)\)&gt;&quot;</span><span class="s0">, </span><span class="s1">repr(v))[</span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s1">self.assertEqual(oname</span><span class="s0">, </span><span class="s1">cname)</span>
+        <span class="s1">self.assertEqual(v.length</span><span class="s0">, </span><span class="s1">int(ovalue))</span>
+
+    <span class="s0">def </span><span class="s1">test_subclassing(self):</span>
+        <span class="s0">class </span><span class="s1">MyBufferProxy(BufferProxy):</span>
+            <span class="s0">def </span><span class="s1">__repr__(self):</span>
+                <span class="s0">return </span><span class="s2">&quot;*%s*&quot; </span><span class="s1">% (BufferProxy.__repr__(self)</span><span class="s0">,</span><span class="s1">)</span>
+        <span class="s1">kwds = dict(self.view_keywords)</span>
+        <span class="s1">kwds[</span><span class="s2">'parent'</span><span class="s1">] = </span><span class="s3">0</span>
+        <span class="s1">v = MyBufferProxy(kwds)</span>
+        <span class="s1">self.assertEqual(v.parent</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">r = repr(v)</span>
+        <span class="s1">self.assertEqual(r[:</span><span class="s3">2</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'*&lt;'</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(r[-</span><span class="s3">2</span><span class="s1">:]</span><span class="s0">, </span><span class="s2">'&gt;*'</span><span class="s1">)</span>
+
+    <span class="s1">@unittest.skipIf(</span><span class="s0">not </span><span class="s1">pygame.HAVE_NEWBUF</span><span class="s0">, </span><span class="s2">'newbuf not implemented'</span><span class="s1">)</span>
+    <span class="s0">def </span><span class="s1">NEWBUF_test_newbuf(self):</span>
+        <span class="s0">from </span><span class="s1">ctypes </span><span class="s0">import </span><span class="s1">string_at</span>
+
+        <span class="s0">from </span><span class="s1">pygame.tests.test_utils </span><span class="s0">import </span><span class="s1">buftools</span>
+        <span class="s1">Exporter = buftools.Exporter</span>
+        <span class="s1">Importer = buftools.Importer</span>
+        <span class="s1">exp = Exporter((</span><span class="s3">10</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'B'</span><span class="s0">, </span><span class="s1">readonly=</span><span class="s0">True</span><span class="s1">)</span>
+        <span class="s1">b = BufferProxy(exp)</span>
+        <span class="s1">self.assertEqual(b.length</span><span class="s0">, </span><span class="s1">exp.len)</span>
+        <span class="s1">self.assertEqual(b.raw</span><span class="s0">, </span><span class="s1">string_at(exp.buf</span><span class="s0">, </span><span class="s1">exp.len))</span>
+        <span class="s1">d = b.__array_interface__</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">self.assertEqual(d[</span><span class="s2">'typestr'</span><span class="s1">]</span><span class="s0">, </span><span class="s2">'|u1'</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(d[</span><span class="s2">'shape'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">exp.shape)</span>
+            <span class="s1">self.assertEqual(d[</span><span class="s2">'strides'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">exp.strides)</span>
+            <span class="s1">self.assertEqual(d[</span><span class="s2">'data'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">(exp.buf</span><span class="s0">, True</span><span class="s1">))</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">d = </span><span class="s0">None</span>
+        <span class="s1">exp = Exporter((</span><span class="s3">3</span><span class="s0">,</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'=h'</span><span class="s1">)</span>
+        <span class="s1">b = BufferProxy(exp)</span>
+        <span class="s1">self.assertEqual(b.length</span><span class="s0">, </span><span class="s1">exp.len)</span>
+        <span class="s1">self.assertEqual(b.raw</span><span class="s0">, </span><span class="s1">string_at(exp.buf</span><span class="s0">, </span><span class="s1">exp.len))</span>
+        <span class="s1">d = b.__array_interface__</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">lil_endian = pygame.get_sdl_byteorder() == pygame.LIL_ENDIAN</span>
+            <span class="s1">f = </span><span class="s2">'{}i{}'</span><span class="s1">.format(</span><span class="s2">'&lt;' </span><span class="s0">if </span><span class="s1">lil_endian </span><span class="s0">else </span><span class="s2">'&gt;'</span><span class="s0">, </span><span class="s1">exp.itemsize)</span>
+            <span class="s1">self.assertEqual(d[</span><span class="s2">'typestr'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">f)</span>
+            <span class="s1">self.assertEqual(d[</span><span class="s2">'shape'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">exp.shape)</span>
+            <span class="s1">self.assertEqual(d[</span><span class="s2">'strides'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">exp.strides)</span>
+            <span class="s1">self.assertEqual(d[</span><span class="s2">'data'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">(exp.buf</span><span class="s0">, False</span><span class="s1">))</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s1">d = </span><span class="s0">None</span>
+
+        <span class="s1">exp = Exporter((</span><span class="s3">10</span><span class="s0">, </span><span class="s3">2</span><span class="s1">)</span><span class="s0">, </span><span class="s2">'=i'</span><span class="s1">)</span>
+        <span class="s1">b = BufferProxy(exp)</span>
+        <span class="s1">imp = Importer(b</span><span class="s0">, </span><span class="s1">buftools.PyBUF_RECORDS)</span>
+        <span class="s1">self.assertTrue(imp.obj </span><span class="s0">is </span><span class="s1">b)</span>
+        <span class="s1">self.assertEqual(imp.buf</span><span class="s0">, </span><span class="s1">exp.buf)</span>
+        <span class="s1">self.assertEqual(imp.ndim</span><span class="s0">, </span><span class="s1">exp.ndim)</span>
+        <span class="s1">self.assertEqual(imp.format</span><span class="s0">, </span><span class="s1">exp.format)</span>
+        <span class="s1">self.assertEqual(imp.readonly</span><span class="s0">, </span><span class="s1">exp.readonly)</span>
+        <span class="s1">self.assertEqual(imp.itemsize</span><span class="s0">, </span><span class="s1">exp.itemsize)</span>
+        <span class="s1">self.assertEqual(imp.len</span><span class="s0">, </span><span class="s1">exp.len)</span>
+        <span class="s1">self.assertEqual(imp.shape</span><span class="s0">, </span><span class="s1">exp.shape)</span>
+        <span class="s1">self.assertEqual(imp.strides</span><span class="s0">, </span><span class="s1">exp.strides)</span>
+        <span class="s1">self.assertTrue(imp.suboffsets </span><span class="s0">is None</span><span class="s1">)</span>
+
+        <span class="s1">d = {</span><span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u1'</span><span class="s0">,</span>
+             <span class="s2">'shape'</span><span class="s1">: (</span><span class="s3">10</span><span class="s0">,</span><span class="s1">)</span><span class="s0">,</span>
+             <span class="s2">'strides'</span><span class="s1">: (</span><span class="s3">1</span><span class="s0">,</span><span class="s1">)</span><span class="s0">,</span>
+             <span class="s2">'data'</span><span class="s1">: (</span><span class="s3">9</span><span class="s0">, True</span><span class="s1">)} </span><span class="s4"># 9? Will not reading the data anyway.</span>
+        <span class="s1">b = BufferProxy(d)</span>
+        <span class="s1">imp = Importer(b</span><span class="s0">, </span><span class="s1">buftools.PyBUF_SIMPLE)</span>
+        <span class="s1">self.assertTrue(imp.obj </span><span class="s0">is </span><span class="s1">b)</span>
+        <span class="s1">self.assertEqual(imp.buf</span><span class="s0">, </span><span class="s3">9</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(imp.len</span><span class="s0">, </span><span class="s3">10</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(imp.format</span><span class="s0">, None</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(imp.itemsize</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(imp.ndim</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(imp.readonly)</span>
+        <span class="s1">self.assertTrue(imp.shape </span><span class="s0">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(imp.strides </span><span class="s0">is None</span><span class="s1">)</span>
+        <span class="s1">self.assertTrue(imp.suboffsets </span><span class="s0">is None</span><span class="s1">)</span>
+
+    <span class="s0">try</span><span class="s1">:</span>
+        <span class="s1">pygame.bufferproxy.get_segcount</span>
+    <span class="s0">except </span><span class="s1">AttributeError:</span>
+        <span class="s0">pass</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">def </span><span class="s1">test_oldbuf_arg(self):</span>
+            <span class="s1">self.OLDBUF_test_oldbuf_arg()</span>
+
+    <span class="s0">def </span><span class="s1">OLDBUF_test_oldbuf_arg(self):</span>
+        <span class="s0">from </span><span class="s1">pygame.bufferproxy </span><span class="s0">import </span><span class="s1">(get_segcount</span><span class="s0">, </span><span class="s1">get_read_buffer</span><span class="s0">,</span>
+                                        <span class="s1">get_write_buffer)</span>
+
+        <span class="s1">content = as_bytes(</span><span class="s2">'</span><span class="s0">\x01\x00\x00\x02</span><span class="s2">'</span><span class="s1">) * </span><span class="s3">12</span>
+        <span class="s1">memory = ctypes.create_string_buffer(content)</span>
+        <span class="s1">memaddr = ctypes.addressof(memory)</span>
+        <span class="s0">def </span><span class="s1">raise_exception(o):</span>
+            <span class="s0">raise </span><span class="s1">ValueError(</span><span class="s2">&quot;An exception&quot;</span><span class="s1">)</span>
+
+        <span class="s1">bf = BufferProxy({</span><span class="s2">'shape'</span><span class="s1">: (len(content)</span><span class="s0">,</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u1'</span><span class="s0">,</span>
+                          <span class="s2">'data'</span><span class="s1">: (memaddr</span><span class="s0">, False</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'strides'</span><span class="s1">: (</span><span class="s3">1</span><span class="s0">,</span><span class="s1">)})</span>
+        <span class="s1">seglen</span><span class="s0">, </span><span class="s1">segaddr = get_read_buffer(bf</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(segaddr</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(seglen</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">seglen</span><span class="s0">, </span><span class="s1">segaddr = get_write_buffer(bf</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(segaddr</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(seglen</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">segcount</span><span class="s0">, </span><span class="s1">buflen = get_segcount(bf)</span>
+        <span class="s1">self.assertEqual(segcount</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(buflen</span><span class="s0">, </span><span class="s1">len(content))</span>
+        <span class="s1">seglen</span><span class="s0">, </span><span class="s1">segaddr = get_read_buffer(bf</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(segaddr</span><span class="s0">, </span><span class="s1">memaddr)</span>
+        <span class="s1">self.assertEqual(seglen</span><span class="s0">, </span><span class="s1">len(content))</span>
+        <span class="s1">seglen</span><span class="s0">, </span><span class="s1">segaddr = get_write_buffer(bf</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(segaddr</span><span class="s0">, </span><span class="s1">memaddr)</span>
+        <span class="s1">self.assertEqual(seglen</span><span class="s0">, </span><span class="s1">len(content))</span>
+
+        <span class="s1">bf = BufferProxy({</span><span class="s2">'shape'</span><span class="s1">: (len(content)</span><span class="s0">,</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u1'</span><span class="s0">,</span>
+                          <span class="s2">'data'</span><span class="s1">: (memaddr</span><span class="s0">, True</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'strides'</span><span class="s1">: (</span><span class="s3">1</span><span class="s0">,</span><span class="s1">)})</span>
+        <span class="s1">segcount</span><span class="s0">, </span><span class="s1">buflen = get_segcount(bf)</span>
+        <span class="s1">self.assertEqual(segcount</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(buflen</span><span class="s0">, </span><span class="s1">len(content))</span>
+        <span class="s1">seglen</span><span class="s0">, </span><span class="s1">segaddr = get_read_buffer(bf</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(segaddr</span><span class="s0">, </span><span class="s1">memaddr)</span>
+        <span class="s1">self.assertEqual(seglen</span><span class="s0">, </span><span class="s1">len(content))</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">get_write_buffer</span><span class="s0">, </span><span class="s1">bf</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+
+        <span class="s1">bf = BufferProxy({</span><span class="s2">'shape'</span><span class="s1">: (len(content)</span><span class="s0">,</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u1'</span><span class="s0">,</span>
+                          <span class="s2">'data'</span><span class="s1">: (memaddr</span><span class="s0">, True</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'strides'</span><span class="s1">: (</span><span class="s3">1</span><span class="s0">,</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'before'</span><span class="s1">: raise_exception})</span>
+        <span class="s1">segcount</span><span class="s0">, </span><span class="s1">buflen = get_segcount(bf)</span>
+        <span class="s1">self.assertEqual(segcount</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(buflen</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+
+        <span class="s1">bf = BufferProxy({</span><span class="s2">'shape'</span><span class="s1">: (</span><span class="s3">3</span><span class="s0">, </span><span class="s3">4</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u4'</span><span class="s0">,</span>
+                          <span class="s2">'data'</span><span class="s1">: (memaddr</span><span class="s0">, True</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'strides'</span><span class="s1">: (</span><span class="s3">12</span><span class="s0">, </span><span class="s3">4</span><span class="s1">)})</span>
+        <span class="s1">segcount</span><span class="s0">, </span><span class="s1">buflen = get_segcount(bf)</span>
+        <span class="s1">self.assertEqual(segcount</span><span class="s0">, </span><span class="s3">3 </span><span class="s1">* </span><span class="s3">4</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(buflen</span><span class="s0">, </span><span class="s3">3 </span><span class="s1">* </span><span class="s3">4 </span><span class="s1">* </span><span class="s3">4</span><span class="s1">)</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">4</span><span class="s1">):</span>
+            <span class="s1">seglen</span><span class="s0">, </span><span class="s1">segaddr = get_read_buffer(bf</span><span class="s0">, </span><span class="s1">i)</span>
+            <span class="s1">self.assertEqual(segaddr</span><span class="s0">, </span><span class="s1">memaddr + i * </span><span class="s3">4</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(seglen</span><span class="s0">, </span><span class="s3">4</span><span class="s1">)</span>
+
+
+<span class="s0">class </span><span class="s1">BufferProxyLegacyTest(unittest.TestCase):</span>
+    <span class="s1">content = as_bytes(</span><span class="s2">'</span><span class="s0">\x01\x00\x00\x02</span><span class="s2">'</span><span class="s1">) * </span><span class="s3">12</span>
+    <span class="s1">buffer = ctypes.create_string_buffer(content)</span>
+    <span class="s1">data = (ctypes.addressof(buffer)</span><span class="s0">, True</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_length(self):</span>
+
+        <span class="s4"># __doc__ (as of 2008-08-02) for pygame.bufferproxy.BufferProxy.length:</span>
+
+          <span class="s4"># The size of the buffer data in bytes.</span>
+        <span class="s1">bf = BufferProxy({</span><span class="s2">'shape'</span><span class="s1">: (</span><span class="s3">3</span><span class="s0">, </span><span class="s3">4</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u4'</span><span class="s0">,</span>
+                          <span class="s2">'data'</span><span class="s1">: self.data</span><span class="s0">,</span>
+                          <span class="s2">'strides'</span><span class="s1">: (</span><span class="s3">12</span><span class="s0">, </span><span class="s3">4</span><span class="s1">)})</span>
+        <span class="s1">self.assertEqual(bf.length</span><span class="s0">, </span><span class="s1">len(self.content))</span>
+        <span class="s1">bf = BufferProxy({</span><span class="s2">'shape'</span><span class="s1">: (</span><span class="s3">3</span><span class="s0">, </span><span class="s3">3</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u4'</span><span class="s0">,</span>
+                          <span class="s2">'data'</span><span class="s1">: self.data</span><span class="s0">,</span>
+                          <span class="s2">'strides'</span><span class="s1">: (</span><span class="s3">12</span><span class="s0">, </span><span class="s3">4</span><span class="s1">)})</span>
+        <span class="s1">self.assertEqual(bf.length</span><span class="s0">, </span><span class="s3">3</span><span class="s1">*</span><span class="s3">3</span><span class="s1">*</span><span class="s3">4</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_raw(self):</span>
+
+        <span class="s4"># __doc__ (as of 2008-08-02) for pygame.bufferproxy.BufferProxy.raw:</span>
+
+          <span class="s4"># The raw buffer data as string. The string may contain NUL bytes.</span>
+
+        <span class="s1">bf = BufferProxy({</span><span class="s2">'shape'</span><span class="s1">: (len(self.content)</span><span class="s0">,</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u1'</span><span class="s0">,</span>
+                          <span class="s2">'data'</span><span class="s1">: self.data})</span>
+        <span class="s1">self.assertEqual(bf.raw</span><span class="s0">, </span><span class="s1">self.content)</span>
+        <span class="s1">bf = BufferProxy({</span><span class="s2">'shape'</span><span class="s1">: (</span><span class="s3">3</span><span class="s0">, </span><span class="s3">4</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u4'</span><span class="s0">,</span>
+                          <span class="s2">'data'</span><span class="s1">: self.data</span><span class="s0">,</span>
+                          <span class="s2">'strides'</span><span class="s1">: (</span><span class="s3">4</span><span class="s0">, </span><span class="s3">12</span><span class="s1">)})</span>
+        <span class="s1">self.assertEqual(bf.raw</span><span class="s0">, </span><span class="s1">self.content)</span>
+        <span class="s1">bf = BufferProxy({</span><span class="s2">'shape'</span><span class="s1">: (</span><span class="s3">3</span><span class="s0">, </span><span class="s3">4</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u1'</span><span class="s0">,</span>
+                          <span class="s2">'data'</span><span class="s1">: self.data</span><span class="s0">,</span>
+                          <span class="s2">'strides'</span><span class="s1">: (</span><span class="s3">16</span><span class="s0">, </span><span class="s3">4</span><span class="s1">)})</span>
+        <span class="s1">self.assertRaises(ValueError</span><span class="s0">, </span><span class="s1">getattr</span><span class="s0">, </span><span class="s1">bf</span><span class="s0">, </span><span class="s2">'raw'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_write(self):</span>
+
+        <span class="s4"># __doc__ (as of 2008-08-02) for pygame.bufferproxy.BufferProxy.write:</span>
+
+          <span class="s4"># B.write (bufferproxy, buffer, offset) -&gt; None</span>
+          <span class="s4">#</span>
+          <span class="s4"># Writes raw data to the bufferproxy.</span>
+          <span class="s4">#</span>
+          <span class="s4"># Writes the raw data from buffer to the BufferProxy object, starting</span>
+          <span class="s4"># at the specified offset within the BufferProxy.</span>
+          <span class="s4"># If the length of the passed buffer exceeds the length of the</span>
+          <span class="s4"># BufferProxy (reduced by the offset), an IndexError will be raised.</span>
+        <span class="s0">from </span><span class="s1">ctypes </span><span class="s0">import </span><span class="s1">c_byte</span><span class="s0">, </span><span class="s1">sizeof</span><span class="s0">, </span><span class="s1">addressof</span><span class="s0">, </span><span class="s1">string_at</span><span class="s0">, </span><span class="s1">memset</span>
+
+        <span class="s1">nullbyte = </span><span class="s2">'</span><span class="s0">\x00</span><span class="s2">'</span><span class="s1">.encode(</span><span class="s2">'latin_1'</span><span class="s1">)</span>
+        <span class="s1">Buf = c_byte * </span><span class="s3">10</span>
+        <span class="s1">data_buf = Buf(*range(</span><span class="s3">1</span><span class="s0">, </span><span class="s3">3 </span><span class="s1">* sizeof(Buf) + </span><span class="s3">1</span><span class="s0">, </span><span class="s3">3</span><span class="s1">))</span>
+        <span class="s1">data = string_at(data_buf</span><span class="s0">, </span><span class="s1">sizeof(data_buf))</span>
+        <span class="s1">buf = Buf()</span>
+        <span class="s1">bp = BufferProxy({</span><span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u1'</span><span class="s0">,</span>
+                          <span class="s2">'shape'</span><span class="s1">: (sizeof(buf)</span><span class="s0">,</span><span class="s1">)</span><span class="s0">,</span>
+                          <span class="s2">'data'</span><span class="s1">: (addressof(buf)</span><span class="s0">, False</span><span class="s1">)})</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">self.assertEqual(bp.raw</span><span class="s0">, </span><span class="s1">nullbyte * sizeof(Buf))</span>
+            <span class="s1">bp.write(data)</span>
+            <span class="s1">self.assertEqual(bp.raw</span><span class="s0">, </span><span class="s1">data)</span>
+            <span class="s1">memset(buf</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s1">sizeof(buf))</span>
+            <span class="s1">bp.write(data[:</span><span class="s3">3</span><span class="s1">]</span><span class="s0">, </span><span class="s3">2</span><span class="s1">)</span>
+            <span class="s1">raw = bp.raw</span>
+            <span class="s1">self.assertEqual(raw[:</span><span class="s3">2</span><span class="s1">]</span><span class="s0">, </span><span class="s1">nullbyte * </span><span class="s3">2</span><span class="s1">)</span>
+            <span class="s1">self.assertEqual(raw[</span><span class="s3">2</span><span class="s1">:</span><span class="s3">5</span><span class="s1">]</span><span class="s0">, </span><span class="s1">data[:</span><span class="s3">3</span><span class="s1">])</span>
+            <span class="s1">self.assertEqual(raw[</span><span class="s3">5</span><span class="s1">:]</span><span class="s0">, </span><span class="s1">nullbyte * (sizeof(Buf) - </span><span class="s3">5</span><span class="s1">))</span>
+            <span class="s1">bp.write(data[:</span><span class="s3">3</span><span class="s1">]</span><span class="s0">, </span><span class="s1">bp.length - </span><span class="s3">3</span><span class="s1">)</span>
+            <span class="s1">raw = bp.raw</span>
+            <span class="s1">self.assertEqual(raw[-</span><span class="s3">3</span><span class="s1">:]</span><span class="s0">, </span><span class="s1">data[:</span><span class="s3">3</span><span class="s1">])</span>
+            <span class="s1">self.assertRaises(IndexError</span><span class="s0">, </span><span class="s1">bp.write</span><span class="s0">, </span><span class="s1">data</span><span class="s0">, </span><span class="s3">1</span><span class="s1">)</span>
+            <span class="s1">self.assertRaises(IndexError</span><span class="s0">, </span><span class="s1">bp.write</span><span class="s0">, </span><span class="s1">data[:</span><span class="s3">5</span><span class="s1">]</span><span class="s0">, </span><span class="s1">-</span><span class="s3">1</span><span class="s1">)</span>
+            <span class="s1">self.assertRaises(IndexError</span><span class="s0">, </span><span class="s1">bp.write</span><span class="s0">, </span><span class="s1">data[:</span><span class="s3">5</span><span class="s1">]</span><span class="s0">, </span><span class="s1">bp.length)</span>
+            <span class="s1">self.assertRaises(TypeError</span><span class="s0">, </span><span class="s1">bp.write</span><span class="s0">, </span><span class="s3">12</span><span class="s1">)</span>
+            <span class="s1">bp = BufferProxy({</span><span class="s2">'typestr'</span><span class="s1">: </span><span class="s2">'|u1'</span><span class="s0">,</span>
+                              <span class="s2">'shape'</span><span class="s1">: (sizeof(buf)</span><span class="s0">,</span><span class="s1">)</span><span class="s0">,</span>
+                              <span class="s2">'data'</span><span class="s1">: (addressof(buf)</span><span class="s0">, True</span><span class="s1">)})</span>
+            <span class="s1">self.assertRaises(pygame.BufferError</span><span class="s0">, </span><span class="s1">bp.write</span><span class="s0">, </span><span class="s2">'123'</span><span class="s1">.encode(</span><span class="s2">'latin_1'</span><span class="s1">))</span>
+        <span class="s0">finally</span><span class="s1">:</span>
+            <span class="s4"># Make sure bp is garbage collected before buf</span>
+            <span class="s1">bp = </span><span class="s0">None</span>
+            <span class="s1">gc.collect()</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s2">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

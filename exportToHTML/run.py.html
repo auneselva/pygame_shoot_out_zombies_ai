@@ -1,0 +1,238 @@
+<html>
+<head>
+<title>run.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+run.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">pygame</span>
+<span class="s0">import </span><span class="s1">random</span>
+<span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">import </span><span class="s1">math</span>
+<span class="s0">import </span><span class="s1">tkinter </span><span class="s0">as </span><span class="s1">tk</span>
+<span class="s2"># my modules</span>
+<span class="s0">from </span><span class="s1">circle </span><span class="s0">import </span><span class="s1">Circle</span>
+<span class="s0">from </span><span class="s1">player </span><span class="s0">import </span><span class="s1">Player</span>
+<span class="s0">from </span><span class="s1">enemy </span><span class="s0">import </span><span class="s1">Enemy</span>
+
+
+<span class="s0">class </span><span class="s1">Game(object):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self):</span>
+
+        <span class="s1">pygame.init()</span>
+        <span class="s1">self.start_time = pygame.time.get_ticks()</span>
+
+        <span class="s1">self.res = (</span><span class="s3">1280</span><span class="s0">, </span><span class="s3">720</span><span class="s1">)</span>
+        <span class="s1">self.panel_width = </span><span class="s3">300</span>
+        <span class="s1">self.screen = pygame.display.set_mode((self.res[</span><span class="s3">0</span><span class="s1">] + self.panel_width</span><span class="s0">, </span><span class="s1">self.res[</span><span class="s3">1</span><span class="s1">]))</span>
+        <span class="s1">pygame.display.set_caption(</span><span class="s4">&quot;SHOOT OUT ZOMBIES&quot;</span><span class="s1">)</span>
+        <span class="s1">self.tps_max = </span><span class="s3">100.0</span>
+        <span class="s1">self.tps_clock = pygame.time.Clock()</span>
+        <span class="s1">self.tps_delta = </span><span class="s3">0.0</span>
+
+        <span class="s1">self.n_obstacles = </span><span class="s3">14</span>
+        <span class="s1">self.blue = (</span><span class="s3">63</span><span class="s0">, </span><span class="s3">127</span><span class="s0">, </span><span class="s3">191</span><span class="s1">)</span>
+        <span class="s1">self.n_enemies = </span><span class="s3">2</span>
+        <span class="s1">self.red = (</span><span class="s3">255</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.n_spawns = </span><span class="s3">3</span>
+        <span class="s1">self.yellow = (</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span>
+        <span class="s1">self.obstacles = self.create_objects(Circle</span><span class="s0">, </span><span class="s1">self.n_obstacles</span><span class="s0">, </span><span class="s3">40</span><span class="s0">, </span><span class="s1">self.blue</span><span class="s0">, </span><span class="s1">[]</span><span class="s0">, </span><span class="s3">50</span><span class="s1">)</span>
+        <span class="s1">self.enemies = []</span>
+        <span class="s1">self.r_enemy = </span><span class="s3">10</span>
+        <span class="s1">self.enemies = self.create_objects(Enemy</span><span class="s0">, </span><span class="s1">self.n_enemies</span><span class="s0">, </span><span class="s1">self.r_enemy</span><span class="s0">, </span><span class="s1">self.red</span><span class="s0">, </span><span class="s1">self.obstacles</span><span class="s0">, </span><span class="s3">5</span><span class="s1">)</span>
+        <span class="s1">self.spawns = []</span>
+        <span class="s1">self.r_spawn = </span><span class="s3">8</span>
+        <span class="s1">self.spawns = self.create_objects(Circle</span><span class="s0">, </span><span class="s1">self.n_spawns</span><span class="s0">, </span><span class="s1">self.r_spawn</span><span class="s0">, </span><span class="s1">self.yellow</span><span class="s0">, </span><span class="s1">self.obstacles + self.enemies</span><span class="s0">, </span><span class="s3">5</span><span class="s1">)</span>
+
+        <span class="s1">self.player = Player(self)</span>
+        <span class="s1">self.leader = self.enemies[</span><span class="s3">0</span><span class="s1">]</span>
+        <span class="s1">self.counter_reset = </span><span class="s3">10000</span>
+        <span class="s1">self.time_counter = </span><span class="s3">0</span>
+        <span class="s1">self.run = </span><span class="s0">True</span>
+        <span class="s1">self.end_info_prepared = </span><span class="s0">False</span>
+        <span class="s1">self.buttons = []</span>
+        <span class="s1">self.beh_texts = [</span><span class="s4">&quot;Seek&quot;</span><span class="s0">, </span><span class="s4">&quot;Pursuit&quot;</span><span class="s0">, </span><span class="s4">&quot;Flee&quot;</span><span class="s0">, </span><span class="s4">&quot;Evade&quot;</span><span class="s0">, </span><span class="s4">&quot;Wander&quot;</span><span class="s0">, </span><span class="s4">&quot;Hide&quot;</span><span class="s0">, </span><span class="s4">&quot;Avoid obstacles only&quot;</span><span class="s0">, </span><span class="s4">&quot;Avoid walls only&quot;</span><span class="s0">, </span><span class="s4">&quot;Example mix 1&quot;</span><span class="s0">, </span><span class="s4">&quot;Example mix 2&quot;</span><span class="s0">, </span><span class="s4">&quot;Example mix 3&quot;</span><span class="s0">, </span><span class="s4">&quot;Example mix 4&quot;</span><span class="s1">]</span>
+        <span class="s1">self.current_behavior = </span><span class="s3">9</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(</span><span class="s3">12</span><span class="s1">):</span>
+            <span class="s1">self.buttons.append(pygame.Rect(int(self.res[</span><span class="s3">0</span><span class="s1">]) + </span><span class="s3">50</span><span class="s0">, </span><span class="s3">70 </span><span class="s1">+ </span><span class="s3">50 </span><span class="s1">* i</span><span class="s0">, </span><span class="s3">200</span><span class="s0">, </span><span class="s3">40</span><span class="s1">))</span>
+        <span class="s0">while True</span><span class="s1">:</span>
+
+        <span class="s2"># Handle events</span>
+
+            <span class="s0">for </span><span class="s1">event </span><span class="s0">in </span><span class="s1">pygame.event.get():</span>
+                <span class="s0">if </span><span class="s1">event.type == pygame.QUIT:</span>
+                    <span class="s1">sys.exit(</span><span class="s3">0</span><span class="s1">)</span>
+                <span class="s0">elif </span><span class="s1">event.type == pygame.KEYDOWN </span><span class="s0">and </span><span class="s1">event.key == pygame.K_ESCAPE:</span>
+                    <span class="s1">sys.exit(</span><span class="s3">0</span><span class="s1">)</span>
+                <span class="s0">if </span><span class="s1">event.type == pygame.MOUSEBUTTONDOWN:</span>
+                    <span class="s1">mouse_pos = event.pos</span>
+                    <span class="s2"># checks if mouse position is over the button</span>
+                    <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(len(self.buttons)):</span>
+                        <span class="s0">if </span><span class="s1">self.buttons[i].left &lt; mouse_pos[</span><span class="s3">0</span><span class="s1">] &lt; self.buttons[i].left + self.buttons[i].width:</span>
+                            <span class="s0">if </span><span class="s1">self.buttons[i].top &lt; mouse_pos[</span><span class="s3">1</span><span class="s1">] &lt; self.buttons[i].top + self.buttons[i].height:</span>
+                                <span class="s1">self.current_behavior = i</span>
+
+            <span class="s2"># Ticking</span>
+
+            <span class="s1">self.tps_delta += self.tps_clock.tick()/</span><span class="s3">1000.0</span>
+            <span class="s0">while </span><span class="s1">self.tps_delta &gt; </span><span class="s3">1 </span><span class="s1">/ self.tps_max:</span>
+                <span class="s1">self.tick()</span>
+                <span class="s1">self.tps_delta -= </span><span class="s3">1 </span><span class="s1">/ self.tps_max</span>
+
+            <span class="s2"># Drawing</span>
+            <span class="s1">self.screen.fill((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+            <span class="s1">self.draw()</span>
+            <span class="s1">pygame.display.flip()</span>
+
+    <span class="s0">def </span><span class="s1">tick(self):</span>
+
+        <span class="s0">if not </span><span class="s1">self.enemies:</span>
+            <span class="s1">print(</span><span class="s4">&quot;You won!&quot;</span><span class="s1">)</span>
+            <span class="s1">print(</span><span class="s4">&quot;Coins collected: &quot;</span><span class="s0">, </span><span class="s1">self.player.score)</span>
+            <span class="s1">print(</span><span class="s4">&quot;Enemies shot: &quot;</span><span class="s0">, </span><span class="s1">self.player.kills)</span>
+
+        <span class="s0">if </span><span class="s1">self.player.hp == </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">print(</span><span class="s4">&quot;Game over&quot;</span><span class="s1">)</span>
+            <span class="s1">print(</span><span class="s4">&quot;Coins collected: &quot;</span><span class="s0">, </span><span class="s1">self.player.score)</span>
+            <span class="s1">print(</span><span class="s4">&quot;Enemies shot: &quot;</span><span class="s0">, </span><span class="s1">self.player.kills)</span>
+
+        <span class="s1">self.player.tick()</span>
+        <span class="s0">for </span><span class="s1">enemy </span><span class="s0">in </span><span class="s1">self.enemies:</span>
+            <span class="s1">enemy.tick()</span>
+        <span class="s0">for </span><span class="s1">enemy </span><span class="s0">in </span><span class="s1">self.enemies:</span>
+            <span class="s1">enemy.change_pos()</span>
+
+        <span class="s1">self.time_counter += </span><span class="s3">1</span>
+        <span class="s0">if </span><span class="s1">self.time_counter == self.counter_reset:</span>
+            <span class="s1">self.time_counter = </span><span class="s3">0</span>
+        <span class="s0">if </span><span class="s1">self.time_counter % </span><span class="s3">100 </span><span class="s1">== </span><span class="s3">0</span><span class="s1">:</span>
+            <span class="s1">new_sp = self.create_objects(Circle</span><span class="s0">, </span><span class="s3">1</span><span class="s0">, </span><span class="s1">self.r_spawn</span><span class="s0">, </span><span class="s1">self.yellow</span><span class="s0">, </span><span class="s1">self.obstacles + self.enemies</span><span class="s0">, </span><span class="s3">5</span><span class="s1">).pop(</span><span class="s3">0</span><span class="s1">)</span>
+            <span class="s1">self.spawns.append(new_sp)</span>
+        <span class="s0">if </span><span class="s1">self.time_counter % </span><span class="s3">150 </span><span class="s1">== </span><span class="s3">50</span><span class="s1">:</span>
+            <span class="s1">self.spawns.pop(</span><span class="s3">0</span><span class="s1">)</span>
+
+        <span class="s0">if not </span><span class="s1">self.enemies </span><span class="s0">and </span><span class="s1">self.player.kills &lt; </span><span class="s3">120</span><span class="s1">:</span>
+            <span class="s1">self.n_enemies *= </span><span class="s3">2</span>
+            <span class="s1">self.enemies = self.create_objects(Enemy</span><span class="s0">, </span><span class="s1">self.n_enemies</span><span class="s0">, </span><span class="s1">self.r_enemy</span><span class="s0">, </span><span class="s1">self.red</span><span class="s0">, </span><span class="s1">self.obstacles</span><span class="s0">, </span><span class="s3">5</span><span class="s1">)</span>
+        <span class="s0">if not </span><span class="s1">self.enemies </span><span class="s0">and </span><span class="s1">self.player.kills &gt;= </span><span class="s3">120</span><span class="s1">:</span>
+            <span class="s1">self.run = </span><span class="s0">False</span>
+        <span class="s2"># tag those who are close enough to each other to perform a group attack</span>
+        <span class="s1">self.tag_enemies()</span>
+
+    <span class="s0">def </span><span class="s1">screen_UI_draw(self):</span>
+        <span class="s0">global </span><span class="s1">text_time</span><span class="s0">, </span><span class="s1">text_coins</span><span class="s0">, </span><span class="s1">text_enemies</span>
+        <span class="s1">font = pygame.font.SysFont(</span><span class="s4">'Gill Sans'</span><span class="s0">, </span><span class="s3">18</span><span class="s1">)</span>
+        <span class="s1">yellow_text = (</span><span class="s3">255</span><span class="s0">, </span><span class="s3">255</span><span class="s0">, </span><span class="s3">94</span><span class="s1">)</span>
+        <span class="s1">pygame.draw.rect(self.screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">94</span><span class="s0">, </span><span class="s3">118</span><span class="s0">, </span><span class="s3">189</span><span class="s1">)</span><span class="s0">, </span><span class="s1">(int(self.res[</span><span class="s3">0</span><span class="s1">])</span><span class="s0">, </span><span class="s3">0</span><span class="s0">, </span><span class="s1">self.panel_width</span><span class="s0">, </span><span class="s1">self.res[</span><span class="s3">1</span><span class="s1">]))</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(</span><span class="s3">12</span><span class="s1">):</span>
+            <span class="s1">pygame.draw.rect(self.screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">30</span><span class="s0">, </span><span class="s3">41</span><span class="s0">, </span><span class="s3">71</span><span class="s1">)</span><span class="s0">, </span><span class="s1">self.buttons[i])</span>
+            <span class="s1">self.screen.blit(font.render(self.beh_texts[i]</span><span class="s0">, True, </span><span class="s1">yellow_text)</span><span class="s0">, </span><span class="s1">(int(self.res[</span><span class="s3">0</span><span class="s1">]) + </span><span class="s3">60</span><span class="s0">, </span><span class="s3">80 </span><span class="s1">+ </span><span class="s3">50 </span><span class="s1">* i))</span>
+        <span class="s1">self.screen.blit(font.render(str(</span><span class="s4">&quot;Current enemies' behavior:&quot;</span><span class="s1">)</span><span class="s0">, True, </span><span class="s1">yellow_text)</span><span class="s0">, </span><span class="s1">(int(self.res[</span><span class="s3">0</span><span class="s1">]) + </span><span class="s3">60</span><span class="s0">, </span><span class="s3">10</span><span class="s1">))</span>
+        <span class="s1">self.screen.blit(font.render(str(self.beh_texts[self.current_behavior])</span><span class="s0">, True, </span><span class="s1">yellow_text)</span><span class="s0">, </span><span class="s1">(int(self.res[</span><span class="s3">0</span><span class="s1">]) + </span><span class="s3">60</span><span class="s0">, </span><span class="s3">30</span><span class="s1">))</span>
+
+        <span class="s0">if </span><span class="s1">self.run </span><span class="s0">is False</span><span class="s1">:</span>
+            <span class="s0">if </span><span class="s1">self.end_info_prepared </span><span class="s0">is False</span><span class="s1">:</span>
+                <span class="s1">self.time_counter = pygame.time.get_ticks() - self.start_time</span>
+                <span class="s1">counting_minutes = str(int(self.time_counter / </span><span class="s3">60000</span><span class="s1">))</span>
+                <span class="s1">counting_seconds = int((self.time_counter / </span><span class="s3">1000</span><span class="s1">) % </span><span class="s3">60</span><span class="s1">)</span>
+                <span class="s0">if </span><span class="s1">counting_seconds == </span><span class="s3">0</span><span class="s1">:</span>
+                    <span class="s1">text_seconds = </span><span class="s4">&quot;00&quot;</span>
+                <span class="s0">elif </span><span class="s3">10 </span><span class="s1">&gt; counting_seconds &gt; </span><span class="s3">1</span><span class="s1">:</span>
+                    <span class="s1">text_seconds = </span><span class="s4">&quot;0&quot; </span><span class="s1">+ str(counting_seconds)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s1">text_seconds = str(counting_seconds)</span>
+                <span class="s1">text_time = font.render(str(</span><span class="s4">&quot;Time elapsed: &quot; </span><span class="s1">+ str(counting_minutes + </span><span class="s4">&quot;:&quot; </span><span class="s1">+ text_seconds))</span><span class="s0">, True,</span>
+                                        <span class="s1">yellow_text)</span>
+                <span class="s1">text_coins = font.render(str(</span><span class="s4">&quot;Coins collected: &quot; </span><span class="s1">+ str(self.player.score))</span><span class="s0">, True, </span><span class="s1">yellow_text)</span>
+                <span class="s1">text_enemies = font.render(str(</span><span class="s4">&quot;Enemies shot: &quot; </span><span class="s1">+ str(self.player.kills))</span><span class="s0">, True, </span><span class="s1">yellow_text)</span>
+                <span class="s1">self.end_info_prepared = </span><span class="s0">True</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s1">width = </span><span class="s3">300</span>
+                <span class="s1">height = </span><span class="s3">200</span>
+                <span class="s1">pygame.draw.rect(self.screen</span><span class="s0">, </span><span class="s1">(</span><span class="s3">30</span><span class="s0">, </span><span class="s3">41</span><span class="s0">, </span><span class="s3">71</span><span class="s1">)</span><span class="s0">,</span>
+                                 <span class="s1">(int(self.res[</span><span class="s3">0</span><span class="s1">] / </span><span class="s3">2 </span><span class="s1">- width / </span><span class="s3">2</span><span class="s1">)</span><span class="s0">, </span><span class="s1">int(self.res[</span><span class="s3">1</span><span class="s1">] / </span><span class="s3">2 </span><span class="s1">- height / </span><span class="s3">2</span><span class="s1">)</span><span class="s0">, </span><span class="s1">width</span><span class="s0">, </span><span class="s1">height))</span>
+                <span class="s1">self.screen.blit(text_time</span><span class="s0">,</span>
+                                 <span class="s1">(int(self.res[</span><span class="s3">0</span><span class="s1">] / </span><span class="s3">2 </span><span class="s1">- width / </span><span class="s3">2</span><span class="s1">) + </span><span class="s3">20</span><span class="s0">, </span><span class="s1">int(self.res[</span><span class="s3">1</span><span class="s1">] / </span><span class="s3">2 </span><span class="s1">- height / </span><span class="s3">2</span><span class="s1">) + </span><span class="s3">50</span><span class="s1">))</span>
+                <span class="s1">self.screen.blit(text_coins</span><span class="s0">,</span>
+                                 <span class="s1">(int(self.res[</span><span class="s3">0</span><span class="s1">] / </span><span class="s3">2 </span><span class="s1">- width / </span><span class="s3">2</span><span class="s1">) + </span><span class="s3">20</span><span class="s0">, </span><span class="s1">int(self.res[</span><span class="s3">1</span><span class="s1">] / </span><span class="s3">2 </span><span class="s1">- height / </span><span class="s3">2</span><span class="s1">) + </span><span class="s3">100</span><span class="s1">))</span>
+                <span class="s1">self.screen.blit(text_enemies</span><span class="s0">,</span>
+                                 <span class="s1">(int(self.res[</span><span class="s3">0</span><span class="s1">] / </span><span class="s3">2 </span><span class="s1">- width / </span><span class="s3">2</span><span class="s1">) + </span><span class="s3">20</span><span class="s0">, </span><span class="s1">int(self.res[</span><span class="s3">1</span><span class="s1">] / </span><span class="s3">2 </span><span class="s1">- height / </span><span class="s3">2</span><span class="s1">) + </span><span class="s3">150</span><span class="s1">))</span>
+
+    <span class="s0">def </span><span class="s1">draw(self):</span>
+        <span class="s1">self.player.draw()</span>
+        <span class="s0">for </span><span class="s1">obst </span><span class="s0">in </span><span class="s1">self.obstacles:</span>
+            <span class="s1">obst.draw()</span>
+        <span class="s0">for </span><span class="s1">enemy </span><span class="s0">in </span><span class="s1">self.enemies:</span>
+            <span class="s1">enemy.draw()</span>
+        <span class="s0">for </span><span class="s1">spawn </span><span class="s0">in </span><span class="s1">self.spawns:</span>
+            <span class="s1">spawn.draw()</span>
+        <span class="s1">self.screen_UI_draw()</span>
+
+    <span class="s0">def </span><span class="s1">create_objects(self</span><span class="s0">, </span><span class="s1">obj_type</span><span class="s0">, </span><span class="s1">n_objects</span><span class="s0">, </span><span class="s1">r</span><span class="s0">, </span><span class="s1">color</span><span class="s0">, </span><span class="s1">objects_check_coll</span><span class="s0">, </span><span class="s1">dist):</span>
+
+        <span class="s2"># wall_dist is a minimum distance between an obstacle and the walls</span>
+        <span class="s2"># player_dist is a minimum distance between an obstacle and the starting position of the player</span>
+        <span class="s1">wall_dist = </span><span class="s3">20</span>
+        <span class="s1">player_dist = self.res[</span><span class="s3">0</span><span class="s1">]/</span><span class="s3">20 </span><span class="s1">+ </span><span class="s3">10</span>
+        <span class="s1">objects = []</span>
+
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range(n_objects):</span>
+            <span class="s1">pos_x = random.randint(r + wall_dist</span><span class="s0">, </span><span class="s1">self.res[</span><span class="s3">0</span><span class="s1">] - wall_dist - r)</span>
+            <span class="s1">pos_y = random.randint(r + wall_dist</span><span class="s0">, </span><span class="s1">self.res[</span><span class="s3">1</span><span class="s1">] - wall_dist - r)</span>
+            <span class="s0">while </span><span class="s1">self.check_collisions(pos_x</span><span class="s0">, </span><span class="s1">pos_y</span><span class="s0">, </span><span class="s1">r + dist</span><span class="s0">, </span><span class="s1">objects_check_coll + objects) </span><span class="s0">is True or </span><span class="s1">self.check_player_dist(player_dist</span><span class="s0">, </span><span class="s1">pos_x</span><span class="s0">, </span><span class="s1">pos_y</span><span class="s0">, </span><span class="s1">r) </span><span class="s0">is True</span><span class="s1">:</span>
+                <span class="s1">pos_x = random.randint(r + wall_dist</span><span class="s0">, </span><span class="s1">self.res[</span><span class="s3">0</span><span class="s1">] - wall_dist - r)</span>
+                <span class="s1">pos_y = random.randint(r + wall_dist</span><span class="s0">, </span><span class="s1">self.res[</span><span class="s3">1</span><span class="s1">] - wall_dist - r)</span>
+            <span class="s1">objects.append(obj_type(self</span><span class="s0">, </span><span class="s1">r</span><span class="s0">, </span><span class="s1">pos_x</span><span class="s0">, </span><span class="s1">pos_y</span><span class="s0">, </span><span class="s1">color))</span>
+
+        <span class="s0">return </span><span class="s1">objects</span>
+
+    <span class="s2"># the method below checks if the object is not too close to the player's starting position</span>
+    <span class="s0">def </span><span class="s1">check_player_dist(self</span><span class="s0">, </span><span class="s1">player_dist</span><span class="s0">, </span><span class="s1">pos_x</span><span class="s0">, </span><span class="s1">pos_y</span><span class="s0">, </span><span class="s1">r):</span>
+        <span class="s0">if </span><span class="s1">self.res[</span><span class="s3">0</span><span class="s1">] / </span><span class="s3">2 </span><span class="s1">- player_dist &lt; pos_x &lt; self.res[</span><span class="s3">0</span><span class="s1">] / </span><span class="s3">2 </span><span class="s1">+ player_dist:</span>
+            <span class="s0">if </span><span class="s1">self.res[</span><span class="s3">1</span><span class="s1">] / </span><span class="s3">2 </span><span class="s1">- player_dist &lt; pos_y &lt; self.res[</span><span class="s3">1</span><span class="s1">] / </span><span class="s3">2 </span><span class="s1">+ player_dist:</span>
+                <span class="s0">return True</span>
+        <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">check_collisions(self</span><span class="s0">, </span><span class="s1">pos_x</span><span class="s0">, </span><span class="s1">pos_y</span><span class="s0">, </span><span class="s1">r</span><span class="s0">, </span><span class="s1">circles):</span>
+        <span class="s0">for </span><span class="s1">circle </span><span class="s0">in </span><span class="s1">circles:</span>
+            <span class="s1">dx = circle.pos.x - pos_x</span>
+            <span class="s1">dy = circle.pos.y - pos_y</span>
+            <span class="s1">distance = math.sqrt((dx * dx) + (dy * dy))</span>
+            <span class="s0">if </span><span class="s1">distance &lt; r + circle.r:</span>
+                <span class="s0">return True</span>
+        <span class="s0">return False</span>
+
+    <span class="s0">def </span><span class="s1">tag_enemies(self):</span>
+
+        <span class="s1">gathered = []</span>
+        <span class="s1">circle_r = self.res[</span><span class="s3">0</span><span class="s1">] / </span><span class="s3">10</span>
+        <span class="s1">n_min_gath = </span><span class="s3">7</span>
+        <span class="s0">for </span><span class="s1">enemy_1 </span><span class="s0">in </span><span class="s1">self.enemies:</span>
+            <span class="s0">for </span><span class="s1">enemy_2 </span><span class="s0">in </span><span class="s1">self.enemies:</span>
+                <span class="s0">if </span><span class="s1">enemy_1 </span><span class="s0">is not </span><span class="s1">enemy_2:</span>
+                    <span class="s0">if </span><span class="s1">(enemy_1.pos - enemy_2.pos).length() &lt; circle_r:</span>
+                        <span class="s1">gathered.append(enemy_2)</span>
+            <span class="s1">gathered.append(enemy_1)</span>
+            <span class="s0">if </span><span class="s1">len(gathered) &gt;= n_min_gath:</span>
+                <span class="s0">for </span><span class="s1">enemy </span><span class="s0">in </span><span class="s1">gathered:</span>
+                    <span class="s1">enemy.group_attack = </span><span class="s0">True</span>
+                <span class="s1">self.leader = gathered[</span><span class="s3">0</span><span class="s1">]</span>
+            <span class="s1">gathered = []</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s4">&quot;__main__&quot;</span><span class="s1">:</span>
+    <span class="s1">Game()</span></pre>
+</body>
+</html>

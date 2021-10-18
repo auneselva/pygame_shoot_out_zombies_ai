@@ -1,0 +1,90 @@
+<html>
+<head>
+<title>key_test.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #629755; font-style: italic;}
+.s4 { color: #6897bb;}
+.s5 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+key_test.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">unittest</span>
+<span class="s0">import </span><span class="s1">pygame</span>
+<span class="s0">import </span><span class="s1">pygame.key</span>
+
+
+<span class="s0">class </span><span class="s1">KeyModuleTest(unittest.TestCase):</span>
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">setUpClass(cls):</span>
+        <span class="s1">pygame.init()</span>
+
+    <span class="s1">@classmethod</span>
+    <span class="s0">def </span><span class="s1">tearDownClass(cls):</span>
+        <span class="s1">pygame.quit()</span>
+
+    <span class="s0">def </span><span class="s1">setUp(cls):</span>
+        <span class="s2"># This makes sure pygame is always initialized before each test (in</span>
+        <span class="s2"># case a test calls pygame.quit()).</span>
+        <span class="s0">if not </span><span class="s1">pygame.get_init():</span>
+            <span class="s1">pygame.init()</span>
+
+    <span class="s0">def </span><span class="s1">test_import(self):</span>
+        <span class="s3">'does it import'</span>
+        <span class="s0">import </span><span class="s1">pygame.key</span>
+
+    <span class="s0">def </span><span class="s1">todo_test_get_focused(self):</span>
+
+        <span class="s2"># __doc__ (as of 2008-08-02) for pygame.key.get_focused:</span>
+
+          <span class="s2"># pygame.key.get_focused(): return bool</span>
+          <span class="s2"># true if the display is receiving keyboard input from the system</span>
+          <span class="s2">#</span>
+          <span class="s2"># This is true when the display window has keyboard focus from the</span>
+          <span class="s2"># system. If the display needs to ensure it does not lose keyboard</span>
+          <span class="s2"># focus, it can use pygame.event.set_grab() to grab all input.</span>
+          <span class="s2">#</span>
+
+        <span class="s1">self.fail()</span>
+
+    <span class="s0">def </span><span class="s1">test_get_pressed(self):</span>
+        <span class="s1">states = pygame.key.get_pressed()</span>
+        <span class="s1">self.assertEqual(states[pygame.K_RIGHT]</span><span class="s0">, </span><span class="s4">0</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_name(self):</span>
+        <span class="s1">self.assertEqual(pygame.key.name(pygame.K_RETURN)</span><span class="s0">, </span><span class="s5">&quot;return&quot;</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(pygame.key.name(pygame.K_0)</span><span class="s0">, </span><span class="s5">&quot;0&quot;</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(pygame.key.name(pygame.K_SPACE)</span><span class="s0">, </span><span class="s5">&quot;space&quot;</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">test_set_and_get_mods(self):</span>
+        <span class="s1">pygame.key.set_mods(pygame.KMOD_CTRL)</span>
+        <span class="s1">self.assertEqual(pygame.key.get_mods()</span><span class="s0">, </span><span class="s1">pygame.KMOD_CTRL)</span>
+
+        <span class="s1">pygame.key.set_mods(pygame.KMOD_ALT)</span>
+        <span class="s1">self.assertEqual(pygame.key.get_mods()</span><span class="s0">, </span><span class="s1">pygame.KMOD_ALT)</span>
+        <span class="s1">pygame.key.set_mods(pygame.KMOD_CTRL | pygame.KMOD_ALT)</span>
+        <span class="s1">self.assertEqual(pygame.key.get_mods()</span><span class="s0">, </span><span class="s1">pygame.KMOD_CTRL | pygame.KMOD_ALT)</span>
+
+    <span class="s0">def </span><span class="s1">test_set_and_get_repeat(self):</span>
+        <span class="s1">self.assertEqual(pygame.key.get_repeat()</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+
+        <span class="s1">pygame.key.set_repeat(</span><span class="s4">10</span><span class="s0">, </span><span class="s4">15</span><span class="s1">)</span>
+        <span class="s1">self.assertEqual(pygame.key.get_repeat()</span><span class="s0">, </span><span class="s1">(</span><span class="s4">10</span><span class="s0">, </span><span class="s4">15</span><span class="s1">))</span>
+
+        <span class="s1">pygame.key.set_repeat()</span>
+        <span class="s1">self.assertEqual(pygame.key.get_repeat()</span><span class="s0">, </span><span class="s1">(</span><span class="s4">0</span><span class="s0">, </span><span class="s4">0</span><span class="s1">))</span>
+
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s5">'__main__'</span><span class="s1">:</span>
+    <span class="s1">unittest.main()</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<html>
+<head>
+<title>sqlitelockfile.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6a8759;}
+.s4 { color: #6897bb;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+sqlitelockfile.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">__future__ </span><span class="s0">import </span><span class="s1">absolute_import</span><span class="s0">, </span><span class="s1">division</span>
+
+<span class="s0">import </span><span class="s1">time</span>
+<span class="s0">import </span><span class="s1">os</span>
+
+<span class="s0">try</span><span class="s1">:</span>
+    <span class="s1">unicode</span>
+<span class="s0">except </span><span class="s1">NameError:</span>
+    <span class="s1">unicode = str</span>
+
+<span class="s0">from </span><span class="s1">. </span><span class="s0">import </span><span class="s1">LockBase</span><span class="s0">, </span><span class="s1">NotLocked</span><span class="s0">, </span><span class="s1">NotMyLock</span><span class="s0">, </span><span class="s1">LockTimeout</span><span class="s0">, </span><span class="s1">AlreadyLocked</span>
+
+
+<span class="s0">class </span><span class="s1">SQLiteLockFile(LockBase):</span>
+    <span class="s2">&quot;Demonstrate SQL-based locking.&quot;</span>
+
+    <span class="s1">testdb = </span><span class="s0">None</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">path</span><span class="s0">, </span><span class="s1">threaded=</span><span class="s0">True, </span><span class="s1">timeout=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        &gt;&gt;&gt; lock = SQLiteLockFile('somefile') 
+        &gt;&gt;&gt; lock = SQLiteLockFile('somefile', threaded=False) 
+        &quot;&quot;&quot;</span>
+        <span class="s1">LockBase.__init__(self</span><span class="s0">, </span><span class="s1">path</span><span class="s0">, </span><span class="s1">threaded</span><span class="s0">, </span><span class="s1">timeout)</span>
+        <span class="s1">self.lock_file = unicode(self.lock_file)</span>
+        <span class="s1">self.unique_name = unicode(self.unique_name)</span>
+
+        <span class="s0">if </span><span class="s1">SQLiteLockFile.testdb </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s0">import </span><span class="s1">tempfile</span>
+            <span class="s1">_fd</span><span class="s0">, </span><span class="s1">testdb = tempfile.mkstemp()</span>
+            <span class="s1">os.close(_fd)</span>
+            <span class="s1">os.unlink(testdb)</span>
+            <span class="s0">del </span><span class="s1">_fd</span><span class="s0">, </span><span class="s1">tempfile</span>
+            <span class="s1">SQLiteLockFile.testdb = testdb</span>
+
+        <span class="s0">import </span><span class="s1">sqlite3</span>
+        <span class="s1">self.connection = sqlite3.connect(SQLiteLockFile.testdb)</span>
+
+        <span class="s1">c = self.connection.cursor()</span>
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s1">c.execute(</span><span class="s3">&quot;create table locks&quot;</span>
+                      <span class="s3">&quot;(&quot;</span>
+                      <span class="s3">&quot;   lock_file varchar(32),&quot;</span>
+                      <span class="s3">&quot;   unique_name varchar(32)&quot;</span>
+                      <span class="s3">&quot;)&quot;</span><span class="s1">)</span>
+        <span class="s0">except </span><span class="s1">sqlite3.OperationalError:</span>
+            <span class="s0">pass</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.connection.commit()</span>
+            <span class="s0">import </span><span class="s1">atexit</span>
+            <span class="s1">atexit.register(os.unlink</span><span class="s0">, </span><span class="s1">SQLiteLockFile.testdb)</span>
+
+    <span class="s0">def </span><span class="s1">acquire(self</span><span class="s0">, </span><span class="s1">timeout=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">timeout = timeout </span><span class="s0">if </span><span class="s1">timeout </span><span class="s0">is not None else </span><span class="s1">self.timeout</span>
+        <span class="s1">end_time = time.time()</span>
+        <span class="s0">if </span><span class="s1">timeout </span><span class="s0">is not None and </span><span class="s1">timeout &gt; </span><span class="s4">0</span><span class="s1">:</span>
+            <span class="s1">end_time += timeout</span>
+
+        <span class="s0">if </span><span class="s1">timeout </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">wait = </span><span class="s4">0.1</span>
+        <span class="s0">elif </span><span class="s1">timeout &lt;= </span><span class="s4">0</span><span class="s1">:</span>
+            <span class="s1">wait = </span><span class="s4">0</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">wait = timeout / </span><span class="s4">10</span>
+
+        <span class="s1">cursor = self.connection.cursor()</span>
+
+        <span class="s0">while True</span><span class="s1">:</span>
+            <span class="s0">if not </span><span class="s1">self.is_locked():</span>
+                <span class="s5"># Not locked.  Try to lock it.</span>
+                <span class="s1">cursor.execute(</span><span class="s3">&quot;insert into locks&quot;</span>
+                               <span class="s3">&quot;  (lock_file, unique_name)&quot;</span>
+                               <span class="s3">&quot;  values&quot;</span>
+                               <span class="s3">&quot;  (?, ?)&quot;</span><span class="s0">,</span>
+                               <span class="s1">(self.lock_file</span><span class="s0">, </span><span class="s1">self.unique_name))</span>
+                <span class="s1">self.connection.commit()</span>
+
+                <span class="s5"># Check to see if we are the only lock holder.</span>
+                <span class="s1">cursor.execute(</span><span class="s3">&quot;select * from locks&quot;</span>
+                               <span class="s3">&quot;  where unique_name = ?&quot;</span><span class="s0">,</span>
+                               <span class="s1">(self.unique_name</span><span class="s0">,</span><span class="s1">))</span>
+                <span class="s1">rows = cursor.fetchall()</span>
+                <span class="s0">if </span><span class="s1">len(rows) &gt; </span><span class="s4">1</span><span class="s1">:</span>
+                    <span class="s5"># Nope.  Someone else got there.  Remove our lock.</span>
+                    <span class="s1">cursor.execute(</span><span class="s3">&quot;delete from locks&quot;</span>
+                                   <span class="s3">&quot;  where unique_name = ?&quot;</span><span class="s0">,</span>
+                                   <span class="s1">(self.unique_name</span><span class="s0">,</span><span class="s1">))</span>
+                    <span class="s1">self.connection.commit()</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s5"># Yup.  We're done, so go home.</span>
+                    <span class="s0">return</span>
+            <span class="s0">else</span><span class="s1">:</span>
+                <span class="s5"># Check to see if we are the only lock holder.</span>
+                <span class="s1">cursor.execute(</span><span class="s3">&quot;select * from locks&quot;</span>
+                               <span class="s3">&quot;  where unique_name = ?&quot;</span><span class="s0">,</span>
+                               <span class="s1">(self.unique_name</span><span class="s0">,</span><span class="s1">))</span>
+                <span class="s1">rows = cursor.fetchall()</span>
+                <span class="s0">if </span><span class="s1">len(rows) == </span><span class="s4">1</span><span class="s1">:</span>
+                    <span class="s5"># We're the locker, so go home.</span>
+                    <span class="s0">return</span>
+
+            <span class="s5"># Maybe we should wait a bit longer.</span>
+            <span class="s0">if </span><span class="s1">timeout </span><span class="s0">is not None and </span><span class="s1">time.time() &gt; end_time:</span>
+                <span class="s0">if </span><span class="s1">timeout &gt; </span><span class="s4">0</span><span class="s1">:</span>
+                    <span class="s5"># No more waiting.</span>
+                    <span class="s0">raise </span><span class="s1">LockTimeout(</span><span class="s3">&quot;Timeout waiting to acquire&quot;</span>
+                                      <span class="s3">&quot; lock for %s&quot; </span><span class="s1">%</span>
+                                      <span class="s1">self.path)</span>
+                <span class="s0">else</span><span class="s1">:</span>
+                    <span class="s5"># Someone else has the lock and we are impatient..</span>
+                    <span class="s0">raise </span><span class="s1">AlreadyLocked(</span><span class="s3">&quot;%s is already locked&quot; </span><span class="s1">% self.path)</span>
+
+            <span class="s5"># Well, okay.  We'll give it a bit longer.</span>
+            <span class="s1">time.sleep(wait)</span>
+
+    <span class="s0">def </span><span class="s1">release(self):</span>
+        <span class="s0">if not </span><span class="s1">self.is_locked():</span>
+            <span class="s0">raise </span><span class="s1">NotLocked(</span><span class="s3">&quot;%s is not locked&quot; </span><span class="s1">% self.path)</span>
+        <span class="s0">if not </span><span class="s1">self.i_am_locking():</span>
+            <span class="s0">raise </span><span class="s1">NotMyLock(</span><span class="s3">&quot;%s is locked, but not by me (by %s)&quot; </span><span class="s1">%</span>
+                            <span class="s1">(self.unique_name</span><span class="s0">, </span><span class="s1">self._who_is_locking()))</span>
+        <span class="s1">cursor = self.connection.cursor()</span>
+        <span class="s1">cursor.execute(</span><span class="s3">&quot;delete from locks&quot;</span>
+                       <span class="s3">&quot;  where unique_name = ?&quot;</span><span class="s0">,</span>
+                       <span class="s1">(self.unique_name</span><span class="s0">,</span><span class="s1">))</span>
+        <span class="s1">self.connection.commit()</span>
+
+    <span class="s0">def </span><span class="s1">_who_is_locking(self):</span>
+        <span class="s1">cursor = self.connection.cursor()</span>
+        <span class="s1">cursor.execute(</span><span class="s3">&quot;select unique_name from locks&quot;</span>
+                       <span class="s3">&quot;  where lock_file = ?&quot;</span><span class="s0">,</span>
+                       <span class="s1">(self.lock_file</span><span class="s0">,</span><span class="s1">))</span>
+        <span class="s0">return </span><span class="s1">cursor.fetchone()[</span><span class="s4">0</span><span class="s1">]</span>
+
+    <span class="s0">def </span><span class="s1">is_locked(self):</span>
+        <span class="s1">cursor = self.connection.cursor()</span>
+        <span class="s1">cursor.execute(</span><span class="s3">&quot;select * from locks&quot;</span>
+                       <span class="s3">&quot;  where lock_file = ?&quot;</span><span class="s0">,</span>
+                       <span class="s1">(self.lock_file</span><span class="s0">,</span><span class="s1">))</span>
+        <span class="s1">rows = cursor.fetchall()</span>
+        <span class="s0">return not not </span><span class="s1">rows</span>
+
+    <span class="s0">def </span><span class="s1">i_am_locking(self):</span>
+        <span class="s1">cursor = self.connection.cursor()</span>
+        <span class="s1">cursor.execute(</span><span class="s3">&quot;select * from locks&quot;</span>
+                       <span class="s3">&quot;  where lock_file = ?&quot;</span>
+                       <span class="s3">&quot;    and unique_name = ?&quot;</span><span class="s0">,</span>
+                       <span class="s1">(self.lock_file</span><span class="s0">, </span><span class="s1">self.unique_name))</span>
+        <span class="s0">return not not </span><span class="s1">cursor.fetchall()</span>
+
+    <span class="s0">def </span><span class="s1">break_lock(self):</span>
+        <span class="s1">cursor = self.connection.cursor()</span>
+        <span class="s1">cursor.execute(</span><span class="s3">&quot;delete from locks&quot;</span>
+                       <span class="s3">&quot;  where lock_file = ?&quot;</span><span class="s0">,</span>
+                       <span class="s1">(self.lock_file</span><span class="s0">,</span><span class="s1">))</span>
+        <span class="s1">self.connection.commit()</span>
+</pre>
+</body>
+</html>

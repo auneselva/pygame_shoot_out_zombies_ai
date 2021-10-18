@@ -1,0 +1,52 @@
+<html>
+<head>
+<title>candidate.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #629755; font-style: italic;}
+.s4 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+candidate.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">pip._vendor.packaging.version </span><span class="s0">import </span><span class="s1">parse </span><span class="s0">as </span><span class="s1">parse_version</span>
+
+<span class="s0">from </span><span class="s1">pip._internal.utils.models </span><span class="s0">import </span><span class="s1">KeyBasedCompareMixin</span>
+<span class="s0">from </span><span class="s1">pip._internal.utils.typing </span><span class="s0">import </span><span class="s1">MYPY_CHECK_RUNNING</span>
+
+<span class="s0">if </span><span class="s1">MYPY_CHECK_RUNNING:</span>
+    <span class="s0">from </span><span class="s1">pip._vendor.packaging.version </span><span class="s0">import </span><span class="s1">_BaseVersion  </span><span class="s2"># noqa: F401</span>
+    <span class="s0">from </span><span class="s1">pip._internal.models.link </span><span class="s0">import </span><span class="s1">Link  </span><span class="s2"># noqa: F401</span>
+    <span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Any</span><span class="s0">, </span><span class="s1">Union  </span><span class="s2"># noqa: F401</span>
+
+
+<span class="s0">class </span><span class="s1">InstallationCandidate(KeyBasedCompareMixin):</span>
+    <span class="s3">&quot;&quot;&quot;Represents a potential &quot;candidate&quot; for installation. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">project</span><span class="s0">, </span><span class="s1">version</span><span class="s0">, </span><span class="s1">location):</span>
+        <span class="s2"># type: (Any, str, Link) -&gt; None</span>
+        <span class="s1">self.project = project</span>
+        <span class="s1">self.version = parse_version(version)  </span><span class="s2"># type: _BaseVersion</span>
+        <span class="s1">self.location = location</span>
+
+        <span class="s1">super(InstallationCandidate</span><span class="s0">, </span><span class="s1">self).__init__(</span>
+            <span class="s1">key=(self.project</span><span class="s0">, </span><span class="s1">self.version</span><span class="s0">, </span><span class="s1">self.location)</span><span class="s0">,</span>
+            <span class="s1">defining_class=InstallationCandidate</span>
+        <span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">__repr__(self):</span>
+        <span class="s2"># type: () -&gt; str</span>
+        <span class="s0">return </span><span class="s4">&quot;&lt;InstallationCandidate({!r}, {!r}, {!r})&gt;&quot;</span><span class="s1">.format(</span>
+            <span class="s1">self.project</span><span class="s0">, </span><span class="s1">self.version</span><span class="s0">, </span><span class="s1">self.location</span><span class="s0">,</span>
+        <span class="s1">)</span>
+</pre>
+</body>
+</html>

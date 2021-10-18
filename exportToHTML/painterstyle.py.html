@@ -1,0 +1,59 @@
+<html>
+<head>
+<title>painterstyle.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #808080;}
+.s4 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+painterstyle.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot; 
+This module define the default painters used to build graphical elements. 
+&quot;&quot;&quot;</span>
+<span class="s2">from </span><span class="s1">thorpy.painting.writer </span><span class="s2">import </span><span class="s1">Writer</span>
+<span class="s2">from </span><span class="s1">thorpy.painting.painters.basicframe </span><span class="s2">import </span><span class="s1">BasicFrame</span>
+<span class="s2">from </span><span class="s1">thorpy.painting.painters.classicframe </span><span class="s2">import </span><span class="s1">ClassicFrame</span>
+<span class="s2">from </span><span class="s1">thorpy.painting.painters.classicround </span><span class="s2">import </span><span class="s1">ClassicRound</span>
+<span class="s2">from </span><span class="s1">thorpy.painting.painters.roundrect </span><span class="s2">import </span><span class="s1">RoundRect</span>
+<span class="s2">from </span><span class="s1">thorpy.painting.painters.optionnal.human </span><span class="s2">import </span><span class="s1">Human</span>
+<span class="s2">from </span><span class="s1">thorpy.painting.painters.optionnal.rectframe </span><span class="s2">import </span><span class="s1">RectFrame</span>
+
+<span class="s3"># default painters</span>
+<span class="s1">BASIC_PAINTER = BasicFrame</span>
+<span class="s1">DEF_PAINTER = ClassicFrame</span>
+<span class="s1">INSERTER_PAINTER = ClassicFrame</span>
+<span class="s1">INSERTER_NAME_PAINTER = BasicFrame</span>
+<span class="s1">CHECKER_NAME_PAINTER = BasicFrame</span>
+<span class="s1">CHECKER_VALUE_PAINTER = BasicFrame</span>
+<span class="s1">BROWSER_PAINTER = ClassicFrame</span>
+<span class="s1">BAR_PAINTER = ClassicFrame</span>
+<span class="s1">CHECKBOX_PAINTER = ClassicFrame</span>
+<span class="s1">RADIO_PAINTER = ClassicRound</span>
+<span class="s1">NAME_PAINTER = BasicFrame</span>
+<span class="s1">BROWSER_LAUNCHER_PAINTER = ClassicFrame</span>
+<span class="s1">HELP_PAINTER = RoundRect</span>
+<span class="s1">CURSOR_PAINTER = BasicFrame</span>
+<span class="s1">BOX_PAINTER = ClassicFrame</span>
+
+
+<span class="s1">painters = {</span><span class="s4">&quot;basic&quot; </span><span class="s1">: BasicFrame</span><span class="s2">,</span>
+            <span class="s4">&quot;round&quot; </span><span class="s1">: RoundRect</span><span class="s2">,</span>
+            <span class="s4">&quot;human&quot; </span><span class="s1">: Human</span><span class="s2">,</span>
+            <span class="s4">&quot;classic&quot; </span><span class="s1">: ClassicFrame</span><span class="s2">,</span>
+            <span class="s4">&quot;simple&quot; </span><span class="s1">: RectFrame}</span>
+
+<span class="s3"># default writers</span>
+
+<span class="s1">WRITER = Writer</span>
+</pre>
+</body>
+</html>

@@ -1,0 +1,539 @@
+<html>
+<head>
+<title>ui_horizontal_slider.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #629755; font-style: italic;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+.s5 { color: #808080;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+ui_horizontal_slider.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">warnings</span>
+<span class="s0">from </span><span class="s1">typing </span><span class="s0">import </span><span class="s1">Union</span><span class="s0">, </span><span class="s1">Tuple</span><span class="s0">, </span><span class="s1">Dict</span><span class="s0">, </span><span class="s1">Optional</span>
+
+<span class="s0">import </span><span class="s1">pygame</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui._constants </span><span class="s0">import </span><span class="s1">UI_HORIZONTAL_SLIDER_MOVED</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.core </span><span class="s0">import </span><span class="s1">ObjectID</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.interfaces </span><span class="s0">import </span><span class="s1">IContainerLikeInterface</span><span class="s0">, </span><span class="s1">IUIManagerInterface</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core </span><span class="s0">import </span><span class="s1">UIElement</span><span class="s0">, </span><span class="s1">UIContainer</span>
+<span class="s0">from </span><span class="s1">pygame_gui.core.drawable_shapes </span><span class="s0">import </span><span class="s1">RectDrawableShape</span><span class="s0">, </span><span class="s1">RoundedRectangleShape</span>
+
+<span class="s0">from </span><span class="s1">pygame_gui.elements.ui_button </span><span class="s0">import </span><span class="s1">UIButton</span>
+
+
+<span class="s0">class </span><span class="s1">UIHorizontalSlider(UIElement):</span>
+    <span class="s2">&quot;&quot;&quot; 
+    A horizontal slider is intended to help users adjust values within a range, for example a 
+    volume control. 
+ 
+    :param relative_rect: A rectangle describing the position and dimensions of the element. 
+    :param start_value: The value to start the slider at. 
+    :param value_range: The full range of values. 
+    :param manager: The UIManager that manages this element. 
+    :param container: The container that this element is within. If set to None will be the root 
+                      window's container. 
+    :param parent_element: The element this element 'belongs to' in the theming hierarchy. 
+    :param object_id: A custom defined ID for fine tuning of theming. 
+    :param anchors: A dictionary describing what this element's relative_rect is relative to. 
+    :param visible: Whether the element is visible by default. Warning - container visibility 
+                    may override this. 
+    &quot;&quot;&quot;</span>
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">,</span>
+                 <span class="s1">relative_rect: pygame.Rect</span><span class="s0">,</span>
+                 <span class="s1">start_value: Union[float</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                 <span class="s1">value_range: Tuple[Union[float</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">, </span><span class="s1">Union[float</span><span class="s0">, </span><span class="s1">int]]</span><span class="s0">,</span>
+                 <span class="s1">manager: IUIManagerInterface</span><span class="s0">,</span>
+                 <span class="s1">container: Union[IContainerLikeInterface</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">parent_element: UIElement = </span><span class="s0">None,</span>
+                 <span class="s1">object_id: Union[ObjectID</span><span class="s0">, </span><span class="s1">str</span><span class="s0">, None</span><span class="s1">] = </span><span class="s0">None,</span>
+                 <span class="s1">anchors: Dict[str</span><span class="s0">, </span><span class="s1">str] = </span><span class="s0">None,</span>
+                 <span class="s1">visible: int = </span><span class="s3">1</span>
+                 <span class="s1">):</span>
+
+        <span class="s1">super().__init__(relative_rect</span><span class="s0">, </span><span class="s1">manager</span><span class="s0">, </span><span class="s1">container</span><span class="s0">,</span>
+                         <span class="s1">layer_thickness=</span><span class="s3">2</span><span class="s0">,</span>
+                         <span class="s1">starting_height=</span><span class="s3">1</span><span class="s0">,</span>
+                         <span class="s1">anchors=anchors</span><span class="s0">,</span>
+                         <span class="s1">visible=visible)</span>
+
+        <span class="s1">self._create_valid_ids(container=container</span><span class="s0">,</span>
+                               <span class="s1">parent_element=parent_element</span><span class="s0">,</span>
+                               <span class="s1">object_id=object_id</span><span class="s0">,</span>
+                               <span class="s1">element_id=</span><span class="s4">'horizontal_slider'</span><span class="s1">)</span>
+
+        <span class="s1">self.default_button_width = </span><span class="s3">20</span>
+        <span class="s1">self.arrow_button_width = self.default_button_width</span>
+        <span class="s1">self.sliding_button_width = self.default_button_width</span>
+        <span class="s1">self.current_percentage = </span><span class="s3">0.5</span>
+        <span class="s1">self.left_limit_position = </span><span class="s3">0.0</span>
+        <span class="s1">self.starting_grab_x_difference = </span><span class="s3">0</span>
+
+        <span class="s0">if </span><span class="s1">(isinstance(start_value</span><span class="s0">, </span><span class="s1">int) </span><span class="s0">and</span>
+                <span class="s1">isinstance(value_range[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">int) </span><span class="s0">and</span>
+                <span class="s1">isinstance(value_range[</span><span class="s3">1</span><span class="s1">]</span><span class="s0">, </span><span class="s1">int)):</span>
+            <span class="s1">self.use_integers_for_value = </span><span class="s0">True</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.use_integers_for_value = </span><span class="s0">False</span>
+        <span class="s1">self.value_range = value_range</span>
+        <span class="s1">value_range_length = self.value_range[</span><span class="s3">1</span><span class="s1">] - self.value_range[</span><span class="s3">0</span><span class="s1">]</span>
+
+        <span class="s1">self.current_value = self.value_range[</span><span class="s3">0</span><span class="s1">] + (self.current_percentage * value_range_length)</span>
+        <span class="s0">if </span><span class="s1">self.use_integers_for_value:</span>
+            <span class="s1">self.current_value = int(self.current_value)</span>
+
+        <span class="s1">self.grabbed_slider = </span><span class="s0">False</span>
+        <span class="s1">self.has_moved_recently = </span><span class="s0">False</span>
+        <span class="s1">self.has_been_moved_by_user_recently = </span><span class="s0">False</span>
+
+        <span class="s1">self.background_colour = </span><span class="s0">None</span>
+        <span class="s1">self.border_colour = </span><span class="s0">None</span>
+        <span class="s1">self.disabled_border_colour = </span><span class="s0">None</span>
+        <span class="s1">self.disabled_background_colour = </span><span class="s0">None</span>
+
+        <span class="s1">self.border_width = </span><span class="s0">None</span>
+        <span class="s1">self.shadow_width = </span><span class="s0">None</span>
+
+        <span class="s1">self.drawable_shape = </span><span class="s0">None</span>
+        <span class="s1">self.shape = </span><span class="s4">'rectangle'</span>
+        <span class="s1">self.shape_corner_radius = </span><span class="s0">None</span>
+
+        <span class="s1">self.background_rect = </span><span class="s0">None  </span><span class="s5"># type: Optional[pygame.Rect]</span>
+
+        <span class="s1">self.scrollable_width = </span><span class="s0">None</span>
+        <span class="s1">self.right_limit_position = </span><span class="s0">None</span>
+        <span class="s1">self.scroll_position = </span><span class="s0">None</span>
+
+        <span class="s1">self.left_button = </span><span class="s0">None</span>
+        <span class="s1">self.right_button = </span><span class="s0">None</span>
+        <span class="s1">self.sliding_button = </span><span class="s0">None</span>
+        <span class="s1">self.enable_arrow_buttons = </span><span class="s0">True</span>
+
+        <span class="s1">self.button_container = </span><span class="s0">None</span>
+
+        <span class="s1">self.rebuild_from_changed_theme_data()</span>
+
+        <span class="s1">sliding_x_pos = int(self.background_rect.width / </span><span class="s3">2 </span><span class="s1">- self.sliding_button_width / </span><span class="s3">2</span><span class="s1">)</span>
+        <span class="s1">self.sliding_button = UIButton(pygame.Rect((sliding_x_pos</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                                                   <span class="s1">(self.sliding_button_width</span><span class="s0">,</span>
+                                                    <span class="s1">self.background_rect.height))</span><span class="s0">,</span>
+                                       <span class="s4">''</span><span class="s0">, </span><span class="s1">self.ui_manager</span><span class="s0">,</span>
+                                       <span class="s1">container=self.button_container</span><span class="s0">,</span>
+                                       <span class="s1">starting_height=</span><span class="s3">1</span><span class="s0">,</span>
+                                       <span class="s1">parent_element=self</span><span class="s0">,</span>
+                                       <span class="s1">object_id=ObjectID(object_id=</span><span class="s4">'#sliding_button'</span><span class="s0">,</span>
+                                                          <span class="s1">class_id=</span><span class="s4">'None'</span><span class="s1">)</span><span class="s0">,</span>
+                                       <span class="s1">anchors={</span><span class="s4">'left'</span><span class="s1">: </span><span class="s4">'left'</span><span class="s0">,</span>
+                                                <span class="s4">'right'</span><span class="s1">: </span><span class="s4">'left'</span><span class="s0">,</span>
+                                                <span class="s4">'top'</span><span class="s1">: </span><span class="s4">'top'</span><span class="s0">,</span>
+                                                <span class="s4">'bottom'</span><span class="s1">: </span><span class="s4">'bottom'</span><span class="s1">}</span><span class="s0">,</span>
+                                       <span class="s1">visible=self.visible</span>
+                                       <span class="s1">)</span>
+
+        <span class="s1">self.sliding_button.set_hold_range((self.background_rect.width</span><span class="s0">, </span><span class="s3">100</span><span class="s1">))</span>
+
+        <span class="s1">self.set_current_value(start_value)</span>
+
+    <span class="s0">def </span><span class="s1">rebuild(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Rebuild anything that might need rebuilding. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">border_and_shadow = self.border_width + self.shadow_width</span>
+        <span class="s1">self.background_rect = pygame.Rect((border_and_shadow + self.relative_rect.x</span><span class="s0">,</span>
+                                            <span class="s1">border_and_shadow + self.relative_rect.y)</span><span class="s0">,</span>
+                                           <span class="s1">(self.relative_rect.width - (</span><span class="s3">2 </span><span class="s1">* border_and_shadow)</span><span class="s0">,</span>
+                                            <span class="s1">self.relative_rect.height - (</span><span class="s3">2 </span><span class="s1">* border_and_shadow)))</span>
+
+        <span class="s1">theming_parameters = {</span><span class="s4">'normal_bg'</span><span class="s1">: self.background_colour</span><span class="s0">,</span>
+                              <span class="s4">'normal_border'</span><span class="s1">: self.border_colour</span><span class="s0">,</span>
+                              <span class="s4">'disabled_bg'</span><span class="s1">: self.disabled_background_colour</span><span class="s0">,</span>
+                              <span class="s4">'disabled_border'</span><span class="s1">: self.disabled_border_colour</span><span class="s0">,</span>
+                              <span class="s4">'border_width'</span><span class="s1">: self.border_width</span><span class="s0">,</span>
+                              <span class="s4">'shadow_width'</span><span class="s1">: self.shadow_width</span><span class="s0">,</span>
+                              <span class="s4">'shape_corner_radius'</span><span class="s1">: self.shape_corner_radius}</span>
+
+        <span class="s0">if </span><span class="s1">self.shape == </span><span class="s4">'rectangle'</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape = RectDrawableShape(self.rect</span><span class="s0">, </span><span class="s1">theming_parameters</span><span class="s0">,</span>
+                                                    <span class="s1">[</span><span class="s4">'normal'</span><span class="s0">, </span><span class="s4">'disabled'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.ui_manager)</span>
+        <span class="s0">elif </span><span class="s1">self.shape == </span><span class="s4">'rounded_rectangle'</span><span class="s1">:</span>
+            <span class="s1">self.drawable_shape = RoundedRectangleShape(self.rect</span><span class="s0">, </span><span class="s1">theming_parameters</span><span class="s0">,</span>
+                                                        <span class="s1">[</span><span class="s4">'normal'</span><span class="s0">, </span><span class="s4">'disabled'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">self.ui_manager)</span>
+
+        <span class="s1">self.set_image(self.drawable_shape.get_fresh_surface())</span>
+
+        <span class="s0">if </span><span class="s1">self.button_container </span><span class="s0">is None</span><span class="s1">:</span>
+            <span class="s1">self.button_container = UIContainer(self.background_rect</span><span class="s0">,</span>
+                                                <span class="s1">manager=self.ui_manager</span><span class="s0">,</span>
+                                                <span class="s1">container=self.ui_container</span><span class="s0">,</span>
+                                                <span class="s1">anchors=self.anchors</span><span class="s0">,</span>
+                                                <span class="s1">object_id=</span><span class="s4">'#horiz_scrollbar_buttons_container'</span><span class="s0">,</span>
+                                                <span class="s1">visible=self.visible)</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.button_container.set_dimensions(self.background_rect.size)</span>
+            <span class="s1">self.button_container.set_relative_position(self.background_rect.topleft)</span>
+
+        <span class="s5"># Things below here depend on theme data so need to be updated on a rebuild</span>
+        <span class="s0">if </span><span class="s1">self.enable_arrow_buttons:</span>
+            <span class="s1">self.arrow_button_width = self.default_button_width</span>
+
+            <span class="s0">if </span><span class="s1">self.left_button </span><span class="s0">is None</span><span class="s1">:</span>
+                <span class="s1">self.left_button = UIButton(pygame.Rect((</span><span class="s3">0</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                                                        <span class="s1">(self.arrow_button_width</span><span class="s0">,</span>
+                                                         <span class="s1">self.background_rect.height))</span><span class="s0">,</span>
+                                            <span class="s4">'◀'</span><span class="s0">, </span><span class="s1">self.ui_manager</span><span class="s0">,</span>
+                                            <span class="s1">container=self.button_container</span><span class="s0">,</span>
+                                            <span class="s1">starting_height=</span><span class="s3">1</span><span class="s0">,</span>
+                                            <span class="s1">parent_element=self</span><span class="s0">,</span>
+                                            <span class="s1">object_id=ObjectID(</span><span class="s4">&quot;#left_button&quot;</span><span class="s0">, </span><span class="s4">&quot;@arrow_button&quot;</span><span class="s1">)</span><span class="s0">,</span>
+                                            <span class="s1">anchors={</span><span class="s4">'left'</span><span class="s1">: </span><span class="s4">'left'</span><span class="s0">,</span>
+                                                     <span class="s4">'right'</span><span class="s1">: </span><span class="s4">'left'</span><span class="s0">,</span>
+                                                     <span class="s4">'top'</span><span class="s1">: </span><span class="s4">'top'</span><span class="s0">,</span>
+                                                     <span class="s4">'bottom'</span><span class="s1">: </span><span class="s4">'bottom'</span><span class="s1">}</span><span class="s0">,</span>
+                                            <span class="s1">visible=self.visible</span>
+                                            <span class="s1">)</span>
+
+            <span class="s0">if </span><span class="s1">self.right_button </span><span class="s0">is None</span><span class="s1">:</span>
+                <span class="s1">self.right_button = UIButton(pygame.Rect((-self.arrow_button_width</span><span class="s0">, </span><span class="s3">0</span><span class="s1">)</span><span class="s0">,</span>
+                                                         <span class="s1">(self.arrow_button_width</span><span class="s0">,</span>
+                                                          <span class="s1">self.background_rect.height))</span><span class="s0">,</span>
+                                             <span class="s4">'▶'</span><span class="s0">, </span><span class="s1">self.ui_manager</span><span class="s0">,</span>
+                                             <span class="s1">container=self.button_container</span><span class="s0">,</span>
+                                             <span class="s1">starting_height=</span><span class="s3">1</span><span class="s0">,</span>
+                                             <span class="s1">parent_element=self</span><span class="s0">,</span>
+                                             <span class="s1">object_id=ObjectID(</span><span class="s4">&quot;#right_button&quot;</span><span class="s0">, </span><span class="s4">&quot;@arrow_button&quot;</span><span class="s1">)</span><span class="s0">,</span>
+                                             <span class="s1">anchors={</span><span class="s4">'left'</span><span class="s1">: </span><span class="s4">'right'</span><span class="s0">,</span>
+                                                      <span class="s4">'right'</span><span class="s1">: </span><span class="s4">'right'</span><span class="s0">,</span>
+                                                      <span class="s4">'top'</span><span class="s1">: </span><span class="s4">'top'</span><span class="s0">,</span>
+                                                      <span class="s4">'bottom'</span><span class="s1">: </span><span class="s4">'bottom'</span><span class="s1">}</span><span class="s0">,</span>
+                                             <span class="s1">visible=self.visible</span>
+                                             <span class="s1">)</span>
+
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">self.arrow_button_width = </span><span class="s3">0</span>
+            <span class="s0">if </span><span class="s1">self.left_button </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">self.left_button.kill()</span>
+                <span class="s1">self.left_button = </span><span class="s0">None</span>
+            <span class="s0">if </span><span class="s1">self.right_button </span><span class="s0">is not None</span><span class="s1">:</span>
+                <span class="s1">self.right_button.kill()</span>
+                <span class="s1">self.right_button = </span><span class="s0">None</span>
+
+        <span class="s1">self.scrollable_width = (self.background_rect.width -</span>
+                                 <span class="s1">self.sliding_button_width - (</span><span class="s3">2 </span><span class="s1">* self.arrow_button_width))</span>
+        <span class="s1">self.right_limit_position = self.scrollable_width</span>
+        <span class="s1">self.scroll_position = self.scrollable_width / </span><span class="s3">2</span>
+
+        <span class="s0">if </span><span class="s1">self.sliding_button </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">sliding_x_pos = int((self.background_rect.width / </span><span class="s3">2</span><span class="s1">) - (self.sliding_button_width / </span><span class="s3">2</span><span class="s1">))</span>
+            <span class="s1">self.sliding_button.set_relative_position((sliding_x_pos</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+            <span class="s1">self.sliding_button.set_dimensions((self.sliding_button_width</span><span class="s0">,</span>
+                                                <span class="s1">self.background_rect.height))</span>
+            <span class="s1">self.sliding_button.set_hold_range((self.background_rect.width</span><span class="s0">, </span><span class="s3">100</span><span class="s1">))</span>
+            <span class="s1">self.set_current_value(self.current_value)</span>
+
+    <span class="s0">def </span><span class="s1">kill(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Overrides the normal sprite kill() method to also kill the button elements that help make 
+        up the slider. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.button_container.kill()</span>
+        <span class="s1">super().kill()</span>
+
+    <span class="s0">def </span><span class="s1">update(self</span><span class="s0">, </span><span class="s1">time_delta: float):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Takes care of actually moving the slider based on interactions reported by the buttons or 
+        based on movement of the mouse if we are gripping the slider itself. 
+ 
+        :param time_delta: the time in seconds between calls to update. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().update(time_delta)</span>
+
+        <span class="s0">if not </span><span class="s1">(self.alive() </span><span class="s0">and </span><span class="s1">self.is_enabled):</span>
+            <span class="s0">return</span>
+        <span class="s1">moved_this_frame = </span><span class="s0">False</span>
+        <span class="s0">if </span><span class="s1">self.left_button </span><span class="s0">is not None and </span><span class="s1">(self.left_button.held </span><span class="s0">and</span>
+                                             <span class="s1">self.scroll_position &gt; self.left_limit_position):</span>
+            <span class="s1">self.scroll_position -= (</span><span class="s3">250.0 </span><span class="s1">* time_delta)</span>
+            <span class="s1">self.scroll_position = max(self.scroll_position</span><span class="s0">, </span><span class="s1">self.left_limit_position)</span>
+            <span class="s1">x_pos = (self.scroll_position + self.arrow_button_width)</span>
+            <span class="s1">y_pos = </span><span class="s3">0</span>
+            <span class="s1">self.sliding_button.set_relative_position((x_pos</span><span class="s0">, </span><span class="s1">y_pos))</span>
+            <span class="s1">moved_this_frame = </span><span class="s0">True</span>
+        <span class="s0">elif </span><span class="s1">self.right_button </span><span class="s0">is not None and </span><span class="s1">(self.right_button.held </span><span class="s0">and</span>
+                                                <span class="s1">self.scroll_position &lt; self.right_limit_position):</span>
+            <span class="s1">self.scroll_position += (</span><span class="s3">250.0 </span><span class="s1">* time_delta)</span>
+            <span class="s1">self.scroll_position = min(self.scroll_position</span><span class="s0">, </span><span class="s1">self.right_limit_position)</span>
+            <span class="s1">x_pos = (self.scroll_position + self.arrow_button_width)</span>
+            <span class="s1">y_pos = </span><span class="s3">0</span>
+            <span class="s1">self.sliding_button.set_relative_position((x_pos</span><span class="s0">, </span><span class="s1">y_pos))</span>
+            <span class="s1">moved_this_frame = </span><span class="s0">True</span>
+
+        <span class="s1">mouse_x</span><span class="s0">, </span><span class="s1">mouse_y = self.ui_manager.get_mouse_position()</span>
+        <span class="s0">if </span><span class="s1">self.sliding_button.held </span><span class="s0">and </span><span class="s1">self.sliding_button.in_hold_range((mouse_x</span><span class="s0">, </span><span class="s1">mouse_y)):</span>
+            <span class="s0">if not </span><span class="s1">self.grabbed_slider:</span>
+                <span class="s1">self.grabbed_slider = </span><span class="s0">True</span>
+                <span class="s1">real_scroll_pos = self.sliding_button.rect.left</span>
+                <span class="s1">self.starting_grab_x_difference = mouse_x - real_scroll_pos</span>
+
+            <span class="s1">real_scroll_pos = self.sliding_button.rect.left</span>
+            <span class="s1">current_grab_difference = mouse_x - real_scroll_pos</span>
+            <span class="s1">adjustment_required = current_grab_difference - self.starting_grab_x_difference</span>
+            <span class="s1">self.scroll_position = self.scroll_position + adjustment_required</span>
+
+            <span class="s1">self.scroll_position = min(max(self.scroll_position</span><span class="s0">, </span><span class="s1">self.left_limit_position)</span><span class="s0">,</span>
+                                       <span class="s1">self.right_limit_position)</span>
+            <span class="s1">x_pos = (self.scroll_position + self.arrow_button_width)</span>
+            <span class="s1">y_pos = </span><span class="s3">0</span>
+            <span class="s1">self.sliding_button.set_relative_position((x_pos</span><span class="s0">, </span><span class="s1">y_pos))</span>
+
+            <span class="s1">moved_this_frame = </span><span class="s0">True</span>
+        <span class="s0">elif not </span><span class="s1">self.sliding_button.held:</span>
+            <span class="s1">self.grabbed_slider = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">moved_this_frame:</span>
+            <span class="s1">self.current_percentage = self.scroll_position / self.scrollable_width</span>
+            <span class="s1">self.current_value = self.value_range[</span><span class="s3">0</span><span class="s1">] + (self.current_percentage *</span>
+                                                        <span class="s1">(self.value_range[</span><span class="s3">1</span><span class="s1">] - self.value_range[</span><span class="s3">0</span><span class="s1">]))</span>
+            <span class="s0">if </span><span class="s1">self.use_integers_for_value:</span>
+                <span class="s1">self.current_value = int(self.current_value)</span>
+            <span class="s0">if not </span><span class="s1">self.has_moved_recently:</span>
+                <span class="s1">self.has_moved_recently = </span><span class="s0">True</span>
+
+            <span class="s0">if not </span><span class="s1">self.has_been_moved_by_user_recently:</span>
+                <span class="s1">self.has_been_moved_by_user_recently = </span><span class="s0">True</span>
+
+            <span class="s1">event_data = {</span><span class="s4">'user_type'</span><span class="s1">: UI_HORIZONTAL_SLIDER_MOVED</span><span class="s0">,</span>
+                          <span class="s4">'value'</span><span class="s1">: self.current_value</span><span class="s0">,</span>
+                          <span class="s4">'ui_element'</span><span class="s1">: self</span><span class="s0">,</span>
+                          <span class="s4">'ui_object_id'</span><span class="s1">: self.most_specific_combined_id}</span>
+            <span class="s1">slider_moved_event = pygame.event.Event(pygame.USEREVENT</span><span class="s0">, </span><span class="s1">event_data)</span>
+            <span class="s1">pygame.event.post(slider_moved_event)</span>
+
+    <span class="s0">def </span><span class="s1">get_current_value(self) -&gt; Union[float</span><span class="s0">, </span><span class="s1">int]:</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Gets the current value the slider is set to. 
+ 
+        :return: The current value recorded by the slider. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.has_moved_recently = </span><span class="s0">False</span>
+        <span class="s1">self.has_been_moved_by_user_recently = </span><span class="s0">False</span>
+        <span class="s0">return </span><span class="s1">self.current_value</span>
+
+    <span class="s0">def </span><span class="s1">set_current_value(self</span><span class="s0">, </span><span class="s1">value: Union[float</span><span class="s0">, </span><span class="s1">int]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Sets the value of the slider, which will move the position of the slider to match. Will 
+        issue a warning if the value set is not in the value range. 
+ 
+        :param value: The value to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.use_integers_for_value:</span>
+            <span class="s1">value = int(value)</span>
+        <span class="s0">if </span><span class="s1">min(self.value_range[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">,</span>
+               <span class="s1">self.value_range[</span><span class="s3">1</span><span class="s1">]) &lt;= value &lt;= max(self.value_range[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">,</span>
+                                                    <span class="s1">self.value_range[</span><span class="s3">1</span><span class="s1">]):</span>
+
+            <span class="s1">self.current_value = value</span>
+            <span class="s1">value_range_size = (self.value_range[</span><span class="s3">1</span><span class="s1">] - self.value_range[</span><span class="s3">0</span><span class="s1">])</span>
+            <span class="s0">if </span><span class="s1">value_range_size != </span><span class="s3">0</span><span class="s1">:</span>
+                <span class="s1">self.current_percentage = (float(self.current_value) -</span>
+                                           <span class="s1">self.value_range[</span><span class="s3">0</span><span class="s1">])/value_range_size</span>
+                <span class="s1">self.scroll_position = self.scrollable_width * self.current_percentage</span>
+
+                <span class="s1">x_pos = (self.scroll_position + self.arrow_button_width)</span>
+                <span class="s1">y_pos = </span><span class="s3">0</span>
+                <span class="s1">self.sliding_button.set_relative_position((x_pos</span><span class="s0">, </span><span class="s1">y_pos))</span>
+                <span class="s1">self.has_moved_recently = </span><span class="s0">True</span>
+
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">warnings.warn(</span><span class="s4">'value not in range'</span><span class="s0">, </span><span class="s1">UserWarning)</span>
+
+    <span class="s0">def </span><span class="s1">rebuild_from_changed_theme_data(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Called by the UIManager to check the theming data and rebuild whatever needs rebuilding for 
+        this element when the theme data has changed. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().rebuild_from_changed_theme_data()</span>
+        <span class="s1">has_any_changed = </span><span class="s0">False</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'shape'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s4">'rectangle'</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=str</span><span class="s0">,</span>
+                                               <span class="s1">allowed_values=[</span><span class="s4">'rectangle'</span><span class="s0">,</span>
+                                                               <span class="s4">'rounded_rectangle'</span><span class="s1">]):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_shape_theming_changed(defaults={</span><span class="s4">'border_width'</span><span class="s1">: </span><span class="s3">1</span><span class="s0">,</span>
+                                                       <span class="s4">'shadow_width'</span><span class="s1">: </span><span class="s3">2</span><span class="s0">,</span>
+                                                       <span class="s4">'shape_corner_radius'</span><span class="s1">: </span><span class="s3">2</span><span class="s1">}):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">background_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s4">'dark_bg'</span><span class="s0">,</span>
+                                                                 <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">background_colour != self.background_colour:</span>
+            <span class="s1">self.background_colour = background_colour</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">border_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s4">'normal_border'</span><span class="s0">,</span>
+                                                             <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">border_colour != self.border_colour:</span>
+            <span class="s1">self.border_colour = border_colour</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">disabled_background_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s4">'disabled_dark_bg'</span><span class="s0">,</span>
+                                                                          <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">disabled_background_colour != self.disabled_background_colour:</span>
+            <span class="s1">self.disabled_background_colour = disabled_background_colour</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s1">disabled_border_colour = self.ui_theme.get_colour_or_gradient(</span><span class="s4">'disabled_border'</span><span class="s0">,</span>
+                                                                      <span class="s1">self.combined_element_ids)</span>
+        <span class="s0">if </span><span class="s1">disabled_border_colour != self.disabled_border_colour:</span>
+            <span class="s1">self.disabled_border_colour = disabled_border_colour</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">def </span><span class="s1">parse_to_bool(str_data: str):</span>
+            <span class="s0">return </span><span class="s1">bool(int(str_data))</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'enable_arrow_buttons'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=</span><span class="s0">True,</span>
+                                               <span class="s1">casting_func=parse_to_bool):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">self._check_misc_theme_data_changed(attribute_name=</span><span class="s4">'sliding_button_width'</span><span class="s0">,</span>
+                                               <span class="s1">default_value=self.default_button_width</span><span class="s0">,</span>
+                                               <span class="s1">casting_func=int):</span>
+            <span class="s1">has_any_changed = </span><span class="s0">True</span>
+
+        <span class="s0">if </span><span class="s1">has_any_changed:</span>
+            <span class="s1">self.rebuild()</span>
+
+    <span class="s0">def </span><span class="s1">set_position(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                           <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                           <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Sets the absolute screen position of this slider, updating all subordinate button elements 
+        at the same time. 
+ 
+        :param position: The absolute screen position to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().set_position(position)</span>
+
+        <span class="s1">border_and_shadow = self.border_width + self.shadow_width</span>
+        <span class="s1">self.background_rect.x = border_and_shadow + self.relative_rect.x</span>
+        <span class="s1">self.background_rect.y = border_and_shadow + self.relative_rect.y</span>
+
+        <span class="s1">self.button_container.set_relative_position(self.background_rect.topleft)</span>
+
+    <span class="s0">def </span><span class="s1">set_relative_position(self</span><span class="s0">, </span><span class="s1">position: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                                    <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                                    <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Sets the relative screen position of this slider, updating all subordinate button elements 
+        at the same time. 
+ 
+        :param position: The relative screen position to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().set_relative_position(position)</span>
+
+        <span class="s1">border_and_shadow = self.border_width + self.shadow_width</span>
+        <span class="s1">self.background_rect.x = border_and_shadow + self.relative_rect.x</span>
+        <span class="s1">self.background_rect.y = border_and_shadow + self.relative_rect.y</span>
+
+        <span class="s1">self.button_container.set_relative_position(self.background_rect.topleft)</span>
+
+    <span class="s0">def </span><span class="s1">set_dimensions(self</span><span class="s0">, </span><span class="s1">dimensions: Union[pygame.math.Vector2</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[int</span><span class="s0">, </span><span class="s1">int]</span><span class="s0">,</span>
+                                               <span class="s1">Tuple[float</span><span class="s0">, </span><span class="s1">float]]):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Method to directly set the dimensions of an element. 
+ 
+        :param dimensions: The new dimensions to set. 
+ 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().set_dimensions(dimensions)</span>
+
+        <span class="s1">border_and_shadow = self.border_width + self.shadow_width</span>
+        <span class="s1">self.background_rect.width = self.relative_rect.width - (</span><span class="s3">2 </span><span class="s1">* border_and_shadow)</span>
+        <span class="s1">self.background_rect.height = self.relative_rect.height - (</span><span class="s3">2 </span><span class="s1">* border_and_shadow)</span>
+
+        <span class="s1">self.button_container.set_dimensions(self.background_rect.size)</span>
+
+        <span class="s5"># sort out sliding button parameters</span>
+        <span class="s1">self.scrollable_width = (self.background_rect.width -</span>
+                                 <span class="s1">self.sliding_button_width -</span>
+                                 <span class="s1">(</span><span class="s3">2 </span><span class="s1">* self.arrow_button_width))</span>
+        <span class="s1">self.right_limit_position = self.scrollable_width</span>
+        <span class="s1">self.scroll_position = self.scrollable_width * self.current_percentage</span>
+
+        <span class="s1">slider_x_pos = self.scroll_position + self.arrow_button_width</span>
+        <span class="s1">slider_y_pos = </span><span class="s3">0</span>
+
+        <span class="s1">self.sliding_button.set_dimensions((self.sliding_button_width</span><span class="s0">, </span><span class="s1">self.background_rect.height))</span>
+        <span class="s1">self.sliding_button.set_relative_position((slider_x_pos</span><span class="s0">, </span><span class="s1">slider_y_pos))</span>
+
+    <span class="s0">def </span><span class="s1">disable(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Disable the slider. It should not be interactive and will use the disabled theme colours. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if </span><span class="s1">self.is_enabled:</span>
+            <span class="s1">self.is_enabled = </span><span class="s0">False</span>
+            <span class="s1">self.sliding_button.disable()</span>
+            <span class="s0">if </span><span class="s1">self.left_button:</span>
+                <span class="s1">self.left_button.disable()</span>
+            <span class="s0">if </span><span class="s1">self.right_button:</span>
+                <span class="s1">self.right_button.disable()</span>
+            <span class="s1">self.drawable_shape.set_active_state(</span><span class="s4">'disabled'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">enable(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        Enable the slider. It should become interactive and will use the normal theme colours. 
+        &quot;&quot;&quot;</span>
+        <span class="s0">if not </span><span class="s1">self.is_enabled:</span>
+            <span class="s1">self.is_enabled = </span><span class="s0">True</span>
+            <span class="s1">self.sliding_button.enable()</span>
+            <span class="s0">if </span><span class="s1">self.left_button:</span>
+                <span class="s1">self.left_button.enable()</span>
+            <span class="s0">if </span><span class="s1">self.right_button:</span>
+                <span class="s1">self.right_button.enable()</span>
+            <span class="s1">self.drawable_shape.set_active_state(</span><span class="s4">'normal'</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">show(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        In addition to the base UIElement.show() - show the sliding button and show 
+        the button_container which will propagate and show the left and right buttons. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().show()</span>
+
+        <span class="s1">self.sliding_button.show()</span>
+        <span class="s0">if </span><span class="s1">self.button_container </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.button_container.show()</span>
+
+    <span class="s0">def </span><span class="s1">hide(self):</span>
+        <span class="s2">&quot;&quot;&quot; 
+        In addition to the base UIElement.hide() - hide the sliding button and hide 
+        the button_container which will propagate and hide the left and right buttons. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">super().hide()</span>
+
+        <span class="s1">self.sliding_button.hide()</span>
+        <span class="s0">if </span><span class="s1">self.button_container </span><span class="s0">is not None</span><span class="s1">:</span>
+            <span class="s1">self.button_container.hide()</span>
+</pre>
+</body>
+</html>

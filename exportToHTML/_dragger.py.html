@@ -1,0 +1,224 @@
+<html>
+<head>
+<title>_dragger.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #6a8759;}
+.s3 { color: #6897bb;}
+.s4 { color: #808080;}
+.s5 { color: #629755; font-style: italic;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_dragger.py</font>
+</center></td></tr></table>
+<pre><span class="s0">from </span><span class="s1">pygame </span><span class="s0">import </span><span class="s1">event </span><span class="s0">as </span><span class="s1">pygevent</span>
+
+<span class="s0">from </span><span class="s1">thorpy.elements.draggable </span><span class="s0">import </span><span class="s1">Draggable</span>
+<span class="s0">from </span><span class="s1">thorpy.miscgui </span><span class="s0">import </span><span class="s1">constants</span><span class="s0">, </span><span class="s1">functions</span><span class="s0">, </span><span class="s1">style</span><span class="s0">, </span><span class="s1">painterstyle</span>
+
+
+<span class="s0">class </span><span class="s1">Dragger(Draggable):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">slider</span><span class="s0">, </span><span class="s1">normal_params=</span><span class="s0">None, </span><span class="s1">press_params=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">super(Dragger</span><span class="s0">, </span><span class="s1">self).__init__(</span><span class="s2">&quot;&quot;</span><span class="s0">, </span><span class="s1">[]</span><span class="s0">, </span><span class="s1">normal_params</span><span class="s0">, </span><span class="s1">press_params)</span>
+        <span class="s1">self.slider = slider</span>
+        <span class="s1">params = {</span><span class="s2">&quot;color&quot;</span><span class="s1">: style.COLOR_HOVER_DRAGGER}</span>
+        <span class="s1">self.normal_params.polite_set(</span><span class="s2">&quot;params hover&quot;</span><span class="s0">,</span>
+                                      <span class="s1">{</span><span class="s2">&quot;painter&quot;</span><span class="s1">: painterstyle.DEF_PAINTER</span><span class="s0">,</span>
+                                       <span class="s2">&quot;params&quot;</span><span class="s1">: params})</span>
+        <span class="s1">self.normal_params.polite_set(</span><span class="s2">&quot;typ hover&quot;</span><span class="s0">, </span><span class="s2">&quot;redraw&quot;</span><span class="s1">)</span>
+
+    <span class="s0">def </span><span class="s1">set_setter(self):</span>
+        <span class="s1">self.dragmove = self.dragmove_setter</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_drag_transp(self</span><span class="s0">, </span><span class="s1">shift):</span>
+        <span class="s1">self.unblit()</span>
+        <span class="s1">self.update()</span>
+        <span class="s1">self.move((shift[</span><span class="s3">0</span><span class="s1">]</span><span class="s0">, </span><span class="s1">shift[</span><span class="s3">1</span><span class="s1">]))</span>
+        <span class="s1">self.blit()</span>
+        <span class="s1">self.update()</span>
+
+
+<span class="s0">class </span><span class="s1">DraggerX(Dragger):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">slider</span><span class="s0">, </span><span class="s1">normal_params=</span><span class="s0">None, </span><span class="s1">press_params=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">Dragger.__init__(self</span><span class="s0">, </span><span class="s1">slider</span><span class="s0">, </span><span class="s1">normal_params</span><span class="s0">, </span><span class="s1">press_params)</span>
+
+    <span class="s0">def </span><span class="s1">dragmove_setter(self</span><span class="s0">, </span><span class="s1">x):</span>
+        <span class="s1">self._reaction_drag_transp((x</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+        <span class="s1">self.slider.father.refresh_value() </span><span class="s4">#!!!</span>
+
+    <span class="s0">def </span><span class="s1">dragmove(self</span><span class="s0">, </span><span class="s1">x):</span>
+        <span class="s1">self._reaction_drag_transp((x</span><span class="s0">, </span><span class="s3">0</span><span class="s1">))</span>
+
+    <span class="s0">def </span><span class="s1">is_and_will_be_inside(self</span><span class="s0">, </span><span class="s1">shift):</span>
+        <span class="s1">slider_rect = self.slider._get_slide_rect()</span>
+        <span class="s1">left = slider_rect.left</span>
+        <span class="s1">right = slider_rect.right</span>
+        <span class="s1">now = left &lt;= self.current_state.ghost_rect.centerx &lt;= right</span>
+        <span class="s1">future = left &lt;= self.current_state.ghost_rect.centerx + shift &lt;= right</span>
+        <span class="s0">return </span><span class="s1">now </span><span class="s0">and </span><span class="s1">future</span>
+
+    <span class="s0">def </span><span class="s1">will_be_inside(self</span><span class="s0">, </span><span class="s1">shift):</span>
+        <span class="s5">&quot;&quot;&quot;Shift is in pixels units&quot;&quot;&quot;</span>
+        <span class="s1">slider_rect = self.slider._get_slide_rect()</span>
+        <span class="s1">left = slider_rect.left</span>
+        <span class="s1">right = slider_rect.right</span>
+        <span class="s0">return </span><span class="s1">left &lt;= self.current_state.ghost_rect.centerx + shift &lt;= right</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_drag(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s0">if </span><span class="s1">self.current_state_key == constants.STATE_PRESSED:</span>
+            <span class="s0">if </span><span class="s1">self.will_be_inside(event.rel[</span><span class="s3">0</span><span class="s1">]):</span>
+                <span class="s1">self.dragmove(event.rel[</span><span class="s3">0</span><span class="s1">])</span>
+                <span class="s1">drag_event = pygevent.Event(constants.THORPY_EVENT</span><span class="s0">,</span>
+                                            <span class="s1">id=constants.EVENT_SLIDE</span><span class="s0">,</span>
+                                            <span class="s1">el=self.father.father)</span>
+                <span class="s1">pygevent.post(drag_event)</span>
+
+    <span class="s0">def </span><span class="s1">shift(self</span><span class="s0">, </span><span class="s1">sign=</span><span class="s3">1</span><span class="s1">):</span>
+        <span class="s0">if </span><span class="s1">self.will_be_inside(sign):</span>
+            <span class="s1">self.dragmove(sign)</span>
+
+    <span class="s0">def </span><span class="s1">place_at(self</span><span class="s0">, </span><span class="s1">value):</span>
+        <span class="s1">x0 = self.slider._get_slide_rect().left</span>
+        <span class="s1">pix = self.slider.val_to_pix(value</span><span class="s0">, </span><span class="s1">x0)</span>
+<span class="s4">##        test = self.slider.pix_to_val(pix, x0) == value ?</span>
+        <span class="s1">self.set_center((pix</span><span class="s0">, None</span><span class="s1">))</span>
+
+
+
+<span class="s0">class </span><span class="s1">DraggerY(Dragger):</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">slider</span><span class="s0">, </span><span class="s1">normal_params=</span><span class="s0">None, </span><span class="s1">press_params=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">Dragger.__init__(self</span><span class="s0">, </span><span class="s1">slider</span><span class="s0">, </span><span class="s1">normal_params</span><span class="s0">, </span><span class="s1">press_params)</span>
+
+    <span class="s0">def </span><span class="s1">goto_start(self):</span>
+        <span class="s1">y = self.slider._plus.get_fus_topleft()[</span><span class="s3">1</span><span class="s1">]</span>
+        <span class="s1">y += self.slider._plus.get_fus_size()[</span><span class="s3">1</span><span class="s1">]</span>
+        <span class="s1">yself = self.get_fus_topleft()[</span><span class="s3">1</span><span class="s1">]</span>
+        <span class="s1">shift = yself - y</span>
+        <span class="s1">self.dragmove(-shift)</span>
+        <span class="s0">return </span><span class="s1">shift</span>
+
+    <span class="s0">def </span><span class="s1">goto_end(self):</span>
+        <span class="s1">y = self.slider._minus.get_fus_topleft()[</span><span class="s3">1</span><span class="s1">]</span>
+        <span class="s1">yself = self.get_fus_topleft()[</span><span class="s3">1</span><span class="s1">]</span>
+        <span class="s1">yself += self.get_fus_size()[</span><span class="s3">1</span><span class="s1">]</span>
+        <span class="s1">shift = yself - y</span>
+        <span class="s1">self.dragmove(-shift)</span>
+        <span class="s0">return </span><span class="s1">shift</span>
+
+    <span class="s0">def </span><span class="s1">dragmove(self</span><span class="s0">, </span><span class="s1">y):</span>
+        <span class="s1">self.unblit()</span>
+        <span class="s1">self.update()</span>
+        <span class="s1">self.move((</span><span class="s3">0</span><span class="s0">, </span><span class="s1">y))</span>
+        <span class="s1">self.blit()</span>
+        <span class="s1">self.update()</span>
+
+    <span class="s0">def </span><span class="s1">is_and_will_be_inside(self</span><span class="s0">, </span><span class="s1">shift):</span>
+        <span class="s1">slider_rect = self.slider._get_slide_rect()</span>
+        <span class="s1">top = slider_rect.y</span>
+        <span class="s1">bottom = slider_rect.bottom</span>
+        <span class="s1">now = top &lt;= self.current_state.ghost_rect.centery &lt;= bottom</span>
+        <span class="s1">future = top &lt;= self.current_state.ghost_rect.centery + shift &lt;= bottom</span>
+        <span class="s0">return </span><span class="s1">now </span><span class="s0">and </span><span class="s1">future</span>
+
+    <span class="s0">def </span><span class="s1">will_be_inside(self</span><span class="s0">, </span><span class="s1">shift):</span>
+        <span class="s1">slider_rect = self.slider._get_slide_rect()</span>
+        <span class="s1">top = slider_rect.y</span>
+        <span class="s1">bottom = slider_rect.bottom</span>
+        <span class="s0">return </span><span class="s1">top &lt;= self.current_state.ghost_rect.centery + shift &lt;= bottom</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_drag(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s0">if </span><span class="s1">self.current_state_key == constants.STATE_PRESSED:</span>
+            <span class="s0">if </span><span class="s1">self.will_be_inside(event.rel[</span><span class="s3">1</span><span class="s1">]):</span>
+                <span class="s1">self.dragmove(event.rel[</span><span class="s3">1</span><span class="s1">])</span>
+
+    <span class="s0">def </span><span class="s1">place_at(self</span><span class="s0">, </span><span class="s1">value):</span>
+        <span class="s1">y0 = self.slider._get_slide_rect().y</span>
+        <span class="s1">pix = self.slider.val_to_pix(value</span><span class="s0">, </span><span class="s1">y0)</span>
+        <span class="s1">self.set_center((</span><span class="s0">None, </span><span class="s1">pix))</span>
+
+    <span class="s0">def </span><span class="s1">shift(self</span><span class="s0">, </span><span class="s1">sign=</span><span class="s3">1</span><span class="s1">):</span>
+        <span class="s1">sign = -sign</span>
+        <span class="s0">if </span><span class="s1">self.is_and_will_be_inside(sign):</span>
+            <span class="s1">self.dragmove(sign)</span>
+            <span class="s1">debug_msg(self.slider.get_value())</span>
+
+
+<span class="s0">class </span><span class="s1">DraggerLiftY(DraggerY):</span>
+
+    <span class="s5">&quot;&quot;&quot;Dragger for a lift&quot;&quot;&quot;</span>
+
+    <span class="s0">def </span><span class="s1">__init__(self</span><span class="s0">, </span><span class="s1">slider</span><span class="s0">, </span><span class="s1">image=</span><span class="s0">None, </span><span class="s1">colorkey=</span><span class="s0">None</span><span class="s1">):</span>
+        <span class="s1">super(DraggerLiftY</span><span class="s0">, </span><span class="s1">self).__init__(slider</span><span class="s0">, </span><span class="s1">image</span><span class="s0">, </span><span class="s1">colorkey)</span>
+        <span class="s1">self.last_value = self.slider.limvals[</span><span class="s3">0</span><span class="s1">]  </span><span class="s4"># init last_value</span>
+
+    <span class="s0">def </span><span class="s1">shift(self</span><span class="s0">, </span><span class="s1">sign=</span><span class="s3">1</span><span class="s1">):</span>
+        <span class="s1">sign = -sign</span>
+        <span class="s0">if </span><span class="s1">self.is_and_will_be_inside(sign):</span>
+            <span class="s1">self.dragmove(sign)</span>
+            <span class="s1">current_value = self.slider.get_value()</span>
+            <span class="s1">delta = self.last_value - current_value</span>
+            <span class="s1">shift_y = </span><span class="s3">1 </span><span class="s1">* delta</span>
+            <span class="s1">self.slider._linked.scroll_children([self.slider]</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s1">shift_y))</span>
+            <span class="s1">functions.debug_msg(</span><span class="s2">&quot;Lift value : &quot;</span><span class="s0">, </span><span class="s1">current_value)</span>
+            <span class="s1">self.last_value = current_value</span>
+
+    <span class="s0">def </span><span class="s1">goto_start(self):</span>
+        <span class="s1">shift = DraggerY.goto_start(self)</span>
+        <span class="s1">current_value = self.slider.get_value()</span>
+        <span class="s1">self.last_value = current_value</span>
+        <span class="s1">self.slider._linked.scroll_children([self.slider]</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s1">shift))</span>
+
+    <span class="s0">def </span><span class="s1">goto_end(self):</span>
+        <span class="s1">shift = DraggerY.goto_end(self)</span>
+        <span class="s1">current_value = self.slider.get_value()</span>
+        <span class="s1">self.last_value = current_value</span>
+        <span class="s1">self.slider._linked.scroll_children([self.slider]</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s1">shift))</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_drag(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s0">if </span><span class="s1">self.current_state_key == constants.STATE_PRESSED:</span>
+            <span class="s0">if </span><span class="s1">self.will_be_inside(event.rel[</span><span class="s3">1</span><span class="s1">]):</span>
+                <span class="s1">self.dragmove(event.rel[</span><span class="s3">1</span><span class="s1">])</span>
+                <span class="s1">current_value = self.slider.get_value()</span>
+                <span class="s1">delta = self.last_value - current_value</span>
+                <span class="s1">shift_y = </span><span class="s3">1 </span><span class="s1">* delta</span>
+                <span class="s4"># move childrens</span>
+                <span class="s1">self.slider._linked.scroll_children([self.slider]</span><span class="s0">, </span><span class="s1">(</span><span class="s3">0</span><span class="s0">, </span><span class="s1">shift_y))</span>
+                <span class="s1">self.last_value = current_value</span>
+
+
+<span class="s0">class </span><span class="s1">DraggerDirViewerY(DraggerLiftY):</span>
+
+    <span class="s0">def </span><span class="s1">refresh_and_blit_ddlf(self):</span>
+        <span class="s1">ddlf = self.slider._linked</span>
+        <span class="s1">ddlf.unblit()</span>
+        <span class="s1">ddlf.blit()</span>
+        <span class="s1">ddlf.update()</span>
+
+    <span class="s0">def </span><span class="s1">shift(self</span><span class="s0">, </span><span class="s1">sign=</span><span class="s3">1</span><span class="s1">):</span>
+        <span class="s1">sign = -sign</span>
+        <span class="s0">if </span><span class="s1">self.is_and_will_be_inside(sign):</span>
+            <span class="s1">self.dragmove(sign)</span>
+            <span class="s1">self.slider._linked._dv.pix_0 += sign</span>
+            <span class="s1">self.refresh_and_blit_ddlf()</span>
+
+    <span class="s0">def </span><span class="s1">_reaction_drag(self</span><span class="s0">, </span><span class="s1">event):</span>
+        <span class="s0">if </span><span class="s1">self.current_state_key == constants.STATE_PRESSED:</span>
+            <span class="s0">if </span><span class="s1">self.will_be_inside(event.rel[</span><span class="s3">1</span><span class="s1">]):</span>
+                <span class="s1">self.dragmove(event.rel[</span><span class="s3">1</span><span class="s1">])</span>
+                <span class="s1">current_value = self.slider.get_value()</span>
+                <span class="s1">shift_y = round(self.last_value - current_value)</span>
+                <span class="s1">self.slider._linked._dv.pix_0 -= shift_y</span>
+                <span class="s1">self.refresh_and_blit_ddlf()</span>
+                <span class="s1">self.last_value = current_value</span>
+</pre>
+</body>
+</html>

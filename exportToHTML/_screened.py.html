@@ -1,0 +1,48 @@
+<html>
+<head>
+<title>_screened.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #629755; font-style: italic;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #cc7832;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+_screened.py</font>
+</center></td></tr></table>
+<pre><span class="s0">&quot;&quot;&quot;Module for creating _Screened objects, that are designed to be blitted on 
+the screen. 
+&quot;&quot;&quot;</span>
+<span class="s2">from </span><span class="s1">pygame </span><span class="s2">import </span><span class="s1">display</span>
+<span class="s2">from </span><span class="s1">thorpy.miscgui </span><span class="s2">import </span><span class="s1">functions</span>
+
+
+<span class="s2">class </span><span class="s1">_Screened(object):</span>
+    <span class="s0">&quot;&quot;&quot;Object that is designed to be blitted on the screen. Implements 
+    methods for setting the screen clips. 
+    &quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self):</span>
+        <span class="s0">&quot;&quot;&quot;Object that is designed to be blitted on the screen.&quot;&quot;&quot;</span>
+<span class="s3">##        self.surface = display.get_surface()</span>
+        <span class="s1">self._old_clips = [</span><span class="s2">None</span><span class="s1">]  </span><span class="s3"># fifo</span>
+
+    <span class="s2">def </span><span class="s1">_add_old_clip(self):</span>
+        <span class="s0">&quot;&quot;&quot;Add the current clip of the screen to the list of previous clips. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self._old_clips.insert(</span><span class="s4">0</span><span class="s2">, </span><span class="s1">self.surface.get_clip())</span>
+
+    <span class="s2">def </span><span class="s1">_unclip_screen(self):</span>
+        <span class="s0">&quot;&quot;&quot;Restore the oldest of the previous clips as the clip of the screen, 
+        and removes it from the previous clips list. 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.surface.set_clip(self._old_clips.pop(</span><span class="s4">0</span><span class="s1">))</span>
+</pre>
+</body>
+</html>
