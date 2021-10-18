@@ -85,55 +85,55 @@ class Enemy(object):
 
     def get_vel(self, behavior):
         if behavior == 0:
-            return (self.seek(self.game.player.pos) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+            return (self.seek(self.game.player.pos) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
         elif behavior == 1:
-            return (self.pursuit(self.game.player) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+            return (self.pursuit(self.game.player) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
         elif behavior == 2:
-            return (self.flee(self.game.player.pos) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+            return (self.flee(self.game.player.pos) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
         elif behavior == 3:
-            return (self.evade(self.game.player) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+            return (self.evade(self.game.player) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
         elif behavior == 4:
-            return (self.wander() + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+            return (self.wander() + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
         elif behavior == 5:
-            return (self.hide() + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+            return (self.hide() + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
         elif behavior == 6:
-            return (self.wander() + 6 * self.avoid_obstacles()).normalize()
+            return (self.wander() + 10 * self.avoid_obstacles()).normalize()
         elif behavior == 7:
-            return (self.wander() + 6 * self.avoid_walls()).normalize()
+            return (self.wander() + 10 * self.avoid_walls()).normalize()
         elif behavior == 8:
             if self.group_attack is False:
                 if self.behavior_counter < self.n_ticks / 3:
-                    return (self.hide() + self.flee(self.game.player.pos) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                    return (self.hide() + self.flee(self.game.player.pos) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
                 elif self.behavior_counter < self.n_ticks * 2 / 3:
-                    return (self.flee(self.game.player.pos) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                    return (self.flee(self.game.player.pos) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
                 else:
-                    return (self.wander() + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                    return (self.wander() + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
             else:
-                return (self.seek(self.game.player.pos + (self.game.leader.pos - self.pos)) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                return (self.seek(self.game.player.pos + (self.game.leader.pos - self.pos)) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
         elif behavior == 9:
             if self.group_attack is False:
                 if self.behavior_counter < self.n_ticks / 3:
-                    return (self.evade(self.game.player) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                    return (self.evade(self.game.player) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
                 elif self.behavior_counter < self.n_ticks * 2 / 3:
-                    return (self.wander() + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                    return (self.wander() + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
                 else:
-                    return (self.pursuit(self.game.player) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                    return (self.pursuit(self.game.player) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
             else:
-                return (self.seek(self.game.player.pos + (self.game.leader.pos - self.pos)) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                return (self.seek(self.game.player.pos + (self.game.leader.pos - self.pos)) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
         elif behavior == 10:
             if self.another_counter < (self.n_ticks * 2):
-                return (self.evade(self.game.player) + 7 * self.avoid_obstacles() + 7 * self.avoid_walls()).normalize()
+                return (self.evade(self.game.player) + 10 * self.avoid_obstacles() + 7 * self.avoid_walls()).normalize()
             elif self.another_counter < (self.n_ticks * 4):
-                return (self.wander() + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                return (self.wander() + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
             else:
-                return (self.pursuit(self.game.player) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                return (self.pursuit(self.game.player) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
         elif behavior == 11:
             if self.another_counter < (self.n_ticks * 2):
-                return (self.evade(self.game.player) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                return (self.evade(self.game.player) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
             elif self.another_counter < (self.n_ticks * 4):
-                return (self.hide() + 3 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                return (self.hide() + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
             else:
-                return (self.flee(self.game.player) + 6 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
+                return (self.flee(self.game.player) + 10 * self.avoid_obstacles() + 6 * self.avoid_walls()).normalize()
         else:
             return self.vel
 
