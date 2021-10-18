@@ -80,13 +80,13 @@ class Player(object):
             if self.counter == 0:
                 # bouncing off the obstacles
                 collided = (self.getting_physical(self.game.obstacles))
+                normal = self.collided_wall_normal
                 if collided is None:
                     if self.collisions_wall() is True:
                         normal = self.collided_wall_normal
                 else:
                     normal = (self.pos - collided.pos).normalize()
                 self.vel = self.vel.reflect(normal)
-                #self.vel = -self.vel
             self.counter += 1
             if self.counter == 12:
                 self.flag = False

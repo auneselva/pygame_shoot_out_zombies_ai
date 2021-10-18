@@ -23,7 +23,7 @@ class Game(object):
         self.tps_max = 100.0
         self.tps_clock = pygame.time.Clock()
         self.tps_delta = 0.0
-
+        self.player = Player(self)
         self.n_obstacles = 14
         self.blue = (63, 127, 191)
         self.n_enemies = 2
@@ -38,7 +38,6 @@ class Game(object):
         self.r_spawn = 8
         self.spawns = self.create_objects(Circle, self.n_spawns, self.r_spawn, self.yellow, self.obstacles + self.enemies, 5)
 
-        self.player = Player(self)
         self.leader = self.enemies[0]
         self.counter_reset = 10000
         self.time_counter = 0
@@ -75,8 +74,7 @@ class Game(object):
 
             # Drawing
             self.screen.fill((0, 0, 0))
-            self.draw()
-            pygame.display.flip()
+            self.draw()aaaaaaaaaaaaa
 
     def tick(self):
 
@@ -171,7 +169,7 @@ class Game(object):
         # wall_dist is a minimum distance between an obstacle and the walls
         # player_dist is a minimum distance between an obstacle and the starting position of the player
         wall_dist = 20
-        player_dist = self.res[0]/20 + 10
+        player_dist = self.res[0]/20 + 150
         objects = []
 
         for i in range(n_objects):
@@ -186,8 +184,8 @@ class Game(object):
 
     # the method below checks if the object is not too close to the player's starting position
     def check_player_dist(self, player_dist, pos_x, pos_y):
-        if self.res[0] / 2 - player_dist < pos_x < self.res[0] / 2 + player_dist:
-            if self.res[1] / 2 - player_dist < pos_y < self.res[1] / 2 + player_dist:
+        if self.player.pos.x - player_dist < pos_x < self.player.pos.x + player_dist:
+            if self.player.pos.y - player_dist < pos_y < self.player.pos.y + player_dist:
                 return True
         return False
 
