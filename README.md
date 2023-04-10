@@ -9,9 +9,12 @@ RUNNING THE GAME
 
 Double-click on run.py file.
 
-You can also import project to PyCharm IDE. Once your project is open, go to File->Settings->Project->Python Interpreter. You have to set correct Python Interpreter to Python 3.9. If you don't have Python 3.9 on your computer, you have to first download it from its official website and run. After you set the Python Interpreter, add following modules: pip, pygame and setuptools. Then run the run.py file in the editor.
+*** 
+PROJECT CONFIG
+You can also import project to PyCharm IDE. Once your project is open, go to File->Settings->Project->Python Interpreter. You have to set Python Interpreter to Python 3.9. If you don't have Python 3.9 on your computer, you have to first download it from its official website. After you set the Python Interpreter, add following modules: pip, pygame and setuptools. Then run the run.py file in the editor.
 ***
 
-Currently, the behavior of enemies is set to "Example mix 2" - it is switching in few seconds long intervals - hiding, fleeing and wandering with avoiding walls and obstacles. You can check how a single behavior works by choosing one of the buttons from the panel on the right during the game.
+Currently, the behavior of enemies is set to "Example mix 2" - it is switching in few seconds long intervals - hiding, fleeing and wandering with avoiding walls and obstacles. You can check how a single behavior works by clicking on the buttons in the right panel during the game.
 
+***
 by Agnieszka Konopka
