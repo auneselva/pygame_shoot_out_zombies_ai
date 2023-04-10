@@ -11,6 +11,7 @@ Double-click on run.py file.
 
 *** 
 PROJECT CONFIG
+
 You can also import project to PyCharm IDE. Once your project is open, go to File->Settings->Project->Python Interpreter. You have to set Python Interpreter to Python 3.9. If you don't have Python 3.9 on your computer, you have to first download it from its official website. After you set the Python Interpreter, add following modules: pip, pygame and setuptools. Then run the run.py file in the editor.
 ***
 
