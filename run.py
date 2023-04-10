@@ -74,7 +74,7 @@ class Game(object):
 
             # Drawing
             self.screen.fill((0, 0, 0))
-            self.draw()aaaaaaaaaaaaa
+            self.draw()
 
     def tick(self):
 
@@ -105,6 +105,7 @@ class Game(object):
                 self.enemies.clear()
         # tag those who are close enough to each other to perform a group attack
         self.tag_enemies()
+        pygame.display.update()
 
     def screen_UI_draw(self):
         global text_time, text_coins, text_enemies
